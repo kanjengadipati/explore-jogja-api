@@ -53,7 +53,7 @@ func generateMockErrorOptimization(prompt string) (*GenerateResult, error) {
 				"title":       "Reset your password",
 				"description": "If you forgot your password, you can easily reset it.",
 				"action":      "navigate",
-				"url":         "/auth/forgot-password",
+				"url":         "/forgot-password",
 				"priority":    "primary",
 			},
 			{
