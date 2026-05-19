@@ -297,6 +297,7 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 		Name:        user.Name,
 		Email:       user.Email,
 		Role:        user.Role,
+		IsVerified:  user.IsVerified,
 		Permissions: permissions,
 	}
 	if h.Cache != nil {
@@ -311,6 +312,7 @@ type profileResponse struct {
 	Name        string   `json:"name"`
 	Email       string   `json:"email"`
 	Role        string   `json:"role"`
+	IsVerified  bool     `json:"is_verified"`
 	Permissions []string `json:"permissions"`
 }
 
