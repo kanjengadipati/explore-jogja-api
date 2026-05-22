@@ -1,0 +1,84 @@
+services:
+  app:
+    build: .
+    container_name: pleco-api
+    restart: always
+    env_file:
+      - .env.docker
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      db-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    environment:
+      DB_DRIVER: mysql
+      DATABASE_URL: mysql://${MYSQL_USER:-pleco}:${MYSQL_PASSWORD:-PlecoLocal_2026Pass}@mysql-db:3306/${MYSQL_DATABASE:-auth_db}?parseTime=true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mysql-db:
+    image: mysql:8.4
+    container_name: mysql-db
+    restart: always
+    env_file:
+      - .env.docker
+    ports:
+      - "127.0.0.1:3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-PlecoRoot_2026Pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-auth_db}
+      MYSQL_USER: ${MYSQL_USER:-pleco}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-PlecoLocal_2026Pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  db-setup:
+    build:
+      context: .
+      dockerfile: docker/db-setup.Dockerfile
+    container_name: db-setup
+    working_dir: /app
+    env_file:
+      - .env.docker
+    volumes:
+      - .:/app
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    environment:
+      DB_DRIVER: mysql
+      DATABASE_URL: mysql://${MYSQL_USER:-pleco}:${MYSQL_PASSWORD:-PlecoLocal_2026Pass}@tcp(mysql-db:3306)/${MYSQL_DATABASE:-auth_db}?multiStatements=true&parseTime=true
+      MIGRATIONS_PATH: migrations/mysql
+      ENV_FILE: .env.docker
+      GOMAXPROCS: "1"
+      GOFLAGS: "-p=1"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+
+  gateway:
+    image: nginx:alpine
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

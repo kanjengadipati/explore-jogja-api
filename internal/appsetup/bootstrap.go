@@ -8,6 +8,7 @@ import (
 	migrationFiles "pleco-api/migrations"
 
 	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"gorm.io/gorm"
@@ -15,7 +16,7 @@ import (
 
 func RunStartupTasks(cfg config.AppConfig, db *gorm.DB) {
 	if cfg.AutoRunMigrations {
-		if err := RunMigrations(cfg.DatabaseURL); err != nil {
+		if err := RunMigrationsForDriver(cfg.DatabaseURL, cfg.DatabaseDriver); err != nil {
 			log.Fatalf("❌ startup migrations failed: %v", err)
 		}
 		log.Println("✅ startup migrations completed")
@@ -28,16 +29,26 @@ func RunStartupTasks(cfg config.AppConfig, db *gorm.DB) {
 }
 
 func RunMigrations(dbURL string) error {
+	return RunMigrationsForDriver(dbURL, "")
+}
+
+func RunMigrationsForDriver(dbURL, driver string) error {
 	if dbURL == "" {
 		log.Fatal("❌ DATABASE_URL is not set")
 	}
 
-	sourceDriver, err := iofs.New(migrationFiles.Files, ".")
+	driver = config.NormalizeDatabaseDriver(driver, dbURL)
+	migrationsPath := "."
+	if driver == config.DatabaseDriverMySQL {
+		migrationsPath = "mysql"
+	}
+
+	sourceDriver, err := iofs.New(migrationFiles.Files, migrationsPath)
 	if err != nil {
 		return err
 	}
 
-	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, dbURL)
+	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, config.MigrationDatabaseURL(dbURL, driver))
 	if err != nil {
 		return err
 	}

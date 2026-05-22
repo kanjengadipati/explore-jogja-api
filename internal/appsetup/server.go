@@ -31,7 +31,7 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 		return err
 	}
 
-	db := config.ConnectDB(appConfig.DatabaseURL)
+	db := config.ConnectDBWithDriver(appConfig.DatabaseURL, appConfig.DatabaseDriver)
 	RunStartupTasks(appConfig, db)
 
 	jwtService := services.NewJWTService(appConfig.JWTSecret)

@@ -85,6 +85,8 @@ Optional repository integration tests can be run with:
 TEST_DATABASE_URL="postgresql://..." go test ./tests -run 'TestPermissionRepository|TestAuditRepository' -v
 ```
 
+For MySQL-specific work, set `DB_DRIVER=mysql` and use the MySQL migration files under `migrations/mysql/`. Docker can run the MySQL stack with `DB_DRIVER=mysql` in `.env.docker` followed by `make docker-up`.
+
 ## Pull Request Checklist
 
 - Code compiles and tests pass

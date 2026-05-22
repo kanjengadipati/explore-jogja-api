@@ -11,6 +11,7 @@ import (
 	"pleco-api/internal/cache"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ErrorOptimizerService struct {
@@ -194,16 +195,36 @@ func (eos *ErrorOptimizerService) logErrorOccurrence(
 
 	// This should ideally be asynchronous. Using a simple goroutine for now.
 	go func() {
-		// Log the occurrence in error_analytics
-		err := eos.db.Exec(`
-			INSERT INTO error_analytics (error_code, error_type, occurrence_count, last_occurred) 
-			VALUES (?, ?, 1, NOW())
-			ON CONFLICT (error_code) DO UPDATE 
-			SET occurrence_count = error_analytics.occurrence_count + 1, last_occurred = NOW()
-		`, metadata.Code, metadata.Type).Error
+		now := time.Now().UTC()
+		err := eos.db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "error_code"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"occurrence_count": gorm.Expr("occurrence_count + 1"),
+				"last_occurred":    now,
+			}),
+		}).Create(&errorAnalyticsOccurrence{
+			ErrorCode:       metadata.Code,
+			ErrorType:       metadata.Type,
+			OccurrenceCount: 1,
+			LastOccurred:    &now,
+			CreatedAt:       now,
+		}).Error
 
 		if err != nil && eos.logger != nil {
 			eos.logger.Error("failed to log error occurrence", slog.String("error", err.Error()))
 		}
 	}()
+}
+
+type errorAnalyticsOccurrence struct {
+	ID              uint       `gorm:"primaryKey"`
+	ErrorCode       string     `gorm:"column:error_code"`
+	ErrorType       string     `gorm:"column:error_type"`
+	OccurrenceCount int        `gorm:"column:occurrence_count"`
+	LastOccurred    *time.Time `gorm:"column:last_occurred"`
+	CreatedAt       time.Time  `gorm:"column:created_at"`
+}
+
+func (errorAnalyticsOccurrence) TableName() string {
+	return "error_analytics"
 }

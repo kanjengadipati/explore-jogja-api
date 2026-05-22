@@ -78,6 +78,22 @@ func TestAppConfigValidateRejectsUnsupportedEmailProvider(t *testing.T) {
 	assertContains(t, err.Error(), "EMAIL_PROVIDER must be one of: disabled, sendgrid, resend, smtp")
 }
 
+func TestAppConfigValidateRejectsUnsupportedDatabaseDriver(t *testing.T) {
+	cfg := AppConfig{
+		Port:           "8080",
+		DatabaseDriver: "sqlite",
+		DatabaseURL:    "sqlite://auth.db",
+		JWTSecret:      []byte("super_secret_key_123_must_be_32_bytes_long_minimum"),
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+
+	assertContains(t, err.Error(), "DB_DRIVER must be one of: postgres, mysql")
+}
+
 func TestAppConfigValidateRequiresSMTPSettings(t *testing.T) {
 	cfg := AppConfig{
 		Port:        "8080",

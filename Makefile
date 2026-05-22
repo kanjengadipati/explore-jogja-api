@@ -4,8 +4,28 @@ GO ?= go
 
 -include $(ENV_FILE)
 
+DB_DRIVER ?= postgres
+MIGRATIONS_PATH := migrations
+ifeq ($(DB_DRIVER),mysql)
+MIGRATIONS_PATH := migrations/mysql
+endif
+
+DOCKER_DB_DRIVER ?= $(shell awk -F= '/^DB_DRIVER=/{gsub(/[[:space:]]/, "", $$2); print $$2; exit}' $(DOCKER_ENV_FILE) 2>/dev/null)
+DOCKER_DB_DRIVER := $(if $(DOCKER_DB_DRIVER),$(DOCKER_DB_DRIVER),$(DB_DRIVER))
+
+ifeq ($(DOCKER_DB_DRIVER),mysql)
+DOCKER_COMPOSE_FILE ?= docker-compose.mysql.yaml
+else
+DOCKER_COMPOSE_FILE ?= docker-compose.yaml
+endif
+DOCKER_COMPOSE := docker-compose --env-file $(DOCKER_ENV_FILE) -f $(DOCKER_COMPOSE_FILE)
+
 ifeq ($(strip $(DATABASE_URL)),)
+ifeq ($(DB_DRIVER),mysql)
+DB_URL := mysql://$(DB_USER):$(DB_PASSWORD)@tcp($(DB_HOST):$(DB_PORT))/$(DB_NAME)?multiStatements=true&parseTime=true
+else
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(if $(DB_SSLMODE),$(DB_SSLMODE),disable)
+endif
 else
 DB_URL := $(DATABASE_URL)
 endif
@@ -35,22 +55,22 @@ postman-all: ## Run both smoke and negative Postman collections with Newman agai
 	npm run postman:all
 
 migrate-up: ## Apply all pending migrations using the migrate CLI
-	migrate -path migrations -database "$(DB_URL)" up
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" up
 
 migrate-down: ## Roll back the latest migration using the migrate CLI
-	migrate -path migrations -database "$(DB_URL)" down 1
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down 1
 
 migrate-down-all: ## Roll back all migrations using the migrate CLI
-	migrate -path migrations -database "$(DB_URL)" down
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down
 
 migrate-status: ## Show migration status using the migrate CLI
-	migrate -path migrations -database "$(DB_URL)" status
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" status
 
 migrate-force: ## Force the migration version using VERSION=<number>
 ifndef VERSION
 	$(error VERSION is undefined. Usage: make migrate-force VERSION=<version>)
 endif
-	migrate -path migrations -database "$(DB_URL)" force $(VERSION)
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" force $(VERSION)
 
 migrate-create: ## Create a new SQL migration with NAME=<migration_name>
 ifndef NAME
@@ -62,25 +82,25 @@ migrate-drop: ## Drop all database objects using the migrate CLI (requires CONFI
 ifndef CONFIRM
 	$(error CONFIRM is undefined. Usage: make migrate-drop CONFIRM=1)
 endif
-	migrate -path migrations -database "$(DB_URL)" drop -f
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" drop -f
 
 seed: ## Run seed data using the Go seed command
 	$(GO) run ./cmd/seed
 
 db-setup: migrate-up seed ## Apply migrations and run seed data
 
-docker-up: ## Start the Docker stack with build using DOCKER_ENV_FILE=<file>
-	docker-compose --env-file $(DOCKER_ENV_FILE) up --build
+docker-up: ## Start the Docker stack with build using DB_DRIVER=<postgres|mysql>
+	$(DOCKER_COMPOSE) up --build
 
-docker-down: ## Stop the Docker stack using DOCKER_ENV_FILE=<file>
-	@if [ -z "$$(docker-compose --env-file $(DOCKER_ENV_FILE) ps -a -q)" ]; then \
+docker-down: ## Stop the Docker stack using DB_DRIVER=<postgres|mysql>
+	@if [ -z "$$($(DOCKER_COMPOSE) ps -a -q)" ]; then \
 		echo "ℹ️  No containers are currently running for this stack."; \
 	else \
-		docker-compose --env-file $(DOCKER_ENV_FILE) down; \
+		$(DOCKER_COMPOSE) down; \
 	fi
 
-docker-logs: ## Follow Docker logs using DOCKER_ENV_FILE=<file>
-	docker-compose --env-file $(DOCKER_ENV_FILE) logs -f
+docker-logs: ## Follow Docker logs using DB_DRIVER=<postgres|mysql>
+	$(DOCKER_COMPOSE) logs -f
 
-docker-rebuild: ## Rebuild Docker images without cache using DOCKER_ENV_FILE=<file>
-	docker-compose --env-file $(DOCKER_ENV_FILE) build --no-cache
+docker-rebuild: ## Rebuild Docker images without cache using DB_DRIVER=<postgres|mysql>
+	$(DOCKER_COMPOSE) build --no-cache

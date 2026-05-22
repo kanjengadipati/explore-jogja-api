@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Configurable database driver support for PostgreSQL and MySQL.
+- MySQL migration files and a MySQL Docker Compose stack selected by `DB_DRIVER=mysql`.
+
+### Changed
+- Updated setup, Docker, troubleshooting, and contribution documentation for PostgreSQL/MySQL workflows.
+
 ## [1.0.0] - 2026-04-27
 
 ### Added

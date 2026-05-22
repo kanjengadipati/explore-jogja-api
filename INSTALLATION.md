@@ -9,7 +9,7 @@ This guide covers the three main ways to run `pleco-api`:
 ## Prerequisites
 
 - Go 1.25 or newer
-- PostgreSQL 15 or newer
+- PostgreSQL 15 or newer, or MySQL 8.4 or newer
 - Redis if you want shared rate limiting and cache behavior
 - Node.js 20 or newer if you want to run the bundled Postman suites with Newman
 
@@ -49,7 +49,11 @@ cp .env.docker.example .env.docker
 At minimum, confirm these values match your setup:
 
 ```env
+DB_DRIVER=postgres
 DATABASE_URL=postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable
+# MySQL alternative:
+# DB_DRIVER=mysql
+# DATABASE_URL=mysql://root:password@127.0.0.1:3306/auth_db?parseTime=true
 JWT_SECRET=replace_with_a_strong_cryptographically_secure_secret_at_least_32_bytes_long
 APP_BASE_URL=http://localhost:8080
 FRONTEND_URL=http://localhost:3000
@@ -67,7 +71,7 @@ Notes:
 
 ## 4. Run locally with Go
 
-Start PostgreSQL first, then run:
+Start your selected database first, then run:
 
 ```bash
 go run ./cmd/migrate
@@ -84,7 +88,9 @@ cp .env.docker.example .env.docker
 make docker-up
 ```
 
-This starts the local stack defined by `docker-compose.yaml`.
+This starts the selected local stack.
+
+Docker selects the database stack from `DB_DRIVER` in `.env.docker`. Use `DB_DRIVER=postgres` for the default PostgreSQL/PgBouncer stack, or `DB_DRIVER=mysql` for the MySQL stack.
 
 Useful companion commands:
 
@@ -154,7 +160,7 @@ On Windows, download the `.zip` release asset and run the `.exe` binaries from t
 ## 9. Production checklist
 
 - Use `.env.production.example` as the base
-- Point `DATABASE_URL` at a managed or private PostgreSQL instance
+- Point `DATABASE_URL` at a managed or private PostgreSQL or MySQL instance
 - Configure `REDIS_URL` for shared rate limiting and cache behavior
 - Set a strong `JWT_SECRET`
 - Restrict `CORS_ALLOWED_ORIGINS` to your real frontend origins

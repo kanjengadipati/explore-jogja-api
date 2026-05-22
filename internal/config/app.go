@@ -48,6 +48,7 @@ type ErrorOptimizationConfig struct {
 
 type AppConfig struct {
 	Port                     string
+	DatabaseDriver           string
 	DatabaseURL              string
 	RedisURL                 string
 	TrustedProxies           []string
@@ -67,6 +68,7 @@ type AppConfig struct {
 func LoadAppConfig() AppConfig {
 	return AppConfig{
 		Port:                     GetEnv("PORT", "8080"),
+		DatabaseDriver:           GetEnv("DB_DRIVER", ""),
 		DatabaseURL:              GetEnv("DATABASE_URL", ""),
 		RedisURL:                 GetEnv("REDIS_URL", ""),
 		TrustedProxies:           envList("TRUSTED_PROXIES", []string{"127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}),
@@ -113,6 +115,10 @@ func (c AppConfig) Validate() error {
 
 	if c.DatabaseURL == "" {
 		problems = append(problems, "DATABASE_URL is required")
+	}
+
+	if c.DatabaseDriver != "" && !SupportedDatabaseDriver(c.DatabaseDriver) {
+		problems = append(problems, "DB_DRIVER must be one of: postgres, mysql")
 	}
 
 	if len(c.JWTSecret) < 32 {

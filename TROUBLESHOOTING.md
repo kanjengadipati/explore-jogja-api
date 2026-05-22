@@ -25,13 +25,18 @@ Symptoms:
 Checks:
 
 - Verify `DATABASE_URL` points to the correct host, port, database, username, and password
-- Confirm PostgreSQL is running and reachable from the API host
-- Confirm the `sslmode` matches your environment
+- Confirm the selected database is running and reachable from the API host
+- Confirm `DB_DRIVER` is `postgres` or `mysql`
+- For PostgreSQL, confirm the `sslmode` matches your environment
 
-Local example:
+Local examples:
 
 ```env
+DB_DRIVER=postgres
 DATABASE_URL=postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable
+# or
+DB_DRIVER=mysql
+DATABASE_URL=mysql://pleco:PlecoLocal_2026Pass@127.0.0.1:3306/auth_db?parseTime=true
 ```
 
 ## CORS preflight fails from the dashboard or browser client
@@ -119,8 +124,9 @@ Checks:
 Checks:
 
 - Run `make docker-logs`
-- Confirm Postgres finished initializing
+- Confirm the selected database finished initializing
 - Confirm the Docker env file exists and matches the compose setup
+- Confirm `DB_DRIVER=postgres` uses `docker-compose.yaml` and `DB_DRIVER=mysql` uses `docker-compose.mysql.yaml`
 - Check whether a stale local `.env.docker` is overriding expected values
 
 ## Newman or Postman tests fail locally

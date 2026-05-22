@@ -174,11 +174,7 @@ func (r *gormRepository) applyFilter(query *gorm.DB, filter Filter) *gorm.DB {
 		query = query.Where("created_at <= ?", *filter.DateTo)
 	}
 	if search := strings.TrimSpace(filter.Search); search != "" {
-		like := "%" + search + "%"
-		query = query.Where(
-			"(action ILIKE ? OR resource ILIKE ? OR status ILIKE ? OR description ILIKE ? OR ip_address ILIKE ? OR user_agent ILIKE ?)",
-			like, like, like, like, like, like,
-		)
+		query = query.Where(textSearchCondition(r.db, []string{"action", "resource", "status", "description", "ip_address", "user_agent"}), textSearchValues(r.db, search, 6)...)
 	}
 	return query
 }
@@ -206,13 +202,34 @@ func (r *gormRepository) applyInvestigationFilter(query *gorm.DB, filter Investi
 		query = query.Where("created_at <= ?", *filter.CreatedTo)
 	}
 	if search := strings.TrimSpace(filter.Search); search != "" {
-		like := "%" + search + "%"
-		query = query.Where(
-			"(resource ILIKE ? OR status ILIKE ? OR summary ILIKE ? OR ai_provider ILIKE ? OR ai_model ILIKE ? OR search ILIKE ?)",
-			like, like, like, like, like, like,
-		)
+		query = query.Where(textSearchCondition(r.db, []string{"resource", "status", "summary", "ai_provider", "ai_model", "search"}), textSearchValues(r.db, search, 6)...)
 	}
 	return query
+}
+
+func textSearchCondition(db *gorm.DB, columns []string) string {
+	parts := make([]string, 0, len(columns))
+	for _, column := range columns {
+		if db.Dialector.Name() == "postgres" {
+			parts = append(parts, column+" ILIKE ?")
+			continue
+		}
+		parts = append(parts, "LOWER("+column+") LIKE ?")
+	}
+	return "(" + strings.Join(parts, " OR ") + ")"
+}
+
+func textSearchValues(db *gorm.DB, search string, count int) []interface{} {
+	like := "%" + search + "%"
+	if db.Dialector.Name() != "postgres" {
+		like = strings.ToLower(like)
+	}
+
+	values := make([]interface{}, 0, count)
+	for i := 0; i < count; i++ {
+		values = append(values, like)
+	}
+	return values
 }
 
 func isMissingSnapshotHashColumnError(err error) bool {

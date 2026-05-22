@@ -6,4 +6,4 @@ WORKDIR /app
 
 COPY --from=migrate /usr/local/bin/migrate /usr/local/bin/migrate
 
-CMD ["sh", "-c", "migrate -path migrations -database \"$DATABASE_URL\" up && go run ./cmd/seed"]
+CMD ["sh", "-c", "migrate -path \"${MIGRATIONS_PATH:-migrations}\" -database \"$DATABASE_URL\" up && go run ./cmd/seed"]

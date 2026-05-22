@@ -8,7 +8,7 @@
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)
 [![Gin](https://img.shields.io/badge/Gin-HTTP%20Framework-009688)](https://gin-gonic.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)](https://www.postgresql.org)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL%20%7C%20MySQL-336791)](https://github.com/kanjengadipati/pleco-api)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com)
 [![Modular](https://img.shields.io/badge/Architecture-Modular-6f42c1)](https://github.com/kanjengadipati/pleco-api)
 [![AI Powered](https://img.shields.io/badge/AI-Audit%20Investigator-ff6b35?logo=ollama)](https://ollama.com)
@@ -28,7 +28,7 @@ Pleco is a production-oriented authentication and authorization API foundation f
 
 The codebase is organized around domain-focused modules, so auth, users, roles, permissions, tokens, social login, audit logs, and monitoring can evolve independently. Each module owns its handler, service, repository, and model, making the project easier to extend than a single large auth package.
 
-Pleco is designed for teams who want a practical starting point for a real backend: secure defaults, PostgreSQL migrations, Redis-backed rate limiting, structured logging, Docker Compose for local development, and deployment-friendly configuration.
+Pleco is designed for teams who want a practical starting point for a real backend: secure defaults, PostgreSQL or MySQL migrations, Redis-backed rate limiting, structured logging, Docker Compose for local development, and deployment-friendly configuration.
 
 **Authentication:**
 - User registration and login
@@ -50,8 +50,8 @@ Pleco is designed for teams who want a practical starting point for a real backe
 - Hardened security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
 - Request-scoped structured logging with request ID propagation
 - Database migration and seeding via golang-migrate
-- Local Docker workflow with Nginx, PostgreSQL, and Redis
-- Generic PostgreSQL-based deployment support
+- Local Docker workflow with Nginx, PostgreSQL or MySQL, and Redis
+- Generic PostgreSQL/MySQL deployment support
 
 **Session revocation behavior:**
 - Access tokens carry a token-version claim and protected routes reject stale tokens after revocation-sensitive events.
@@ -68,7 +68,7 @@ Pleco is designed for teams who want a practical starting point for a real backe
 | Language | Go 1.25+ |
 | HTTP Framework | Gin |
 | ORM | GORM |
-| Database | PostgreSQL |
+| Database | PostgreSQL or MySQL |
 | Auth | JWT |
 | Email | SendGrid |
 | Migrations | golang-migrate |
@@ -157,7 +157,11 @@ Copy one of the example files depending on your workflow:
 
 ```env
 PORT=8080
+DB_DRIVER=postgres
 DATABASE_URL=postgresql://postgres:password@localhost:5432/auth_db?sslmode=disable
+# MySQL alternative:
+# DB_DRIVER=mysql
+# DATABASE_URL=mysql://root:password@localhost:3306/auth_db?parseTime=true
 TRUSTED_PROXIES=127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 JWT_SECRET=replace-with-a-strong-secret
@@ -202,6 +206,7 @@ AI_TIMEOUT_SECONDS=30
 ### Notes
 
 - `DATABASE_URL` is the primary database connection setting.
+- `DB_DRIVER` supports `postgres` and `mysql`; if omitted, Pleco infers the driver from the `DATABASE_URL` scheme.
 - `TRUSTED_PROXIES` controls which proxy hops are trusted for forwarded client IP handling.
 - `CORS_ALLOWED_ORIGINS` should list explicit frontend origins for browser clients; credentialed refresh cookies cannot be used safely with wildcard CORS.
 - The app validates critical configuration at startup and exits early when required values are missing.
@@ -867,7 +872,7 @@ curl -X GET "$BASE_URL/auth/admin/audit-logs/investigations/1" \
 cp .env.example .env
 ```
 
-Update the values to match your local PostgreSQL setup.
+Update the values to match your selected local database setup. Use `DB_DRIVER=postgres` with a PostgreSQL URL, or `DB_DRIVER=mysql` with a MySQL URL.
 
 ### 2. Run migrations
 
@@ -893,13 +898,10 @@ The API will be available at `http://localhost:8080`. The app respects the `PORT
 
 ## Docker Workflow
 
-The default Docker setup is intended for local development. It includes an application container, optional PgBouncer connection pooling, PostgreSQL, Redis, Nginx gateway, and a `db-setup` container that handles migrations and seeding.
+The Docker setup is intended for local development. It includes an application container, Redis, Nginx gateway, and a `db-setup` container that handles migrations and seeding. The default `DB_DRIVER=postgres` stack includes PostgreSQL and PgBouncer; `DB_DRIVER=mysql` uses MySQL and the MySQL migration set.
 
 ```bash
-# Start the full stack
-docker-compose --env-file .env.docker up --build
-
-# Or use Makefile shortcuts
+# Start the selected stack from .env.docker
 make docker-up
 make docker-down
 make docker-logs
@@ -908,20 +910,20 @@ make docker-rebuild
 
 The gateway is exposed at `http://localhost`. The Nginx layer is optional - the app can run directly without it.
 
-PgBouncer is included in Docker as a production-like pooling layer for scalable deployments. In this stack, API traffic uses PgBouncer at `pgbouncer:5432`, while the `db-setup` container connects directly to Postgres for migrations and seed data. For simple local development or small deployments, Pleco can still connect directly to PostgreSQL with a normal `DATABASE_URL`.
+Set `DB_DRIVER=postgres` in `.env.docker` to use `docker-compose.yaml`, or `DB_DRIVER=mysql` to use `docker-compose.mysql.yaml`. The Makefile selects the compose file automatically. PgBouncer is included only in the PostgreSQL Docker stack as a production-like pooling layer; API traffic uses PgBouncer at `pgbouncer:5432`, while the `db-setup` container connects directly to Postgres for migrations and seed data.
 
 ### Production Deployment
 
 For production, deploy only the API image and connect it to managed/private infrastructure:
 
-- Managed PostgreSQL via `DATABASE_URL` with `sslmode=require` when supported.
+- Managed PostgreSQL or MySQL via `DATABASE_URL`.
 - Managed Redis via `REDIS_URL` so rate limits and cache entries are shared across replicas.
 - A platform load balancer or reverse proxy for TLS and public traffic.
 - `AUTO_RUN_MIGRATIONS=false` and `AUTO_RUN_SEEDS=false` on the long-running API service.
 
-Use [`docker-compose.prod.example.yaml`](docker-compose.prod.example.yaml) as a minimal production-style reference. It intentionally does not include local Postgres, PgBouncer, Redis, or Nginx. Run migrations once per deploy as a release job or CI/CD step before starting or rolling the API replicas.
+Use [`docker-compose.prod.example.yaml`](docker-compose.prod.example.yaml) as a minimal production-style reference. It intentionally does not include local database containers, PgBouncer, Redis, or Nginx. Run migrations once per deploy as a release job or CI/CD step before starting or rolling the API replicas.
 
-Do not publish PostgreSQL port `5432` in production. For database administration, use your provider console, VPN, SSH tunnel, bastion host, or IP-restricted external endpoint.
+Do not publish database ports such as PostgreSQL `5432` or MySQL `3306` in production. For database administration, use your provider console, VPN, SSH tunnel, bastion host, or IP-restricted external endpoint.
 
 ---
 
@@ -956,6 +958,8 @@ make migrate-drop CONFIRM=1                  # drop the schema (destructive)
 make seed                                    # run seed data
 make db-setup                               # run migrations + seed
 ```
+
+The Makefile uses `migrations/` for PostgreSQL and `migrations/mysql/` when `DB_DRIVER=mysql`.
 
 ---
 
@@ -1074,7 +1078,7 @@ make docker-rebuild
 This starterkit is designed to stay platform-agnostic.
 
 **Recommended production approach:**
-- Provide a PostgreSQL-compatible `DATABASE_URL`
+- Provide a PostgreSQL or MySQL `DATABASE_URL`
 - Run migrations before serving traffic
 - Run seed data only when you intentionally need initial roles, permissions, or admin users
 - Inject secrets through your deployment platform instead of committing real env files

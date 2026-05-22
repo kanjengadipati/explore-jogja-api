@@ -10,7 +10,7 @@ import (
 func main() {
 	config.LoadEnv()
 	appConfig := config.LoadAppConfig()
-	if err := appsetup.RunMigrations(appConfig.DatabaseURL); err != nil {
+	if err := appsetup.RunMigrationsForDriver(appConfig.DatabaseURL, appConfig.DatabaseDriver); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 

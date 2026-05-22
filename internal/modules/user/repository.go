@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -88,7 +89,8 @@ func (r *GormRepository) FindAllWithFilter(page, limit int, search, role string)
 	query := r.db.Model(&User{})
 
 	if search != "" {
-		query = query.Where("name ILIKE ? OR email ILIKE ?", "%"+search+"%", "%"+search+"%")
+		like := "%" + search + "%"
+		query = query.Where(userTextSearchCondition(r.db), userTextSearchValues(r.db, like)...)
 	}
 
 	if role != "" {
@@ -119,4 +121,19 @@ func (r *GormRepository) Delete(id uint) error {
 
 func (r *GormRepository) WithTx(tx *gorm.DB) Repository {
 	return &GormRepository{db: tx}
+}
+
+func userTextSearchCondition(db *gorm.DB) string {
+	if db.Dialector.Name() == "postgres" {
+		return "name ILIKE ? OR email ILIKE ?"
+	}
+	return "LOWER(name) LIKE ? OR LOWER(email) LIKE ?"
+}
+
+func userTextSearchValues(db *gorm.DB, like string) []interface{} {
+	if db.Dialector.Name() == "postgres" {
+		return []interface{}{like, like}
+	}
+	lowerLike := strings.ToLower(like)
+	return []interface{}{lowerLike, lowerLike}
 }

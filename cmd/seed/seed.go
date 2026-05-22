@@ -13,7 +13,7 @@ func main() {
 	appConfig := config.LoadAppConfig()
 
 	// Init DB (WAJIB)
-	db := config.ConnectDB(appConfig.DatabaseURL)
+	db := config.ConnectDBWithDriver(appConfig.DatabaseURL, appConfig.DatabaseDriver)
 	log.Println("Start seeding...")
 	appsetup.RunSeeds(db, appConfig)
 
