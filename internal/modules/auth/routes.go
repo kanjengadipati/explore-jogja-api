@@ -14,8 +14,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *AuthHandler, jwtService *service
 	if rateStore == nil {
 		rateStore = middleware.NewInMemoryRateLimitStore()
 	}
-	loginLimiter := middleware.NewRateLimiterWithStore(5, time.Minute, rateStore)
-	registerLimiter := middleware.NewRateLimiterWithStore(5, time.Minute, rateStore)
+	authLimiter := middleware.NewRateLimiterWithStore(5, 15*time.Minute, rateStore)
 	passwordLimiter := middleware.NewRateLimiterWithStore(3, 5*time.Minute, rateStore)
 	refreshLimiter := middleware.NewRateLimiterWithStore(10, time.Minute, rateStore)
 	socialLimiter := middleware.NewRateLimiterWithStore(5, time.Minute, rateStore)
@@ -29,17 +28,17 @@ func SetupRoutes(api *gin.RouterGroup, handler *AuthHandler, jwtService *service
 	}
 	otpLimiter := middleware.NewRateLimiterWithStore(otpRequests, otpWindow, rateStore)
 
-	auth.POST("/register", registerLimiter.Middleware(), handler.Register)
-	auth.POST("/login", loginLimiter.Middleware(), handler.Login)
+	auth.POST("/register", authLimiter.Middleware(), handler.Register)
+	auth.POST("/login", authLimiter.Middleware(), handler.Login)
 	auth.POST("/passwordless/check", otpLimiter.Middleware(), handler.CheckPasswordlessIdentity)
 	auth.POST("/passwordless/start", otpLimiter.Middleware(), handler.StartPasswordless)
-	auth.POST("/magic-link/verify", loginLimiter.Middleware(), handler.VerifyMagicLink)
+	auth.POST("/magic-link/verify", authLimiter.Middleware(), handler.VerifyMagicLink)
 	auth.POST("/request-otp", otpLimiter.Middleware(), handler.RequestOTP)
-	auth.POST("/verify-otp", loginLimiter.Middleware(), handler.VerifyOTP)
+	auth.POST("/verify-otp", authLimiter.Middleware(), handler.VerifyOTP)
 	auth.POST("/refresh", refreshLimiter.Middleware(), handler.RefreshToken)
 	auth.GET("/verify", handler.VerifyEmail)
 	auth.POST("/resend-verification", passwordLimiter.Middleware(), handler.ResendVerification)
-	auth.POST("/forgot-password", passwordLimiter.Middleware(), handler.ForgotPassword)
+	auth.POST("/forgot-password", authLimiter.Middleware(), handler.ForgotPassword)
 	auth.POST("/reset-password", passwordLimiter.Middleware(), handler.ResetPassword)
 	auth.POST("/social-login", socialLimiter.Middleware(), handler.SocialLogin)
 
