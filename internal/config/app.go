@@ -53,10 +53,6 @@ type AIConfig struct {
 	TimeoutSeconds int
 }
 
-type ErrorOptimizationConfig struct {
-	Enabled bool
-}
-
 type OTPRateLimitConfig struct {
 	Requests              int
 	WindowSeconds         int
@@ -84,7 +80,6 @@ type AppConfig struct {
 	Social                   SocialConfig
 	AI                       AIConfig
 	OTPRateLimit             OTPRateLimitConfig
-	ErrorOptimization        ErrorOptimizationConfig
 }
 
 func LoadAppConfig() AppConfig {
@@ -143,9 +138,6 @@ func LoadAppConfig() AppConfig {
 			TargetCooldownSeconds: envInt("OTP_TARGET_COOLDOWN_SECONDS", 60),
 			TargetRequests:        envInt("OTP_TARGET_RATE_LIMIT_REQUESTS", 5),
 			TargetWindowSeconds:   envInt("OTP_TARGET_RATE_LIMIT_WINDOW_SECONDS", 3600),
-		},
-		ErrorOptimization: ErrorOptimizationConfig{
-			Enabled: envBool("ENABLE_ERROR_OPTIMIZATION"),
 		},
 	}
 }

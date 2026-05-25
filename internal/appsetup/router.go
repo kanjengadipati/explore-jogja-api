@@ -43,12 +43,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	userModule := user.BuildModule(db, auditModule.Service, cacheStore)
 	userModule.Handler.PermissionSvc = permissionModule.Service
 	userModule.Handler.Cache = cacheStore
-
-	var errOptSvc *erroroptimizer.ErrorOptimizerService
-	if cfg.ErrorOptimization.Enabled {
-		classifier := &erroroptimizer.DefaultErrorClassifier{}
-		errOptSvc = erroroptimizer.NewErrorOptimizerService(classifier, aiService, cacheStore, db, slog.Default())
-	}
+	classifier := &erroroptimizer.DefaultErrorClassifier{}
+	errOptSvc := erroroptimizer.NewErrorOptimizerService(classifier, aiService, cacheStore, db, slog.Default())
 
 	authModule := auth.BuildModule(db, cfg, userModule.Service, jwtService, auditModule.Service, permissionModule.Service, errOptSvc, cacheStore)
 

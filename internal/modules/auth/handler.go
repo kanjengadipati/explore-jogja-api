@@ -175,6 +175,30 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 
 	err := h.AuthService.RequestOTP(c.Request.Context(), input.Channel, input.Target, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
+		if h.ErrorOptimizer != nil {
+			language := c.GetHeader("Accept-Language")
+			userContext := erroroptimizer.UserContext{Language: language}
+			optimized, optErr := h.ErrorOptimizer.GetOptimizedError(
+				c.Request.Context(),
+				err,
+				userContext,
+				"/auth/request-otp",
+			)
+			if optErr == nil && optimized != nil {
+				status := http.StatusBadRequest
+				if errors.Is(err, ErrOTPRateLimited) {
+					status = http.StatusTooManyRequests
+				}
+				c.JSON(status, gin.H{
+					"status":      "error",
+					"code":        optimized.Code,
+					"message":     optimized.Message,
+					"details":     optimized.Details,
+					"suggestions": optimized.Suggestions,
+				})
+				return
+			}
+		}
 		status := http.StatusBadRequest
 		message := "Unable to send OTP"
 		if errors.Is(err, ErrOTPRateLimited) {
@@ -201,6 +225,26 @@ func (h *AuthHandler) CheckPasswordlessIdentity(c *gin.Context) {
 		return
 	}
 	if err := h.AuthService.CheckPasswordlessIdentity(input.Channel, input.Target); err != nil {
+		if h.ErrorOptimizer != nil {
+			language := c.GetHeader("Accept-Language")
+			userContext := erroroptimizer.UserContext{Language: language}
+			optimized, optErr := h.ErrorOptimizer.GetOptimizedError(
+				c.Request.Context(),
+				err,
+				userContext,
+				"/auth/check-passwordless",
+			)
+			if optErr == nil && optimized != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"status":      "error",
+					"code":        optimized.Code,
+					"message":     optimized.Message,
+					"details":     optimized.Details,
+					"suggestions": optimized.Suggestions,
+				})
+				return
+			}
+		}
 		message := "Enter a valid email address or WhatsApp number."
 		if errors.Is(err, ErrOTPUserNotFound) {
 			message = "No account found for this email or WhatsApp number."
@@ -224,6 +268,26 @@ func (h *AuthHandler) StartPasswordless(c *gin.Context) {
 	result, err := h.AuthService.StartPasswordless(c.Request.Context(), input.Channel, input.Target, ensureDeviceID(c), c.GetHeader("User-Agent"), c.ClientIP())
 	if err != nil {
 		status := http.StatusBadRequest
+		if h.ErrorOptimizer != nil {
+			language := c.GetHeader("Accept-Language")
+			userContext := erroroptimizer.UserContext{Language: language}
+			optimized, optErr := h.ErrorOptimizer.GetOptimizedError(
+				c.Request.Context(),
+				err,
+				userContext,
+				"/auth/start-passwordless",
+			)
+			if optErr == nil && optimized != nil {
+				c.JSON(status, gin.H{
+					"status":      "error",
+					"code":        optimized.Code,
+					"message":     optimized.Message,
+					"details":     optimized.Details,
+					"suggestions": optimized.Suggestions,
+				})
+				return
+			}
+		}
 		message := "Unable to continue passwordless login"
 		if errors.Is(err, ErrOTPRateLimited) {
 			status = http.StatusTooManyRequests
@@ -266,6 +330,26 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		IPAddress:     c.ClientIP(),
 	})
 	if err != nil {
+		if h.ErrorOptimizer != nil {
+			language := c.GetHeader("Accept-Language")
+			userContext := erroroptimizer.UserContext{Language: language}
+			optimized, optErr := h.ErrorOptimizer.GetOptimizedError(
+				c.Request.Context(),
+				err,
+				userContext,
+				"/auth/verify-otp",
+			)
+			if optErr == nil && optimized != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"status":      "error",
+					"code":        optimized.Code,
+					"message":     optimized.Message,
+					"details":     optimized.Details,
+					"suggestions": optimized.Suggestions,
+				})
+				return
+			}
+		}
 		httpx.ErrorWithCode(c, http.StatusUnauthorized, httpx.ErrCodeInvalidCredentials, "Invalid or expired OTP")
 		return
 	}

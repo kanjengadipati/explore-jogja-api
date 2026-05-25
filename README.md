@@ -213,7 +213,6 @@ SOCIAL_FACEBOOK_CLIENT_SECRET=
 SOCIAL_APPLE_CLIENT_ID=
 SOCIAL_APPLE_CLIENT_SECRET=
 AI_ENABLED=false
-ENABLE_ERROR_OPTIMIZATION=false
 AI_PROVIDER=mock
 AI_MODEL=mock-model
 AI_BASE_URL=
@@ -243,7 +242,6 @@ AI_TIMEOUT_SECONDS=30
 - `SOCIAL_GOOGLE_CLIENT_ID`, `SOCIAL_FACEBOOK_CLIENT_ID`, and `SOCIAL_APPLE_CLIENT_ID` are used for provider audience validation.
 - `SOCIAL_FACEBOOK_CLIENT_SECRET` is required for Facebook token inspection when Facebook is active.
 - `AI_ENABLED=false` keeps the app fully usable without AI.
-- `ENABLE_ERROR_OPTIMIZATION` determines whether the API generates user-friendly, AI-enriched error responses (requires `AI_ENABLED=true`).
 - `AI_PROVIDER` supports `mock`, `ollama`, `openai`, `gemini`, and `anthropic`.
 - `AI_BASE_URL` is only required when `AI_PROVIDER=ollama`.
 - `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` enables shared Redis-backed rate limiting and response caching. Without Redis, the app falls back to in-memory stores for local single-instance development.
@@ -255,7 +253,7 @@ AI_TIMEOUT_SECONDS=30
 
 This project features an intelligent error handling system that converts generic backend errors (e.g., "invalid credentials") into user-friendly, actionable feedback dynamically. 
 
-When `ENABLE_ERROR_OPTIMIZATION=true` and an error occurs:
+When `AI_ENABLED=true` and an error occurs:
 1. The error is intercepted and mapped to an internal code (e.g., `AUTH_INVALID_CREDENTIALS`).
 2. The AI model generates a friendly message, additional context, and actionable suggestions (like "Reset Password").
 3. The response is cached in Redis to guarantee ultra-fast responses for subsequent identical errors.
