@@ -170,6 +170,12 @@ func wrapError(err error) error {
 		return nil
 	}
 	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "users_phone_number_key") {
+		return domain.NewAPIError(409, domain.CodeConflict, "This WhatsApp number is already in use by another account", nil)
+	}
+	if strings.Contains(msg, "users_email_key") {
+		return domain.NewAPIError(409, domain.CodeConflict, "This email address is already in use by another account", nil)
+	}
 	if strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique") || strings.Contains(msg, "already in use") {
 		return domain.ErrConflict
 	}

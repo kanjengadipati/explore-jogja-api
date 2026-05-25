@@ -79,6 +79,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 			}
 		}
 
+		var apiErr *domain.APIError
+		if errors.As(err, &apiErr) {
+			status := apiErr.HTTPStatus
+			if status == 0 {
+				status = http.StatusInternalServerError
+			}
+			httpx.ErrorWithCode(c, status, string(apiErr.Code), apiErr.Message)
+			return
+		}
 		if errors.Is(err, domain.ErrConflict) {
 			httpx.ErrorWithCode(c, http.StatusConflict, httpx.ErrCodeEmailTaken, "Email already in use")
 			return
