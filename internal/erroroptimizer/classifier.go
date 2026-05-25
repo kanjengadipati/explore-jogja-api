@@ -74,6 +74,33 @@ func (dec *DefaultErrorClassifier) Classify(err error, endpoint string) *ErrorMe
 			ShouldExposeDetails: false,
 		}
 
+	case strings.Contains(err.Error(), "passwordless account not found"):
+		return &ErrorMetadata{
+			Code:                "AUTH_USER_NOT_FOUND",
+			Type:                "authentication",
+			Severity:            "error",
+			UserMessage:         "No account found for this email or WhatsApp number.",
+			ShouldExposeDetails: false,
+		}
+
+	case strings.Contains(err.Error(), "no whatsapp number available for this account"):
+		return &ErrorMetadata{
+			Code:                "AUTH_WHATSAPP_NOT_LINKED",
+			Type:                "validation",
+			Severity:            "warning",
+			UserMessage:         "No WhatsApp number is available for this account.",
+			ShouldExposeDetails: false,
+		}
+
+	case strings.Contains(err.Error(), "invalid or expired OTP"):
+		return &ErrorMetadata{
+			Code:                "AUTH_INVALID_OTP",
+			Type:                "authentication",
+			Severity:            "error",
+			UserMessage:         "Invalid or expired OTP code.",
+			ShouldExposeDetails: false,
+		}
+
 	default:
 		return &ErrorMetadata{
 			Code:                "SERVER_INTERNAL_ERROR",

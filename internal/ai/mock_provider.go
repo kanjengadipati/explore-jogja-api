@@ -38,32 +38,119 @@ func generateMockErrorOptimization(prompt string) (*GenerateResult, error) {
 		code = strings.TrimSpace(matches[1])
 	}
 
-	mockMessage := "Something went wrong."
-	if code == "AUTH_INVALID_CREDENTIALS" {
-		mockMessage = "The email or password you entered is incorrect."
-	} else if code == "AUTH_ACCOUNT_LOCKED" {
-		mockMessage = "Your account has been temporarily locked due to multiple failed login attempts."
-	}
+	var payload map[string]interface{}
 
-	payload := map[string]interface{}{
-		"message": mockMessage,
-		"details": "This is a mock response from the AI Error Optimizer.",
-		"suggestions": []map[string]interface{}{
-			{
-				"title":       "Reset your password",
-				"description": "If you forgot your password, you can easily reset it.",
-				"action":      "navigate",
-				"url":         "/forgot-password",
-				"priority":    "primary",
+	switch code {
+	case "AUTH_USER_NOT_FOUND":
+		payload = map[string]interface{}{
+			"message": "No account found for this email or WhatsApp number.",
+			"details": "We couldn't find an active account matching the information provided.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Create a new account",
+					"description": "Register a new profile in just a few seconds.",
+					"action":      "navigate",
+					"url":         "/register",
+					"priority":    "primary",
+				},
+				{
+					"title":       "Verify your input",
+					"description": "Double check spelling or try another number/email.",
+					"action":      "retry",
+					"priority":    "secondary",
+				},
 			},
-			{
-				"title":       "Try again",
-				"description": "Double check your spelling and try again.",
-				"action":      "retry",
-				"priority":    "secondary",
+			"docs_url": "/docs/errors/AUTH_USER_NOT_FOUND",
+		}
+
+	case "AUTH_WHATSAPP_NOT_LINKED":
+		payload = map[string]interface{}{
+			"message": "No WhatsApp number is linked to this account.",
+			"details": "This profile isn't configured for WhatsApp delivery yet.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Try Email instead",
+					"description": "Request a secure verification code to your email address.",
+					"action":      "retry",
+					"priority":    "primary",
+				},
 			},
-		},
-		"docs_url": "/docs/errors/" + code,
+			"docs_url": "/docs/errors/AUTH_WHATSAPP_NOT_LINKED",
+		}
+
+	case "AUTH_INVALID_OTP":
+		payload = map[string]interface{}{
+			"message": "The verification code is invalid or has expired.",
+			"details": "OTP codes are temporary and expire after 5 minutes.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Resend new code",
+					"description": "Request a fresh verification code.",
+					"action":      "retry",
+					"priority":    "primary",
+				},
+			},
+			"docs_url": "/docs/errors/AUTH_INVALID_OTP",
+		}
+
+	case "AUTH_INVALID_CREDENTIALS":
+		payload = map[string]interface{}{
+			"message": "The email or password you entered is incorrect.",
+			"details": "Please check your login details and try again.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Reset your password",
+					"description": "If you forgot your password, you can easily reset it.",
+					"action":      "navigate",
+					"url":         "/forgot-password",
+					"priority":    "primary",
+				},
+				{
+					"title":       "Try again",
+					"description": "Double check your spelling and try again.",
+					"action":      "retry",
+					"priority":    "secondary",
+				},
+			},
+			"docs_url": "/docs/errors/AUTH_INVALID_CREDENTIALS",
+		}
+
+	case "AUTH_ACCOUNT_LOCKED":
+		payload = map[string]interface{}{
+			"message": "Your account has been temporarily locked due to multiple failed login attempts.",
+			"details": "This lock is temporary to safeguard your account security.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Reset your password",
+					"description": "Resetting your password will unlock your account.",
+					"action":      "navigate",
+					"url":         "/forgot-password",
+					"priority":    "primary",
+				},
+				{
+					"title":       "Try again later",
+					"description": "Wait a few minutes before trying to sign in again.",
+					"action":      "retry",
+					"priority":    "secondary",
+				},
+			},
+			"docs_url": "/docs/errors/AUTH_ACCOUNT_LOCKED",
+		}
+
+	default:
+		payload = map[string]interface{}{
+			"message": "Something went wrong.",
+			"details": "An unexpected error occurred. Please try again.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Try again",
+					"description": "Retry your last action.",
+					"action":      "retry",
+					"priority":    "primary",
+				},
+			},
+			"docs_url": "/docs/errors/" + code,
+		}
 	}
 
 	encoded, err := json.MarshalIndent(payload, "", "  ")
