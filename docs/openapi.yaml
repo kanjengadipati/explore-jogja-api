@@ -123,7 +123,7 @@ paths:
     post:
       tags: [Auth]
       summary: Request a passwordless OTP
-      description: Sends an OTP through the configured WhatsApp or email provider. For WhatsApp, target may be an E.164 phone number or an account email with a saved WhatsApp number.
+      description: Sends an OTP through the configured WhatsApp or email provider for an existing account only. For WhatsApp, target may be a saved E.164 phone number or an account email with a saved WhatsApp number.
       requestBody:
         required: true
         content:
@@ -154,7 +154,7 @@ paths:
     post:
       tags: [Auth]
       summary: Validate passwordless identity without sending a challenge
-      description: Validates the email address or WhatsApp number before the user moves to the delivery confirmation step. This endpoint does not send OTP or magic-link messages.
+      description: Validates that the email address or WhatsApp number belongs to an existing account before the user moves to the delivery confirmation step. This endpoint does not send OTP or magic-link messages.
       requestBody:
         required: true
         content:
@@ -169,7 +169,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeMessage'
         '400':
-          description: Invalid email address or WhatsApp number
+          description: Invalid target or account not found
           content:
             application/json:
               schema:
@@ -1216,7 +1216,7 @@ components:
           enum: [whatsapp, email]
         target:
           type: string
-          description: Email address for email OTP, E.164 phone number for WhatsApp OTP, or account email for WhatsApp OTP when the account has a saved WhatsApp number.
+          description: Existing account email for email OTP, saved E.164 phone number for WhatsApp OTP, or account email for WhatsApp OTP when the account has a saved WhatsApp number.
           example: user@example.com
     PasswordlessIdentityRequest:
       type: object
@@ -1227,7 +1227,7 @@ components:
           enum: [whatsapp, email]
         target:
           type: string
-          description: Email address for email flow or E.164 phone number for WhatsApp flow.
+          description: Existing account email for email flow or saved E.164 phone number for WhatsApp flow.
           example: user@example.com
     PasswordlessStartResult:
       type: object

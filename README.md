@@ -429,7 +429,7 @@ POST /auth/admin/audit-logs/investigations
 | POST | `/auth/register` | Register a new user |
 | POST | `/auth/login` | Login with email/password, receive an access token, and set the refresh cookie |
 | POST | `/auth/request-otp` | Request passwordless OTP via WhatsApp or email |
-| POST | `/auth/verify-otp` | Verify OTP, auto-register when needed, and create a session |
+| POST | `/auth/verify-otp` | Verify OTP for an existing user and create a session |
 | POST | `/auth/refresh` | Refresh access token using the refresh cookie |
 | GET | `/auth/verify` | Verify email address |
 | POST | `/auth/resend-verification` | Resend verification email |
@@ -545,7 +545,7 @@ The response also sets HttpOnly cookies for refresh and device identity: `pleco_
 
 ### Passwordless Login
 
-Pleco supports passwordless login through OTP and trusted-device magic links. The first step validates an email address or WhatsApp number without sending anything. The second step lets the backend decide the delivery: trusted devices receive a magic link by email, while other attempts receive an OTP through the selected channel.
+Pleco supports passwordless login through OTP and trusted-device magic links. The first step validates an email address or WhatsApp number against an existing user without sending anything. The second step lets the backend decide the delivery: trusted devices receive a magic link by email, while other attempts receive an OTP through the selected channel.
 
 Check identity:
 
@@ -586,7 +586,7 @@ Content-Type: application/json
 }
 ```
 
-If `next_step` is `magic_link`, open the emailed link and verify it through `POST /auth/magic-link/verify`. Magic links are stored as hashed, single-use DB tokens with expiry and are rejected after first use. Successful verification returns an access token and sets the `pleco_refresh_token` and `pleco_device_id` HttpOnly cookies. If an OTP target does not exist yet, Pleco auto-creates a user and marks `phone_verified` or `email_verified` based on the channel. OTP codes are hashed, expire after 5 minutes, are consumed after successful verification, and are guarded by cooldown, hourly target limits, max attempts, and audit logs.
+If `next_step` is `magic_link`, open the emailed link and verify it through `POST /auth/magic-link/verify`. Magic links are stored as hashed, single-use DB tokens with expiry and are rejected after first use. Successful verification returns an access token and sets the `pleco_refresh_token` and `pleco_device_id` HttpOnly cookies. Passwordless OTP never creates a new user; the email or WhatsApp number must already belong to an account. OTP codes are hashed, expire after 5 minutes, are consumed after successful verification, and are guarded by cooldown, hourly target limits, max attempts, and audit logs.
 
 ### Profile
 

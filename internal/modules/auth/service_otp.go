@@ -17,7 +17,6 @@ import (
 	"pleco-api/internal/modules/audit"
 	userModule "pleco-api/internal/modules/user"
 	"pleco-api/internal/otp"
-	"pleco-api/internal/services"
 	"pleco-api/internal/utils"
 
 	"github.com/google/uuid"
@@ -37,6 +36,7 @@ var (
 	ErrInvalidOTP        = errors.New("invalid or expired OTP")
 	ErrOTPRateLimited    = errors.New("too many OTP requests")
 	ErrOTPWhatsAppTarget = errors.New("no whatsapp number available for this account")
+	ErrOTPUserNotFound   = errors.New("passwordless account not found")
 )
 
 type PasswordlessStartResult struct {
@@ -44,7 +44,7 @@ type PasswordlessStartResult struct {
 }
 
 func (s *authService) CheckPasswordlessIdentity(channel, target string) error {
-	_, _, err := normalizeOTPTarget(channel, target)
+	_, _, err := s.resolveOTPTarget(channel, target)
 	return err
 }
 
@@ -211,17 +211,7 @@ func (s *authService) VerifyOTP(ctx context.Context, input VerifyOTPInput) (*Aut
 		var findErr error
 		user, findErr = findOTPUser(userRepo, channel, target)
 		if findErr != nil {
-			if !errors.Is(findErr, gorm.ErrRecordNotFound) {
-				return findErr
-			}
-			created, err := buildOTPUser(channel, target)
-			if err != nil {
-				return err
-			}
-			if err := userRepo.Create(created); err != nil {
-				return err
-			}
-			user = created
+			return findErr
 		}
 
 		markUserVerified(user, channel, target)
@@ -346,19 +336,38 @@ func normalizeOTPTarget(channel, target string) (string, string, error) {
 func (s *authService) resolveOTPTarget(channel, target string) (string, string, error) {
 	channel = strings.ToLower(strings.TrimSpace(channel))
 	target = strings.TrimSpace(target)
+	if s.UserRepo == nil {
+		return "", "", ErrOTPNotAvailable
+	}
+	if channel == "email" {
+		channel, target, err := normalizeOTPTarget(channel, target)
+		if err != nil {
+			return "", "", err
+		}
+		if _, err := s.UserRepo.FindByEmail(target); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", "", ErrOTPUserNotFound
+			}
+			return "", "", ErrOTPNotAvailable
+		}
+		return channel, target, nil
+	}
 	if channel != "whatsapp" {
-		return normalizeOTPTarget(channel, target)
+		return "", "", ErrInvalidOTPChannel
 	}
 	if isE164Phone(target) {
+		if _, err := s.UserRepo.FindByPhone(target); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", "", ErrOTPWhatsAppTarget
+			}
+			return "", "", ErrOTPNotAvailable
+		}
 		return channel, target, nil
 	}
 
 	email := strings.ToLower(target)
 	if _, err := mail.ParseAddress(email); err != nil {
 		return "", "", ErrInvalidOTPChannel
-	}
-	if s.UserRepo == nil {
-		return "", "", ErrOTPWhatsAppTarget
 	}
 
 	user, err := s.UserRepo.FindByEmail(email)
@@ -462,20 +471,6 @@ func findOTPUser(repo userModule.Repository, channel, target string) (*userModul
 	return repo.FindByPhone(target)
 }
 
-func buildOTPUser(channel, target string) (*userModule.User, error) {
-	password, err := services.HashPassword(uuid.NewString())
-	if err != nil {
-		return nil, err
-	}
-	user := &userModule.User{
-		Name:     displayNameForTarget(target),
-		Role:     "user",
-		Password: password,
-	}
-	markUserVerified(user, channel, target)
-	return user, nil
-}
-
 func markUserVerified(user *userModule.User, channel, target string) {
 	if user.Role == "" {
 		user.Role = "user"
@@ -488,16 +483,6 @@ func markUserVerified(user *userModule.User, channel, target string) {
 	}
 	user.PhoneNumber = target
 	user.PhoneVerified = true
-	if user.Email == "" {
-		user.Email = fmt.Sprintf("%s@phone.pleco.local", strings.TrimPrefix(strings.ReplaceAll(target, "+", ""), "0"))
-	}
-}
-
-func displayNameForTarget(target string) string {
-	if strings.Contains(target, "@") {
-		return strings.Split(target, "@")[0]
-	}
-	return target
 }
 
 func (s *authService) recordOTPAudit(userID *uint, action, channel, target, status, description, ipAddress, userAgent string) {

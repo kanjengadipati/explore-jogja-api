@@ -540,6 +540,54 @@ func TestAuthService_Logout_DeletesFoundToken(t *testing.T) {
 	assert.Equal(t, "web", deletedDeviceID)
 }
 
+func TestAuthService_CheckPasswordlessIdentity_RejectsUnknownEmail(t *testing.T) {
+	userRepo := &stubUserRepo{
+		findByEmail: func(email string) (*user.User, error) {
+			assert.Equal(t, "missing@mail.com", email)
+			return nil, gorm.ErrRecordNotFound
+		},
+	}
+	service := auth.NewAuthService(
+		nil,
+		userRepo,
+		&stubRefreshTokenRepo{},
+		&stubEmailVerificationRepo{},
+		&stubSocialRepo{},
+		nil,
+		nil,
+		nil,
+		config.AppConfig{},
+	)
+
+	err := service.CheckPasswordlessIdentity("email", "missing@mail.com")
+
+	assert.ErrorIs(t, err, auth.ErrOTPUserNotFound)
+}
+
+func TestAuthService_CheckPasswordlessIdentity_RejectsUnknownWhatsAppNumber(t *testing.T) {
+	userRepo := &stubUserRepo{
+		findByPhone: func(phone string) (*user.User, error) {
+			assert.Equal(t, "+628123456789", phone)
+			return nil, gorm.ErrRecordNotFound
+		},
+	}
+	service := auth.NewAuthService(
+		nil,
+		userRepo,
+		&stubRefreshTokenRepo{},
+		&stubEmailVerificationRepo{},
+		&stubSocialRepo{},
+		nil,
+		nil,
+		nil,
+		config.AppConfig{},
+	)
+
+	err := service.CheckPasswordlessIdentity("whatsapp", "+628123456789")
+
+	assert.ErrorIs(t, err, auth.ErrOTPWhatsAppTarget)
+}
+
 func TestAuthService_Register_IgnoresEmailDeliveryFailure(t *testing.T) {
 	sqlDB, dbMock, err := sqlmock.New()
 	require.NoError(t, err)

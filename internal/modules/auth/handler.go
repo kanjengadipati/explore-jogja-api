@@ -175,6 +175,9 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		if errors.Is(err, ErrOTPWhatsAppTarget) {
 			message = "No WhatsApp number is available for this account. Use email OTP or add a WhatsApp number in profile settings."
 		}
+		if errors.Is(err, ErrOTPUserNotFound) {
+			message = "No account found for this email or WhatsApp number."
+		}
 		httpx.Error(c, status, message)
 		return
 	}
@@ -189,7 +192,14 @@ func (h *AuthHandler) CheckPasswordlessIdentity(c *gin.Context) {
 		return
 	}
 	if err := h.AuthService.CheckPasswordlessIdentity(input.Channel, input.Target); err != nil {
-		httpx.Error(c, http.StatusBadRequest, "Enter a valid email address or WhatsApp number.")
+		message := "Enter a valid email address or WhatsApp number."
+		if errors.Is(err, ErrOTPUserNotFound) {
+			message = "No account found for this email or WhatsApp number."
+		}
+		if errors.Is(err, ErrOTPWhatsAppTarget) {
+			message = "No WhatsApp number is available for this account. Use email OTP or add a WhatsApp number in profile settings."
+		}
+		httpx.Error(c, http.StatusBadRequest, message)
 		return
 	}
 	httpx.Success(c, http.StatusOK, "Passwordless identity accepted", nil, nil)
@@ -209,6 +219,12 @@ func (h *AuthHandler) StartPasswordless(c *gin.Context) {
 		if errors.Is(err, ErrOTPRateLimited) {
 			status = http.StatusTooManyRequests
 			message = "Too many requests. Please try again later."
+		}
+		if errors.Is(err, ErrOTPUserNotFound) {
+			message = "No account found for this email or WhatsApp number."
+		}
+		if errors.Is(err, ErrOTPWhatsAppTarget) {
+			message = "No WhatsApp number is available for this account. Use email OTP or add a WhatsApp number in profile settings."
 		}
 		httpx.Error(c, status, message)
 		return
