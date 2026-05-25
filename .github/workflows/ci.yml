@@ -32,7 +32,7 @@ jobs:
       AUTO_RUN_MIGRATIONS: "true"
       AUTO_RUN_SEEDS: "true"
       ADMIN_EMAIL: admin@mail.com
-      ADMIN_PASSWORD: admin123
+      ADMIN_PASSWORD: Admin123!
       AI_ENABLED: "false"
       PORT: "8080"
 
