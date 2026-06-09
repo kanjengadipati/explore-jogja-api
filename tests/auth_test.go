@@ -559,9 +559,10 @@ func TestAuthService_CheckPasswordlessIdentity_RejectsUnknownEmail(t *testing.T)
 		config.AppConfig{},
 	)
 
-	err := service.CheckPasswordlessIdentity("email", "missing@mail.com")
+	isTrusted, err := service.CheckPasswordlessIdentity("email", "missing@mail.com", "device-1", "Browser")
 
 	assert.ErrorIs(t, err, auth.ErrOTPUserNotFound)
+	assert.False(t, isTrusted)
 }
 
 func TestAuthService_CheckPasswordlessIdentity_RejectsUnknownWhatsAppNumber(t *testing.T) {
@@ -583,9 +584,10 @@ func TestAuthService_CheckPasswordlessIdentity_RejectsUnknownWhatsAppNumber(t *t
 		config.AppConfig{},
 	)
 
-	err := service.CheckPasswordlessIdentity("whatsapp", "+628123456789")
+	isTrusted, err := service.CheckPasswordlessIdentity("whatsapp", "+628123456789", "device-1", "Browser")
 
 	assert.ErrorIs(t, err, auth.ErrOTPWhatsAppTarget)
+	assert.False(t, isTrusted)
 }
 
 func TestAuthService_Register_IgnoresEmailDeliveryFailure(t *testing.T) {

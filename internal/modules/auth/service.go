@@ -74,7 +74,7 @@ type AuthService interface {
 	ResetPassword(token string, newPassword string) error
 	SocialLogin(provider string, idToken string, deviceID, userAgent, ipAddress string) (*AuthTokens, error)
 	GetSocialAccount(userID uint, provider string) (*permissionless.SocialAccount, error)
-	CheckPasswordlessIdentity(channel, target string) error
+	CheckPasswordlessIdentity(channel, target, deviceID, userAgent string) (bool, error)
 	StartPasswordless(ctx context.Context, channel, target, deviceID, userAgent, ipAddress string) (*PasswordlessStartResult, error)
 	VerifyMagicLink(tokenString, deviceID, deviceName string, trustedDevice bool, userAgent, ipAddress string) (*AuthTokens, error)
 	RequestOTP(ctx context.Context, channel, target, ipAddress, userAgent string) error

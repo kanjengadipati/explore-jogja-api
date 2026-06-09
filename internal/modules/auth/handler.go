@@ -184,7 +184,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 				userContext,
 				"/auth/request-otp",
 			)
-			if optErr == nil && optimized != nil {
+			if optErr == nil && optimized != nil && optimized.Code != httpx.ErrCodeInternalError {
 				status := http.StatusBadRequest
 				if errors.Is(err, ErrOTPRateLimited) {
 					status = http.StatusTooManyRequests
@@ -211,6 +211,10 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		if errors.Is(err, ErrOTPUserNotFound) {
 			message = "No account found for this email or WhatsApp number."
 		}
+		if errors.Is(err, ErrOTPNotAvailable) {
+			httpx.ErrorWithCode(c, status, "AUTH_OTP_DELIVERY_UNAVAILABLE", "Unable to send verification code. Please try again.")
+			return
+		}
 		httpx.Error(c, status, message)
 		return
 	}
@@ -224,7 +228,8 @@ func (h *AuthHandler) CheckPasswordlessIdentity(c *gin.Context) {
 		httpx.ValidationError(c, httpx.FormatValidationError(err))
 		return
 	}
-	if err := h.AuthService.CheckPasswordlessIdentity(input.Channel, input.Target); err != nil {
+	isTrusted, err := h.AuthService.CheckPasswordlessIdentity(input.Channel, input.Target, ensureDeviceID(c), c.GetHeader("User-Agent"))
+	if err != nil {
 		if h.ErrorOptimizer != nil {
 			language := c.GetHeader("Accept-Language")
 			userContext := erroroptimizer.UserContext{Language: language}
@@ -234,7 +239,7 @@ func (h *AuthHandler) CheckPasswordlessIdentity(c *gin.Context) {
 				userContext,
 				"/auth/check-passwordless",
 			)
-			if optErr == nil && optimized != nil {
+			if optErr == nil && optimized != nil && optimized.Code != httpx.ErrCodeInternalError {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"status":      "error",
 					"code":        optimized.Code,
@@ -255,7 +260,7 @@ func (h *AuthHandler) CheckPasswordlessIdentity(c *gin.Context) {
 		httpx.Error(c, http.StatusBadRequest, message)
 		return
 	}
-	httpx.Success(c, http.StatusOK, "Passwordless identity accepted", nil, nil)
+	httpx.Success(c, http.StatusOK, "Passwordless identity accepted", PasswordlessCheckResponse{IsTrustedDevice: isTrusted}, nil)
 }
 
 func (h *AuthHandler) StartPasswordless(c *gin.Context) {
@@ -277,7 +282,7 @@ func (h *AuthHandler) StartPasswordless(c *gin.Context) {
 				userContext,
 				"/auth/start-passwordless",
 			)
-			if optErr == nil && optimized != nil {
+			if optErr == nil && optimized != nil && optimized.Code != httpx.ErrCodeInternalError {
 				c.JSON(status, gin.H{
 					"status":      "error",
 					"code":        optimized.Code,
@@ -298,6 +303,10 @@ func (h *AuthHandler) StartPasswordless(c *gin.Context) {
 		}
 		if errors.Is(err, ErrOTPWhatsAppTarget) {
 			message = "No WhatsApp number is available for this account. Use email OTP or add a WhatsApp number in profile settings."
+		}
+		if errors.Is(err, ErrOTPNotAvailable) {
+			httpx.ErrorWithCode(c, status, "AUTH_OTP_DELIVERY_UNAVAILABLE", "Unable to send verification code. Please try again.")
+			return
 		}
 		httpx.Error(c, status, message)
 		return
@@ -339,7 +348,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 				userContext,
 				"/auth/verify-otp",
 			)
-			if optErr == nil && optimized != nil {
+			if optErr == nil && optimized != nil && optimized.Code != httpx.ErrCodeInternalError {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"status":      "error",
 					"code":        optimized.Code,

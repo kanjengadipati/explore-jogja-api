@@ -221,15 +221,24 @@ func (_m *AuthService) Register(in *user.User, password string) error {
 	return ret.Error(0)
 }
 
-func (_m *AuthService) CheckPasswordlessIdentity(channel string, target string) error {
-	ret := _m.Called(channel, target)
+func (_m *AuthService) CheckPasswordlessIdentity(channel string, target string, deviceID string, userAgent string) (bool, error) {
+	ret := _m.Called(channel, target, deviceID, userAgent)
 	if len(ret) == 0 {
 		panic("no return value specified for CheckPasswordlessIdentity")
 	}
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		return rf(channel, target)
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string, string, string, string) bool); ok {
+		r0 = rf(channel, target, deviceID, userAgent)
+	} else {
+		r0 = ret.Get(0).(bool)
 	}
-	return ret.Error(0)
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, string, string) error); ok {
+		r1 = rf(channel, target, deviceID, userAgent)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 func (_m *AuthService) StartPasswordless(ctx context.Context, channel string, target string, deviceID string, userAgent string, ipAddress string) (*auth.PasswordlessStartResult, error) {

@@ -18,6 +18,8 @@ func (dec *DefaultErrorClassifier) Classify(err error, endpoint string) *ErrorMe
 	if err == nil {
 		return nil
 	}
+	errText := strings.ToLower(err.Error())
+	isOTPDeliveryEndpoint := strings.Contains(endpoint, "passwordless") || strings.Contains(endpoint, "request-otp")
 	// Check for known error types
 	switch {
 	case errors.Is(err, services.ErrWeakPassword):
@@ -47,7 +49,7 @@ func (dec *DefaultErrorClassifier) Classify(err error, endpoint string) *ErrorMe
 			ShouldExposeDetails: false,
 		}
 
-	case strings.Contains(err.Error(), "rate limit") || strings.Contains(strings.ToLower(err.Error()), "too many requests"):
+	case strings.Contains(err.Error(), "rate limit") || strings.Contains(errText, "too many requests"):
 		return &ErrorMetadata{
 			Code:                "RATE_LIMIT_EXCEEDED",
 			Type:                "rate_limit",
@@ -65,7 +67,7 @@ func (dec *DefaultErrorClassifier) Classify(err error, endpoint string) *ErrorMe
 			ShouldExposeDetails: false,
 		}
 
-	case strings.Contains(strings.ToLower(err.Error()), "database") || strings.Contains(strings.ToLower(err.Error()), "sql"):
+	case strings.Contains(errText, "database") || strings.Contains(errText, "sql"):
 		return &ErrorMetadata{
 			Code:                "SERVER_DATABASE_ERROR",
 			Type:                "server",
@@ -98,6 +100,20 @@ func (dec *DefaultErrorClassifier) Classify(err error, endpoint string) *ErrorMe
 			Type:                "authentication",
 			Severity:            "error",
 			UserMessage:         "Invalid or expired OTP code.",
+			ShouldExposeDetails: false,
+		}
+
+	case strings.Contains(err.Error(), "unable to send OTP") ||
+		(isOTPDeliveryEndpoint && (strings.Contains(errText, "context deadline exceeded") ||
+			strings.Contains(errText, "client.timeout") ||
+			strings.Contains(errText, "i/o timeout") ||
+			strings.Contains(errText, "fonnte") ||
+			strings.Contains(errText, "send failed"))):
+		return &ErrorMetadata{
+			Code:                "AUTH_OTP_DELIVERY_UNAVAILABLE",
+			Type:                "delivery",
+			Severity:            "warning",
+			UserMessage:         "We could not send the verification code. Please try again in a moment.",
 			ShouldExposeDetails: false,
 		}
 

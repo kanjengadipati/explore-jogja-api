@@ -76,6 +76,8 @@ func (c *Channel) SendOTP(ctx context.Context, target string, payload otp.Payloa
 		return fmt.Errorf("whatsapp cloud phone number id is required")
 	}
 
+	message := fmt.Sprintf("Your Pleco verification code is:\n\n%s\n\nExpires in %.0f minutes.\n\nDo not share this code.", payload.Code, payload.ExpiresIn.Minutes())
+
 	reqBody := textMessageRequest{
 		MessagingProduct: "whatsapp",
 		RecipientType:    "individual",
@@ -83,7 +85,64 @@ func (c *Channel) SendOTP(ctx context.Context, target string, payload otp.Payloa
 		Type:             "text",
 		Text: textPayload{
 			PreviewURL: false,
-			Body:       fmt.Sprintf("Your Pleco verification code is:\n\n%s\n\nExpires in %.0f minutes.\n\nDo not share this code.", payload.Code, payload.ExpiresIn.Minutes()),
+			Body:       message,
+		},
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+
+	endpoint := fmt.Sprintf("%s/%s/%s/messages", c.baseURL, c.apiVersion, c.phoneNumberID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	responseBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	var parsed sendResponse
+	if err := json.Unmarshal(responseBody, &parsed); err != nil {
+		return fmt.Errorf("whatsapp cloud response invalid: %w body=%s", err, string(responseBody))
+	}
+	if parsed.Error != nil {
+		return fmt.Errorf("whatsapp cloud send failed: %s", parsed.Error.Message)
+	}
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("whatsapp cloud send failed: status=%d body=%s", resp.StatusCode, string(responseBody))
+	}
+	if len(parsed.Messages) == 0 || strings.TrimSpace(parsed.Messages[0].ID) == "" {
+		return fmt.Errorf("whatsapp cloud send failed: missing message id")
+	}
+
+	return nil
+}
+
+func (c *Channel) SendMagicLink(ctx context.Context, target string, payload otp.Payload) error {
+	if strings.TrimSpace(c.accessToken) == "" {
+		return fmt.Errorf("whatsapp cloud access token is required")
+	}
+	if strings.TrimSpace(c.phoneNumberID) == "" {
+		return fmt.Errorf("whatsapp cloud phone number id is required")
+	}
+
+	message := fmt.Sprintf("Click this secure Pleco sign-in link:\n\n%s\n\nExpires in %.0f minutes. Do not share this link.", payload.Code, payload.ExpiresIn.Minutes())
+
+	reqBody := textMessageRequest{
+		MessagingProduct: "whatsapp",
+		RecipientType:    "individual",
+		To:               strings.TrimPrefix(target, "+"),
+		Type:             "text",
+		Text: textPayload{
+			PreviewURL: false,
+			Body:       message,
 		},
 	}
 	body, err := json.Marshal(reqBody)

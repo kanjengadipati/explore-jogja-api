@@ -93,6 +93,21 @@ func generateMockErrorOptimization(prompt string) (*GenerateResult, error) {
 			"docs_url": "/docs/errors/AUTH_INVALID_OTP",
 		}
 
+	case "AUTH_OTP_DELIVERY_UNAVAILABLE":
+		payload = map[string]interface{}{
+			"message": "We could not send the verification code right now.",
+			"details": "The delivery provider did not respond in time.",
+			"suggestions": []map[string]interface{}{
+				{
+					"title":       "Try again",
+					"description": "Request another verification code in a moment.",
+					"action":      "retry",
+					"priority":    "primary",
+				},
+			},
+			"docs_url": "/docs/errors/AUTH_OTP_DELIVERY_UNAVAILABLE",
+		}
+
 	case "AUTH_INVALID_CREDENTIALS":
 		payload = map[string]interface{}{
 			"message": "The email or password you entered is incorrect.",

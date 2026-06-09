@@ -12,5 +12,6 @@ type Payload struct {
 
 type Channel interface {
 	SendOTP(ctx context.Context, target string, payload Payload) error
+	SendMagicLink(ctx context.Context, target string, payload Payload) error
 	ChannelName() string
 }

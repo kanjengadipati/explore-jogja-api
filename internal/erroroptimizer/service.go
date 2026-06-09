@@ -199,7 +199,7 @@ func (eos *ErrorOptimizerService) logErrorOccurrence(
 		err := eos.db.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "error_code"}},
 			DoUpdates: clause.Assignments(map[string]interface{}{
-				"occurrence_count": gorm.Expr("occurrence_count + 1"),
+				"occurrence_count": gorm.Expr("error_analytics.occurrence_count + 1"),
 				"last_occurred":    now,
 			}),
 		}).Create(&errorAnalyticsOccurrence{

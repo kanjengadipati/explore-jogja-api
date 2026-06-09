@@ -83,6 +83,12 @@ func (c *Channel) SendOTP(ctx context.Context, target string, payload otp.Payloa
 	return nil
 }
 
+func (c *Channel) SendMagicLink(ctx context.Context, target string, payload otp.Payload) error {
+	// Email magic links are handled by the dedicated EmailSvc.SendMagicLink path,
+	// not through the OTP channel. Fall back to SendOTP if called.
+	return c.SendOTP(ctx, target, payload)
+}
+
 func (c *Channel) ChannelName() string {
 	return "resend"
 }

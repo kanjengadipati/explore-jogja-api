@@ -19,6 +19,10 @@ func (c *Channel) SendOTP(_ context.Context, _ string, _ otp.Payload) error {
 	return errors.New("otp provider is disabled")
 }
 
+func (c *Channel) SendMagicLink(_ context.Context, _ string, _ otp.Payload) error {
+	return errors.New("magic link provider is disabled")
+}
+
 func (c *Channel) ChannelName() string {
 	return c.name
 }

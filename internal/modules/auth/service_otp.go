@@ -40,31 +40,64 @@ var (
 )
 
 type PasswordlessStartResult struct {
-	NextStep string `json:"next_step"`
+	NextStep     string  `json:"next_step"`
+	MagicLinkURL *string `json:"magic_link_url,omitempty"`
 }
 
-func (s *authService) CheckPasswordlessIdentity(channel, target string) error {
-	_, _, err := s.resolveOTPTarget(channel, target)
-	return err
+func (s *authService) CheckPasswordlessIdentity(channel, target, deviceID, userAgent string) (bool, error) {
+	channel, target, err := s.resolveOTPTarget(channel, target)
+	if err != nil {
+		return false, err
+	}
+
+	user, err := findOTPUser(s.UserRepo, channel, target)
+	if err != nil {
+		return false, err
+	}
+
+	return s.isTrustedDevice(user.ID, userAgent, deviceID), nil
 }
 
 func (s *authService) StartPasswordless(ctx context.Context, channel, target, deviceID, userAgent, ipAddress string) (*PasswordlessStartResult, error) {
-	channel, target, err := normalizeOTPTarget(channel, target)
+	channel, target, err := s.resolveOTPTarget(channel, target)
 	if err != nil {
 		return nil, err
 	}
 
 	if user, err := findOTPUser(s.UserRepo, channel, target); err == nil && s.isTrustedDevice(user.ID, userAgent, deviceID) && user.Email != "" {
-		token, err := s.generateMagicLinkToken(user.ID, user.Email)
-		if err != nil {
-			return nil, ErrOTPNotAvailable
+		delivery, ok := s.OTPChannels[channel]
+		if ok && delivery != nil {
+			if channel == "email" {
+				token, err := s.generateMagicLinkToken(user.ID, user.Email)
+				if err == nil {
+					if err := s.EmailSvc.SendMagicLink(user.Email, token); err == nil {
+						s.recordOTPAudit(&user.ID, "MAGIC_LINK_REQUESTED", channel, target, "success", "magic link requested", ipAddress, userAgent)
+						return &PasswordlessStartResult{NextStep: "magic_link"}, nil
+					}
+				}
+			} else if channel == "whatsapp" && user.PhoneNumber != "" {
+				token, err := s.generateMagicLinkToken(user.ID, user.Email)
+				if err == nil {
+					baseURL := s.Cfg.Email.FrontendURL
+					if baseURL == "" {
+						baseURL = s.Cfg.Email.AppBaseURL
+					}
+					if baseURL == "" {
+						baseURL = "http://localhost:3000"
+					}
+					baseURL = strings.TrimRight(baseURL, "/")
+					magicLinkURL := fmt.Sprintf("%s/login?magic_token=%s", baseURL, token)
+					payload := otp.Payload{Code: magicLinkURL, ExpiresIn: otpExpiry}
+					sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+					err = delivery.SendMagicLink(sendCtx, target, payload)
+					cancel()
+					if err == nil {
+						s.recordOTPAudit(&user.ID, "MAGIC_LINK_REQUESTED", channel, target, "success", "magic link requested via whatsapp", ipAddress, userAgent)
+						return &PasswordlessStartResult{NextStep: "magic_link"}, nil
+					}
+				}
+			}
 		}
-		if err := s.EmailSvc.SendMagicLink(user.Email, token); err != nil {
-			log.Printf("magic link email failed for %s: %v", user.Email, err)
-			return nil, ErrOTPNotAvailable
-		}
-		s.recordOTPAudit(&user.ID, "MAGIC_LINK_REQUESTED", channel, target, "success", "magic link requested", ipAddress, userAgent)
-		return &PasswordlessStartResult{NextStep: "magic_link"}, nil
 	}
 
 	if err := s.RequestOTP(ctx, channel, target, ipAddress, userAgent); err != nil {
@@ -126,7 +159,9 @@ func (s *authService) RequestOTP(ctx context.Context, channel, target, ipAddress
 		return ErrOTPNotAvailable
 	}
 
-	if err := delivery.SendOTP(ctx, target, otp.Payload{Code: code, ExpiresIn: otpExpiry}); err != nil {
+	sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := delivery.SendOTP(sendCtx, target, otp.Payload{Code: code, ExpiresIn: otpExpiry}); err != nil {
 		log.Printf("otp provider failed channel=%s target=%s provider=%s error=%v", channel, target, delivery.ChannelName(), err)
 		if consumeErr := s.OTPRepo.Consume(record.ID); consumeErr != nil {
 			log.Printf("otp provider failure cleanup failed channel=%s target=%s otp_id=%s error=%v", channel, target, record.ID, consumeErr)

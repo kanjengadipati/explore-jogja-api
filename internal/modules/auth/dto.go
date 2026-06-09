@@ -38,6 +38,10 @@ type PasswordlessIdentityRequest struct {
 	Target  string `json:"target" binding:"required"`
 }
 
+type PasswordlessCheckResponse struct {
+	IsTrustedDevice bool `json:"is_trusted_device"`
+}
+
 type VerifyMagicLinkRequest struct {
 	Token         string `json:"token" binding:"required"`
 	DeviceName    string `json:"device_name"`

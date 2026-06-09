@@ -20,6 +20,11 @@ func (c *Channel) SendOTP(_ context.Context, target string, payload otp.Payload)
 	return c.email.SendOTP(target, payload.Code, payload.ExpiresIn)
 }
 
+func (c *Channel) SendMagicLink(ctx context.Context, target string, payload otp.Payload) error {
+	// Email magic links are handled by the dedicated EmailSvc.SendMagicLink path.
+	return c.SendOTP(ctx, target, payload)
+}
+
 func (c *Channel) ChannelName() string {
 	if c.name == "" {
 		return "email"
