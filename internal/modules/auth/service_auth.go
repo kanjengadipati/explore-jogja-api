@@ -24,36 +24,41 @@ func (s *authService) Register(user *userModule.User, password string) error {
 
 	user.Password = hashedPassword
 	user.Role = "user"
-	user.IsVerified = false
-	user.EmailVerified = false
+	user.IsVerified = s.Cfg.SkipEmailVerification
+	user.EmailVerified = s.Cfg.SkipEmailVerification
 	now := time.Now()
 	user.PasswordUpdatedAt = now
 	user.LastPasswordChange = &now
 
-	verificationToken := uuid.NewString()
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		txUserRepo := s.UserRepo.WithTx(tx)
-		txEmailRepo := s.EmailVerificationRepo.WithTx(tx)
-
 		if err := txUserRepo.Create(user); err != nil {
 			return err
 		}
-
-		verificationRecord := &tokenModule.EmailVerificationToken{
-			UserID:    user.ID,
-			Token:     utils.HashToken(verificationToken),
-			ExpiresAt: time.Now().Add(24 * time.Hour),
-			CreatedAt: time.Now(),
+		if !s.Cfg.SkipEmailVerification {
+			txEmailRepo := s.EmailVerificationRepo.WithTx(tx)
+			verificationToken := uuid.NewString()
+			verificationRecord := &tokenModule.EmailVerificationToken{
+				UserID:    user.ID,
+				Token:     utils.HashToken(verificationToken),
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+				CreatedAt: time.Now(),
+			}
+			if err := txEmailRepo.Create(verificationRecord); err != nil {
+				return err
+			}
 		}
-
-		return txEmailRepo.Create(verificationRecord)
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	if sendErr := s.EmailSvc.SendVerificationEmail(user.Email, verificationToken); sendErr != nil {
-		log.Printf("verification email send failed for %s: %v", user.Email, sendErr)
+	if !s.Cfg.SkipEmailVerification {
+		verificationToken := uuid.NewString()
+		if sendErr := s.EmailSvc.SendVerificationEmail(user.Email, verificationToken); sendErr != nil {
+			log.Printf("verification email send failed for %s: %v", user.Email, sendErr)
+		}
 	}
 
 	s.AuditSvc.SafeRecord(audit.RecordInput{

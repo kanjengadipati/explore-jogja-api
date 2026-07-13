@@ -75,6 +75,7 @@ type AppConfig struct {
 	AdminPassword            string
 	AutoRunMigrations        bool
 	AutoRunSeeds             bool
+	SkipEmailVerification    bool
 	Email                    EmailConfig
 	WhatsApp                 WhatsAppConfig
 	Social                   SocialConfig
@@ -97,6 +98,7 @@ func LoadAppConfig() AppConfig {
 		AdminPassword:            GetEnv("ADMIN_PASSWORD", ""),
 		AutoRunMigrations:        envBool("AUTO_RUN_MIGRATIONS"),
 		AutoRunSeeds:             envBool("AUTO_RUN_SEEDS"),
+		SkipEmailVerification:    envBool("SKIP_EMAIL_VERIFICATION"),
 		Email: EmailConfig{
 			Provider:       strings.ToLower(GetEnv("EMAIL_PROVIDER", "disabled")),
 			APIKey:         firstNonEmptyEnv("EMAIL_API_KEY", "RESEND_API_KEY"),

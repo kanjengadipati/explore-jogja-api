@@ -10,7 +10,9 @@ import (
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/auth"
 	"pleco-api/internal/modules/permission"
+	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/role"
+	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/user"
 	"pleco-api/internal/services"
 
@@ -53,6 +55,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	user.SetupRoutes(api, userModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	audit.SetupRoutes(api, auditModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
+
+	destinationModule := destination.BuildModule(db)
+	destination.SetupRoutes(api, destinationModule.Handler)
+
+	touristModule := tourist.BuildModule(aiService, destinationModule.Repository)
+	tourist.SetupRoutes(api, touristModule.Handler)
+
 	router.GET("/health", func(c *gin.Context) {
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
 	})
