@@ -56,3 +56,20 @@ func (h *Handler) Search(c *gin.Context) {
 	}
 	httpx.Success(c, 200, "Search results", dests, nil)
 }
+
+func (h *Handler) Update(c *gin.Context) {
+	id := c.Param("id")
+
+	var req UpdateDestinationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+
+	dest, err := h.Service.Update(id, req)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Destination updated", dest, nil)
+}

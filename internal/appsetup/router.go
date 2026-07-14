@@ -57,7 +57,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	destinationModule := destination.BuildModule(db)
-	destination.SetupRoutes(api, destinationModule.Handler)
+	destination.SetupRoutes(api, destinationModule.Handler, jwtService)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository)
 	tourist.SetupRoutes(api, touristModule.Handler)

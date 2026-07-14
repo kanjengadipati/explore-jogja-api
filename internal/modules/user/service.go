@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"pleco-api/internal/cache"
+	"pleco-api/internal/domain"
 	"pleco-api/internal/modules/audit"
 	tokenModule "pleco-api/internal/modules/token"
 	"pleco-api/internal/services"
@@ -53,7 +55,7 @@ func (s *Service) GetUserByID(id uint) (*User, error) {
 
 func (s *Service) CreateUser(input CreateUserRequest) (*User, error) {
 	if existing, err := s.UserRepo.FindByEmail(input.Email); err == nil && existing != nil && existing.ID != 0 {
-		return nil, errors.New("email already in use")
+		return nil, domain.NewAPIError(http.StatusConflict, domain.CodeConflict, "email already in use", domain.ErrConflict)
 	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ type Repository interface {
 	Search(query string) ([]Destination, error)
 	Create(dest *Destination) error
 	CreateBatch(dests []Destination) error
+	Update(dest *Destination) error
 }
 
 type GormRepository struct {
@@ -64,4 +65,8 @@ func (r *GormRepository) Create(dest *Destination) error {
 
 func (r *GormRepository) CreateBatch(dests []Destination) error {
 	return r.db.CreateInBatches(dests, 50).Error
+}
+
+func (r *GormRepository) Update(dest *Destination) error {
+	return r.db.Save(dest).Error
 }
