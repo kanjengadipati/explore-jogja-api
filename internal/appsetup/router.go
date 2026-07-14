@@ -11,7 +11,17 @@ import (
 	"pleco-api/internal/modules/auth"
 	"pleco-api/internal/modules/permission"
 	"pleco-api/internal/modules/destination"
+	"pleco-api/internal/modules/event"
+	"pleco-api/internal/modules/guide"
+	"pleco-api/internal/modules/hotel"
+	"pleco-api/internal/modules/partner"
+	"pleco-api/internal/modules/promotion"
+	"pleco-api/internal/modules/rental"
+	"pleco-api/internal/modules/restaurant"
+	"pleco-api/internal/modules/review"
 	"pleco-api/internal/modules/role"
+	"pleco-api/internal/modules/souvenir"
+	"pleco-api/internal/modules/story"
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/user"
 	"pleco-api/internal/services"
@@ -58,6 +68,36 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	destinationModule := destination.BuildModule(db)
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService)
+
+	eventModule := event.BuildModule(db)
+	event.SetupRoutes(api, eventModule.Handler, jwtService)
+
+	hotelModule := hotel.BuildModule(db)
+	hotel.SetupRoutes(api, hotelModule.Handler, jwtService)
+
+	restaurantModule := restaurant.BuildModule(db)
+	restaurant.SetupRoutes(api, restaurantModule.Handler, jwtService)
+
+	partnerModule := partner.BuildModule(db)
+	partner.SetupRoutes(api, partnerModule.Handler, jwtService)
+
+	guideModule := guide.BuildModule(db)
+	guide.SetupRoutes(api, guideModule.Handler, jwtService)
+
+	souvenirModule := souvenir.BuildModule(db)
+	souvenir.SetupRoutes(api, souvenirModule.Handler, jwtService)
+
+	rentalModule := rental.BuildModule(db)
+	rental.SetupRoutes(api, rentalModule.Handler, jwtService)
+
+	reviewModule := review.BuildModule(db)
+	review.SetupRoutes(api, reviewModule.Handler, jwtService)
+
+	storyModule := story.BuildModule(db)
+	story.SetupRoutes(api, storyModule.Handler, jwtService)
+
+	promotionModule := promotion.BuildModule(db)
+	promotion.SetupRoutes(api, promotionModule.Handler, jwtService)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository)
 	tourist.SetupRoutes(api, touristModule.Handler)
