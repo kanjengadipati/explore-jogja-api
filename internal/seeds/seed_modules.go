@@ -83,15 +83,16 @@ func stja(v interface{}) story.JSONArr {
 	return arr
 }
 
-func seedEvents(db *gorm.DB) {
-	var count int64
-	db.Model(&event.Event{}).Count(&count)
-	if count > 0 {
-		fmt.Println("Events already seeded, skipping")
-		return
-	}
+func eja(v interface{}) event.JSONArr {
+	b, _ := json.Marshal(v)
+	var arr event.JSONArr
+	json.Unmarshal(b, &arr)
+	return arr
+}
 
-	events := []event.Event{
+func seedEvents(db *gorm.DB) {
+	// Use upsert logic so new festival events can be added even if table is non-empty
+	allEvents := []event.Event{
 		{
 			ExternalID:   "evt-1",
 			Title:        "Yogyakarta Jazz Festival",
@@ -107,6 +108,7 @@ func seedEvents(db *gorm.DB) {
 			MaxAttendees: 5000,
 			TicketPrice:  "IDR 350,000",
 			Organizer:    "Jogja Jazz Foundation",
+			Highlights:   eja([]string{"Live International Acts", "Prambanan Night Stage", "Traditional Jazz Fusion"}),
 		},
 		{
 			ExternalID:   "evt-2",
@@ -123,6 +125,7 @@ func seedEvents(db *gorm.DB) {
 			MaxAttendees: 2000,
 			TicketPrice:  "IDR 100,000",
 			Organizer:    "Yogyakarta Culinary Board",
+			Highlights:   eja([]string{"Bakpia Cooking Workshop", "Street Food Market", "Cultural Performances"}),
 		},
 		{
 			ExternalID:   "evt-3",
@@ -139,12 +142,101 @@ func seedEvents(db *gorm.DB) {
 			MaxAttendees: 3000,
 			TicketPrice:  "IDR 50,000",
 			Organizer:    "Yogyakarta Cultural Office",
+			Highlights:   eja([]string{"Traditional Saman Dance", "Multi-Troupe Performance", "Gamelan Orchestra"}),
+		},
+		// --- FESTIVALS from frontend static data (merged) ---
+		{
+			ExternalID:   "f-sekaten",
+			Title:        "Sekaten Festival",
+			Description:  "A week-long royal and spiritual festival celebrating the birth of Prophet Muhammad. The sacred royal gamelans are carried from the palace to the Grand Mosque.",
+			Location:     "Yogyakarta",
+			StartDate:    "2025-05-07",
+			EndDate:      "2025-05-15",
+			ImageURL:     "https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=1200",
+			Category:     "culture",
+			Status:       "upgoing",
+			Latitude:     -7.8054,
+			Longitude:    110.3642,
+			MaxAttendees: 10000,
+			TicketPrice:  "Free",
+			Organizer:    "Keraton Yogyakarta",
+			Highlights:   eja([]string{"Royal Gamelan Processions", "Traditional Javanese Night Market"}),
+		},
+		{
+			ExternalID:   "f-fky",
+			Title:        "Jogja Art Festival",
+			Description:  "The ultimate showcase of contemporary and traditional art, bringing Yogyakarta's streets to life with street carnivals and puppet plays.",
+			Location:     "Yogyakarta",
+			StartDate:    "2025-06-23",
+			EndDate:      "2025-06-30",
+			ImageURL:     "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1200",
+			Category:     "art",
+			Status:       "upgoing",
+			Latitude:     -7.7928,
+			Longitude:    110.3658,
+			MaxAttendees: 8000,
+			TicketPrice:  "Free",
+			Organizer:    "Festival Kesenian Yogyakarta",
+			Highlights:   eja([]string{"Street Art Carnivals", "Wayang Kulit Puppetry Night"}),
+		},
+		{
+			ExternalID:   "f-grebeg",
+			Title:        "Grebeg Maulud",
+			Description:  "The spectacular peak of royal gratitude. The Sultan of Yogyakarta paraded colossal mountain-shaped offerings made of harvest crops.",
+			Location:     "Yogyakarta",
+			StartDate:    "2025-10-05",
+			EndDate:      "2025-10-05",
+			ImageURL:     "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1200",
+			Category:     "culture",
+			Status:       "upgoing",
+			Latitude:     -7.8054,
+			Longitude:    110.3642,
+			MaxAttendees: 15000,
+			TicketPrice:  "Free",
+			Organizer:    "Keraton Yogyakarta",
+			Highlights:   eja([]string{"Majestic Gunungan Mountains", "Ten Royal Regiments"}),
+		},
+		{
+			ExternalID:   "f-wonosari",
+			Title:        "Wonosari Night Carnival",
+			Description:  "A vibrant and glowing street parade in Gunungkidul featuring traditional dances, music, and colorful illuminated cultural floats.",
+			Location:     "Gunungkidul",
+			StartDate:    "2025-07-12",
+			EndDate:      "2025-07-12",
+			ImageURL:     "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200",
+			Category:     "carnival",
+			Status:       "upgoing",
+			Latitude:     -7.9800,
+			Longitude:    110.5900,
+			MaxAttendees: 5000,
+			TicketPrice:  "Free",
+			Organizer:    "Pemerintah Gunungkidul",
+			Highlights:   eja([]string{"Glowing Parades", "Night Carnival"}),
 		},
 	}
-	if err := db.CreateInBatches(events, 10).Error; err != nil {
-		log.Printf("Failed to seed events: %v", err)
+
+	inserted := 0
+	updated := 0
+	for _, e := range allEvents {
+		var existing event.Event
+		err := db.Where("external_id = ?", e.ExternalID).First(&existing).Error
+		if err != nil {
+			if dbErr := db.Create(&e).Error; dbErr != nil {
+				log.Printf("Failed to create event %s: %v", e.ExternalID, dbErr)
+			} else {
+				inserted++
+			}
+		} else {
+			e.ID = existing.ID
+			e.CreatedAt = existing.CreatedAt
+			if dbErr := db.Save(&e).Error; dbErr != nil {
+				log.Printf("Failed to update event %s: %v", e.ExternalID, dbErr)
+			} else {
+				updated++
+			}
+		}
 	}
-	fmt.Printf("Events seeding done (%d records)\n", len(events))
+	fmt.Printf("Events seeding done: %d inserted, %d updated\n", inserted, updated)
 }
 
 func seedHotels(db *gorm.DB) {

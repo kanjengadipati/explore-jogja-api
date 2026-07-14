@@ -45,4 +45,5 @@ type Event struct {
 	MaxAttendees int     `json:"max_attendees"`
 	TicketPrice  string  `json:"ticket_price"`
 	Organizer    string  `json:"organizer"`
+	Highlights   JSONArr `gorm:"type:jsonb" json:"highlights"`
 }

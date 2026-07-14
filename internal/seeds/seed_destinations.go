@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"pleco-api/internal/modules/destination"
 
@@ -15,6 +16,47 @@ func SeedDestinations(db *gorm.DB) {
 
 	var count int64
 	db.Model(&destination.Destination{}).Count(&count)
+
+	// Attempt to load from JSON first
+	jsonPath := "internal/seeds/destinations.json"
+	data, err := os.ReadFile(jsonPath)
+	if err == nil {
+		var dests []destination.Destination
+		if err := json.Unmarshal(data, &dests); err == nil {
+			fmt.Printf("Found %d destinations in JSON seed file. Syncing to database...\n", len(dests))
+			inserted := 0
+			updated := 0
+			for _, d := range dests {
+				var existing destination.Destination
+				err := db.Where("external_id = ?", d.ExternalID).First(&existing).Error
+				if err != nil {
+					// Does not exist, create it
+					if err := db.Create(&d).Error; err != nil {
+						log.Printf("Failed to create destination %s: %v", d.ExternalID, err)
+					} else {
+						inserted++
+					}
+				} else {
+					// Exists, update it
+					d.ID = existing.ID
+					d.CreatedAt = existing.CreatedAt
+					if err := db.Save(&d).Error; err != nil {
+						log.Printf("Failed to update destination %s: %v", d.ExternalID, err)
+					} else {
+						updated++
+					}
+				}
+			}
+			fmt.Printf("Destinations sync done: %d inserted, %d updated\n", inserted, updated)
+			return
+		} else {
+			log.Printf("Failed to unmarshal destinations JSON: %v", err)
+		}
+	} else {
+		log.Printf("Could not read destinations.json: %v. Falling back to hardcoded seed data.", err)
+	}
+
+	// Fallback to hardcoded seed data if JSON not present or failed to parse
 	if count > 0 {
 		fmt.Println("Destinations already seeded, skipping")
 		return

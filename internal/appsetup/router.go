@@ -12,6 +12,7 @@ import (
 	"pleco-api/internal/modules/permission"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
+	configmodule "pleco-api/internal/modules/config"
 	"pleco-api/internal/modules/guide"
 	"pleco-api/internal/modules/hotel"
 	"pleco-api/internal/modules/partner"
@@ -68,6 +69,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	destinationModule := destination.BuildModule(db)
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService)
+
+	configHandler := configmodule.NewHandler()
+	configmodule.SetupRoutes(api, configHandler)
 
 	eventModule := event.BuildModule(db)
 	event.SetupRoutes(api, eventModule.Handler, jwtService)
