@@ -203,7 +203,7 @@ Respond ONLY with valid JSON matching this schema:
 		MaxTokens:    400,
 	})
 	if err != nil {
-		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", "Failed to generate recommendation")
+		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", fmt.Sprintf("Failed to generate recommendation: %v", err))
 		return
 	}
 

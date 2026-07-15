@@ -33,7 +33,8 @@ type geminiContent struct {
 }
 
 type geminiPart struct {
-	Text string `json:"text"`
+	Text             string `json:"text"`
+	ThoughtSignature string `json:"thoughtSignature,omitempty"` // present in thinking model parts; skip these
 }
 
 type geminiGenerationConfig struct {
@@ -77,7 +78,7 @@ func (p *GeminiProvider) Generate(ctx context.Context, input GenerateInput) (*Ge
 		},
 		GenerationConfig: geminiGenerationConfig{
 			ResponseMimeType: "application/json",
-			ResponseSchema:   investigationJSONSchema(),
+			ResponseSchema:   input.ResponseSchema, // nil = free-form JSON; set schema for structured output
 			MaxOutputTokens:  input.MaxTokens,
 		},
 	}
@@ -144,6 +145,24 @@ func (p *GeminiProvider) Generate(ctx context.Context, input GenerateInput) (*Ge
 }
 
 func extractGeminiText(candidates []geminiCandidate) string {
+	// First pass: prefer parts without thoughtSignature (non-thinking parts)
+	for _, candidate := range candidates {
+		for _, part := range candidate.Content.Parts {
+			if part.ThoughtSignature == "" && strings.TrimSpace(part.Text) != "" {
+				return part.Text
+			}
+		}
+	}
+	// Second pass: if all parts have thoughtSignature (thinking model), return the one with JSON-like text
+	for _, candidate := range candidates {
+		for _, part := range candidate.Content.Parts {
+			trimmed := strings.TrimSpace(part.Text)
+			if trimmed != "" && (strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")) {
+				return part.Text
+			}
+		}
+	}
+	// Final fallback: return any non-empty text
 	for _, candidate := range candidates {
 		for _, part := range candidate.Content.Parts {
 			if strings.TrimSpace(part.Text) != "" {
