@@ -45,6 +45,8 @@ func NewService(cfg config.AIConfig) (*Service, error) {
 			return NewGeminiProvider(baseURL, apiKey, time.Duration(cfg.TimeoutSeconds)*time.Second), nil
 		case "anthropic":
 			return NewAnthropicProvider(baseURL, apiKey, time.Duration(cfg.TimeoutSeconds)*time.Second), nil
+		case "groq":
+			return NewGroqProvider(baseURL, apiKey, time.Duration(cfg.TimeoutSeconds)*time.Second), nil
 		case "":
 			return nil, nil
 		default:

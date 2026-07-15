@@ -297,29 +297,26 @@ func containsAny(s string, substrs ...string) bool {
 
 func destinationsContextJSON(dests []destination.Destination) string {
 	type destSummary struct {
-		ID          string  `json:"id"`
-		Name        string  `json:"name"`
-		Tagline     string  `json:"tagline"`
-		Location    string  `json:"location"`
-		Category    string  `json:"category"`
-		Description string  `json:"description"`
-		BestTime    string  `json:"bestTime"`
-		TicketPrice string  `json:"ticketPrice"`
-		SubRegion   string  `json:"subRegion"`
+		ID        string `json:"id"`
+		Name      string `json:"name"`
+		Tagline   string `json:"tagline"`
+		Category  string `json:"category"`
+		BestTime  string `json:"bestTime"`
+		SubRegion string `json:"subRegion"`
 	}
-	summaries := make([]destSummary, len(dests))
-	for i, d := range dests {
-		desc := d.Description
-		if len(desc) > 150 {
-			desc = desc[:150] + "..."
-		}
+	limit := len(dests)
+	if limit > 25 {
+		limit = 25
+	}
+	summaries := make([]destSummary, limit)
+	for i := 0; i < limit; i++ {
+		d := dests[i]
 		summaries[i] = destSummary{
 			ID: d.ExternalID, Name: d.Name, Tagline: d.Tagline,
-			Location: d.Location, Category: d.Category, Description: desc,
-			BestTime: d.BestTime, TicketPrice: d.TicketPrice, SubRegion: d.SubRegion,
+			Category: d.Category, BestTime: d.BestTime, SubRegion: d.SubRegion,
 		}
 	}
-	b, _ := json.MarshalIndent(summaries, "", "  ")
+	b, _ := json.Marshal(summaries) // compact JSON, no indent
 	return string(b)
 }
 
