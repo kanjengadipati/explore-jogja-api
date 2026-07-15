@@ -7,6 +7,7 @@ import (
 type Repository interface {
 	FindAll() ([]Destination, error)
 	FindByID(externalID string) (*Destination, error)
+	FindBySlug(slug string) (*Destination, error)
 	FindByCategory(category string) ([]Destination, error)
 	Search(query string) ([]Destination, error)
 	Create(dest *Destination) error
@@ -33,6 +34,21 @@ func (r *GormRepository) FindAll() ([]Destination, error) {
 func (r *GormRepository) FindByID(externalID string) (*Destination, error) {
 	var dest Destination
 	err := r.db.Where("external_id = ?", externalID).First(&dest).Error
+	if err != nil {
+		// Fallback: try slug-based lookup (slugify name and match)
+		return r.FindBySlug(externalID)
+	}
+	return &dest, nil
+}
+
+// FindBySlug looks up a destination by converting name to a URL slug and comparing.
+// e.g. "Malioboro Street" → "malioboro-street"
+func (r *GormRepository) FindBySlug(slug string) (*Destination, error) {
+	var dest Destination
+	err := r.db.Where(
+		"LOWER(REGEXP_REPLACE(name, '[^a-zA-Z0-9]+', '-', 'g')) = ?",
+		slug,
+	).First(&dest).Error
 	if err != nil {
 		return nil, err
 	}
