@@ -169,7 +169,9 @@
         "q": "When does the Ramayana Ballet perform?",
         "a": "It performs on Tuesday, Thursday, and Saturday nights in the open-air theater during dry season, and in the indoor theater during rainy months."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Prambanan+Temple+Sleman+Yogyakarta",
+    "google_review_count": 106003
   },
   {
     "id": "malioboro",
@@ -324,7 +326,9 @@
         "q": "What is the best way to get there?",
         "a": "Arriving by train at Tugu Station places you directly at the northern tip of Malioboro. Local TransJogja buses also stop frequently."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Malioboro+Street+Yogyakarta+City",
+    "google_review_count": 8174
   },
   {
     "id": "parangtritis",
@@ -463,7 +467,9 @@
         "q": "Is there sandboarding?",
         "a": "Yes! At the nearby Gumuk Pasir Parangkusumo, you can rent customized boards for IDR 50,000 and slide down the dramatic wind-swept sand dunes."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Parangtritis+Beach+Bantul+Yogyakarta",
+    "google_review_count": 334
   },
   {
     "id": "merapi",
@@ -601,7 +607,9 @@
         "q": "What is inside the Bunker?",
         "a": "The underground Kaliadem bunker is a steel-reinforced shelter built to withstand volcanic heat. It houses historic artifacts and displays of volcanic defense."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Mount+Merapi+Lava+Tour+Sleman+Yogyakarta",
+    "google_review_count": 2400
   },
   {
     "id": "tamansari",
@@ -739,7 +747,9 @@
         "q": "Can we photograph the pools?",
         "a": "Yes! Personal photography is permitted and free. Professional commercial equipment or pre-wedding shoots require a special permit fee."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Taman+Sari+Water+Castle+Yogyakarta+City",
+    "google_review_count": 3305
   },
   {
     "id": "goajomblang",
@@ -859,7 +869,9 @@
         "q": "Are there age restrictions?",
         "a": "Yes. It is recommended for ages between 10 and 60 years old in healthy physical condition."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Goa+Jomblang+Cave+Gunungkidul+Yogyakarta",
+    "google_review_count": 1200
   },
   {
     "id": "kalibiru",
@@ -950,7 +962,9 @@
         "q": "Is it safe to climb the platforms?",
         "a": "Yes. Every platform is equipped with professional safety harnesses."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kalibiru+National+Park+Kulon+Progo+Yogyakarta",
+    "google_review_count": 1800
   },
   {
     "id": "keraton",
@@ -1054,7 +1068,9 @@
         "q": "What days is it open?",
         "a": "Tuesday through Sunday, 08:30 AM - 02:00 PM. Closed on Monday."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Keraton+Yogyakarta+Yogyakarta+City",
+    "google_review_count": 2881
   },
   {
     "id": "ratuboko",
@@ -1159,7 +1175,9 @@
         "q": "Can I visit for sunset?",
         "a": "Yes! Sunset packages are available. Arrive 2 hours before sunset."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Ratu+Boko+Palace+Sleman+Yogyakarta",
+    "google_review_count": 1840
   },
   {
     "id": "timang",
@@ -1263,7 +1281,9 @@
         "q": "Can children cross the bridge?",
         "a": "Children under 12 are not recommended to cross."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Timang+Beach+Gunungkidul+Yogyakarta",
+    "google_review_count": 890
   },
   {
     "id": "tebingbreksi",
@@ -1367,7 +1387,9 @@
         "q": "Is there an entrance fee?",
         "a": "Yes, IDR 10,000 per person. Parking IDR 5,000."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Tebing+Breksi+Sleman+Yogyakarta",
+    "google_review_count": 1400
   },
   {
     "id": "pindul",
@@ -1472,7 +1494,9 @@
         "q": "Is it safe?",
         "a": "Yes. Guides accompany every group and equipment is inspected daily."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pindul+Cave+Tubing+Gunungkidul+Yogyakarta",
+    "google_review_count": 1900
   },
   {
     "id": "pinusmangunan",
@@ -1577,7 +1601,9 @@
         "q": "Can I camp overnight?",
         "a": "Yes. Designated camping areas are available."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Hutan+Pinus+Mangunan+Bantul+Yogyakarta",
+    "google_review_count": 2200
   },
   {
     "id": "alun-alun-kidul",
@@ -1672,7 +1698,9 @@
         "q": "How do I get there?",
         "a": "Located behind the Kraton Palace. You can walk from Malioboro or take a becak ride."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Alun-Alun+Kidul+Patehan+Kraton+Kota+Yogyakarta",
+    "google_review_count": 2400
   },
   {
     "id": "stonehenge-merapi",
@@ -1756,7 +1784,9 @@
         "q": "How long should I spend here?",
         "a": "Most visitors spend 30-60 minutes taking photos and exploring the stones."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Stonehenge+Merapi+Kepuharjo+Cangkringan+Sleman",
+    "google_review_count": 1100
   },
   {
     "id": "museum-ullen-sentalu",
@@ -1849,7 +1879,9 @@
         "q": "How long does a visit take?",
         "a": "Plan for 1.5 to 2 hours to fully appreciate all the galleries and gardens."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Museum+Ullen+Sentalu+Jl.+Boyong+No.+KM+25+Kaliurang+Hargobinangun+Sleman",
+    "google_review_count": 1500
   },
   {
     "id": "kebun-buah-mangunan",
@@ -1938,7 +1970,9 @@
         "q": "Can I pick fruits?",
         "a": "Seasonal fruit picking is sometimes available. Check with local staff upon arrival."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kebun+Buah+Mangunan+Dlingo+Bantul",
+    "google_review_count": 2600
   },
   {
     "id": "puncak-becici",
@@ -2026,7 +2060,9 @@
         "q": "How difficult is the walk to the deck?",
         "a": "The walk is a gentle 5-10 minute trail through the pine forest, suitable for most fitness levels."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Puncak+Becici+Muntuk+Dlingo+Bantul",
+    "google_review_count": 1900
   },
   {
     "id": "gumuk-pasir-parangkusumo",
@@ -2119,7 +2155,9 @@
         "q": "Can I visit in the morning?",
         "a": "Morning visits are possible but the afternoon golden hour provides the best photography conditions."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Gumuk+Pasir+Parangkusumo+Jl.+Pantai+Parangkusumo+Parangtritis+Kreteg+Bantul",
+    "google_review_count": 2800
   },
   {
     "id": "pantai-indrayanti",
@@ -2208,7 +2246,9 @@
         "q": "Are there food options?",
         "a": "Yes, several beachside warungs serve fresh grilled seafood and local Javanese dishes."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Indrayanti+Sidoharjo+Tepus+Gunungkidul",
+    "google_review_count": 3200
   },
   {
     "id": "gunung-api-purba-nglanggeran",
@@ -2297,7 +2337,9 @@
         "q": "Can I camp overnight?",
         "a": "Yes, camping areas are available at the base with tent rental options."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Gunung+Api+Purba+Nglanggeran+Nglanggeran+Patuk+Gunungkidul",
+    "google_review_count": 1600
   },
   {
     "id": "pantai-drini",
@@ -2386,7 +2428,9 @@
         "q": "What is the best time to visit?",
         "a": "Mid-morning to early afternoon offers the best light and calmest waters."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Drini+Banjarejo+Tanjungsari+Gunungkidul",
+    "google_review_count": 1800
   },
   {
     "id": "waduk-sermo",
@@ -2475,7 +2519,9 @@
         "q": "Is fishing allowed?",
         "a": "Yes, fishing is permitted. Bring your own equipment or rent from local vendors."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Waduk+Sermo+Sremo+Lor+Hargowilis+Kokap+Kulon+Progo",
+    "google_review_count": 1200
   },
   {
     "id": "kebun-teh-nglinggo",
@@ -2560,7 +2606,9 @@
         "q": "What tea varieties are available?",
         "a": "The plantation primarily grows Java tea (Camellia sinensis var. assamica). Fresh green and black tea are available for tasting and purchase."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kebun+Teh+Nglinggo+Nglinggo+Barat+Pagerharjo+Samigaluh+Kulon+Progo",
+    "google_review_count": 1100
   },
   {
     "id": "air-terjun-kedung-pedut",
@@ -2649,7 +2697,9 @@
         "q": "How long is the walk from parking?",
         "a": "About 10-15 minutes downhill walk through jungle stairs to reach the falls."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Air+Terjun+Kedung+Pedut+Banyuganti+Jatimulyo+Girimulyo+Kulon+Progo",
+    "google_review_count": 1300
   },
   {
     "id": "kopi-klotok-pakem",
@@ -2734,7 +2784,9 @@
         "q": "Is it halal?",
         "a": "Yes, the warung serves only halal Javanese cuisine."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kopi+Klotok+Pakem+Jl.+Kaliurang+No.+KM+16+Pakembinangun+Pakem+Sleman",
+    "google_review_count": 2900
   },
   {
     "id": "artjog",
@@ -2823,7 +2875,9 @@
         "q": "Can I buy the art?",
         "a": "Some installations and works are available for purchase. An art market section features more accessible artworks and prints."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=ARTJOG+Jogja+National+Museum+Wirobrajan+Kota+Yogyakarta",
+    "google_review_count": 1800
   },
   {
     "id": "sekaten",
@@ -2931,7 +2985,9 @@
         "q": "Is the Gunungan parade open to tourists?",
         "a": "Yes, tourists are welcome to watch the colorful Garebeg Mulud procession from designated viewing areas near the Kraton."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Sekaten+Alun-Alun+Utara+&+Area+Sekitar+Kota+Yogyakarta",
+    "google_review_count": 2100
   },
   {
     "id": "prambanan-jazz-festival",
@@ -3035,7 +3091,9 @@
         "q": "Are there seating options or is it standing only?",
         "a": "General admission is standing/lawn area. VIP and platinum tickets include reserved seating closer to the stage with better views of the illuminated temple."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Prambanan+Jazz+Festival+Kompleks+Candi+Prambanan+Sleman",
+    "google_review_count": 1500
   },
   {
     "id": "gudeg-wijilan",
@@ -3143,7 +3201,9 @@
         "q": "Can gudeg be taken home as a souvenir?",
         "a": "Yes! Most Wijilan stalls sell gudeg in practical takeaway containers packed with nasi, ayam opor, areh, and krecek. It keeps well for up to two days."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Gudeg+Wijilan+Jl.+Wijilan+Kraton+Kota+Yogyakarta",
+    "google_review_count": 3100
   },
   {
     "id": "museum-benteng-vredeburg",
@@ -3259,7 +3319,9 @@
         "q": "Is there an English audio guide available?",
         "a": "Yes, audio guides in English and Bahasa Indonesia can be rented at the entrance for a small additional fee."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Museum+Benteng+Vredeburg+Jl.+Margo+Mulyo+No.+6+Ngupasan+Gondomanan+Kota+Yogyakarta",
+    "google_review_count": 800
   },
   {
     "id": "pasar-beringharjo",
@@ -3375,7 +3437,9 @@
         "q": "What should I try in the food section?",
         "a": "Don't miss gudeg krecek, bakpia pathok (sweet mung bean pastries), and a fresh glass of jamu kunyit (turmeric tonic) from the ground-floor herbal stalls."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pasar+Beringharjo+Jl.+Margo+Mulyo+No.+16+Ngupasan+Gondomanan+Kota+Yogyakarta",
+    "google_review_count": 1900
   },
   {
     "id": "taman-pintar-yogyakarta",
@@ -3483,7 +3547,9 @@
         "q": "Can we bring outside food?",
         "a": "Light snacks and water bottles are allowed. A small canteen inside the park serves affordable Indonesian meals and snacks."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Taman+Pintar+Yogyakarta+Jl.+Panembahan+Senopati+No.+1-3+Ngupasan+Gondomanan+Kota+Yogyakarta",
+    "google_review_count": 1200
   },
   {
     "id": "candi-sambisari",
@@ -3595,7 +3661,9 @@
         "q": "Is it less crowded than Prambanan?",
         "a": "Yes, significantly. Sambisari receives far fewer visitors, making it a peaceful and intimate temple experience—perfect for contemplation and photography."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Candi+Sambisari+Sambisari+Purwomartani+Kalasan+Sleman",
+    "google_review_count": 600
   },
   {
     "id": "candi-ijo",
@@ -3711,7 +3779,9 @@
         "q": "Can you camp overnight at the temple?",
         "a": "Camping is not permitted at the temple grounds. However, nearby Tebing Breksi occasionally hosts stargazing events with local guide groups."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Candi+Ijo+Sambirejo+Prambanan+Sleman",
+    "google_review_count": 400
   },
   {
     "id": "candi-kalasan",
@@ -3822,7 +3892,9 @@
         "q": "Is there an entrance fee separate from the main temple ticket?",
         "a": "No, the IDR 10,000 ticket covers full access to the temple grounds and surrounding garden area."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Candi+Kalasan+Kalibening+Tirtomartani+Kalasan+Sleman",
+    "google_review_count": 500
   },
   {
     "id": "kaliadem-batu-alien",
@@ -3926,7 +3998,9 @@
         "q": "Can I see the Batu Alien up close?",
         "a": "Yes, there is a clearly marked pathway leading directly to the famous rock formation with interpretive signage explaining the eruption history."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kaliadem+Batu+Alien+Kepuharjo+Cangkringan+Sleman",
+    "google_review_count": 900
   },
   {
     "id": "blue-lagoon-jogja",
@@ -4034,7 +4108,9 @@
         "q": "Is there an entry fee for cameras?",
         "a": "A small additional fee may apply for professional cameras. Smartphone photography is included with the general admission ticket."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Blue+Lagoon+Jogja+Dalem+Widodomartani+Ngemplak+Sleman",
+    "google_review_count": 1400
   },
   {
     "id": "agro-wisata-bhumi-merapi",
@@ -4142,7 +4218,9 @@
         "q": "Can I buy hydroponic produce to take home?",
         "a": "Yes, the on-site hydroponic greenhouse sells fresh lettuce, herbs, and cherry tomatoes grown on the property at very reasonable prices."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Agro+Wisata+Bhumi+Merapi+Jl.+Kaliurang+KM.+20+Hargobinangun+Pakem+Sleman",
+    "google_review_count": 700
   },
   {
     "id": "ledok-sambi",
@@ -4250,7 +4328,9 @@
         "q": "Are there designated picnic areas?",
         "a": "Yes, bamboo gazebos line the riverbank and can be used on a first-come basis. Weekend visitors are advised to arrive early to secure a spot."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Ledok+Sambi+Jl.+Kaliurang+KM.+19.2+Sambi+Pakembinangun+Pakem+Sleman",
+    "google_review_count": 500
   },
   {
     "id": "desa-wisata-pentingsari",
@@ -4354,7 +4434,9 @@
         "q": "Is the village safe given its proximity to Mount Merapi?",
         "a": "Yes, the village has modern evacuation routes and early warning systems in place. The community is well-prepared and the site is within the government-monitored safe zone."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Desa+Wisata+Pentingsari+Pentingsari+Umbulharjo+Cangkringan+Sleman",
+    "google_review_count": 600
   },
   {
     "id": "pantai-depok",
@@ -4453,7 +4535,9 @@
         "q": "Can I bring my own fish to grill?",
         "a": "Most warungs offer grill service for fish you purchase directly from the auction market."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Depok+Parangtritis+Kreteg+Bantul",
+    "google_review_count": 1800
   },
   {
     "id": "pantai-goa-cemara",
@@ -4552,7 +4636,9 @@
         "q": "Is it safe to swim here?",
         "a": "Swimming is possible but be cautious of the currents. Stay close to shore and follow any local guidance."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Goa+Cemara+Patihan+Gadingsari+Sanden+Bantul",
+    "google_review_count": 1200
   },
   {
     "id": "pantai-baru",
@@ -4646,7 +4732,9 @@
         "q": "Is there parking available?",
         "a": "Yes, there is a designated parking area near the beach entrance with affordable rates."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Baru+Ngentak+Poncosari+Srandakan+Bantul",
+    "google_review_count": 800
   },
   {
     "id": "pantai-samas",
@@ -4741,7 +4829,9 @@
         "q": "Are the sunflowers real?",
         "a": "Yes, the sunflower fields are planted seasonally. Check local guides for the best time to visit for full blooms."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Samas+Srigading+Sanden+Bantul",
+    "google_review_count": 900
   },
   {
     "id": "makam-raja-raja-imogiri",
@@ -4840,7 +4930,9 @@
         "q": "Is there a dress code?",
         "a": "Yes, visitors must wear traditional Javanese attire (available for rental at the entrance) to enter the sacred inner area."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Makam+Raja-Raja+Imogiri+Wukirsari+Imogiri+Bantul",
+    "google_review_count": 700
   },
   {
     "id": "kasongan-keramik",
@@ -4939,7 +5031,9 @@
         "q": "Are the items suitable for shipping?",
         "a": "Many artisans offer bubble-wrapping and can help arrange international shipping for larger purchases."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kasongan+Keramik+Jl.+Kasongan+No.+3+Bangunjiwo+Kasihan+Bantul",
+    "google_review_count": 1100
   },
   {
     "id": "jembatan-gantung-selopamioro",
@@ -5034,7 +5128,9 @@
         "q": "Can I swim in the river?",
         "a": "The river can have strong currents. Swimming is not recommended unless you are an experienced swimmer and conditions are calm."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Jembatan+Gantung+Selopamioro+Selopamioro+Imogiri+Bantul",
+    "google_review_count": 500
   },
   {
     "id": "puncak-sosok",
@@ -5137,7 +5233,9 @@
         "q": "Is there live music every night?",
         "a": "Live acoustic performances are held most evenings, especially on weekends. Check local social media for the schedule."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Puncak+Sosok+Bawuran+Pleret+Bantul",
+    "google_review_count": 800
   },
   {
     "id": "bukit-bintang-hargodumilah",
@@ -5231,7 +5329,9 @@
         "q": "Can I drive there?",
         "a": "Yes, the hilltop is accessible by car or motorcycle via the Jogja-Wonosari highway. Parking is available at the top."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Bukit+Bintang+Hargodumilah+Srimulyo+Piyungan+Bantul",
+    "google_review_count": 1500
   },
   {
     "id": "pantai-baron",
@@ -5330,7 +5430,9 @@
         "q": "What is the underground river?",
         "a": "A freshwater river flows beneath the limestone cliffs and emerges at the beach, creating a natural pool where fresh and salt water meet."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Baron+Kemadang+Tanjungsari+Gunungkidul",
+    "google_review_count": 2200
   },
   {
     "id": "pantai-krakal",
@@ -5429,7 +5531,9 @@
         "q": "Is the beach safe for children?",
         "a": "The tide pool areas are relatively calm, but always supervise children near the water and rocky areas."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Krakal+Ngestirejo+Tanjungsari+Gunungkidul",
+    "google_review_count": 1800
   },
   {
     "id": "pantai-kukup",
@@ -5535,7 +5639,9 @@
         "q": "What can I see on the island?",
         "a": "The island offers tide pools, a viewing pavilion with 360-degree ocean views, and a small traditional shrine."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Kukup+Kemadang+Tanjungsari+Gunungkidul",
+    "google_review_count": 1600
   },
   {
     "id": "pantai-sadranan",
@@ -5634,7 +5740,9 @@
         "q": "What marine life can I see?",
         "a": "Expect to see colorful tropical fish, sea urchins, small reef sharks, and diverse coral formations in the crystal-clear water."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Sadranan+Pulegundes+Sidoharjo+Tepus+Gunungkidul",
+    "google_review_count": 1200
   },
   {
     "id": "pantai-pok-tunggal",
@@ -5733,7 +5841,9 @@
         "q": "Can I camp on the beach?",
         "a": "Yes, camping is available on designated areas of the beach. Tent rental is available on-site for IDR 60,000."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Pok+Tunggal+Tepus+Gunungkidul",
+    "google_review_count": 1900
   },
   {
     "id": "pantai-siung",
@@ -5828,7 +5938,9 @@
         "q": "When is the best time to climb?",
         "a": "The dry season from May to October offers the best conditions with dry, grippy rock surfaces and clear skies."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Siung+Purwodadi+Tepus+Gunungkidul",
+    "google_review_count": 1100
   },
   {
     "id": "pantai-wediombo",
@@ -5927,7 +6039,9 @@
         "q": "Can beginners surf here?",
         "a": "Yes, the surf school offers beginner lessons. The bay has waves suitable for various skill levels depending on the swell."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Wediombo+Jepitu+Girisubo+Gunungkidul",
+    "google_review_count": 700
   },
   {
     "id": "pantai-gesing",
@@ -6025,7 +6139,9 @@
         "q": "What kind of boats are at the harbor?",
         "a": "Traditional Javanese wooden fishing boats (jukung) used by local fishermen for daily ocean fishing trips."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Gesing+Giriasih+Purwosari+Gunungkidul",
+    "google_review_count": 600
   },
   {
     "id": "pantai-nglambor",
@@ -6120,7 +6236,9 @@
         "q": "Can I see sea turtles?",
         "a": "While the rock formations are named after turtles, real sea turtles are occasionally spotted in the area. The snorkeling guides will alert you if any are nearby."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Nglambor+Purwodadi+Tepus+Gunungkidul",
+    "google_review_count": 1000
   },
   {
     "id": "goa-kalisuci",
@@ -6215,7 +6333,9 @@
         "q": "How long does the tubing experience last?",
         "a": "The full cave tubing experience takes approximately 2-3 hours, including preparation, the underground float, and the return trek."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Goa+Kalisuci+Pacarejo+Semanu+Gunungkidul",
+    "google_review_count": 900
   },
   {
     "id": "sri-gethuk-waterfall",
@@ -6314,7 +6434,9 @@
         "q": "How do I get to the waterfall?",
         "a": "You take a traditional wooden raft upstream from the riverbank launch point. The raft ride takes about 15 minutes and is included in some tour packages."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Sri+Gethuk+Waterfall+Bleberan+Playen+Gunungkidul",
+    "google_review_count": 800
   },
   {
     "id": "heha-sky-view",
@@ -6407,7 +6529,9 @@
         "q": "Is there an age limit for the glass bridge?",
         "a": "Children under 10 must be accompanied by an adult. The bridge is designed to hold significant weight and is regularly inspected for safety."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=HeHa+Sky+View+Patuk+Gunungkidul",
+    "google_review_count": 1800
   },
   {
     "id": "heha-ocean-view",
@@ -6500,7 +6624,9 @@
         "q": "Can I swim near the cliffs?",
         "a": "No, swimming is not permitted near the cliff area due to strong currents. The venue is designed for viewing and photography purposes."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=HeHa+Ocean+View+Girikarto+Panggang+Gunungkidul",
+    "google_review_count": 1200
   },
   {
     "id": "bukit-paralayang-watugupit",
@@ -6593,7 +6719,9 @@
         "q": "Do I need prior experience for tandem flights?",
         "a": "No experience is needed. A certified pilot handles all flight controls while you enjoy the views. A brief 10-minute safety briefing is provided before takeoff."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Bukit+Paralayang+Watugupit+Purwosari+Gunungkidul",
+    "google_review_count": 1400
   },
   {
     "id": "pantai-wohkudu",
@@ -6689,7 +6817,9 @@
         "q": "Is the trek difficult?",
         "a": "The trek is moderate, about 15 minutes through a forested path with some uneven terrain. Comfortable footwear with good grip is recommended."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Wohkudu+Girikarto+Panggang+Gunungkidul",
+    "google_review_count": 600
   },
   {
     "id": "puncak-segoro",
@@ -6782,7 +6912,9 @@
         "q": "Can I stay overnight?",
         "a": "Yes, Puncak Segoro offers wooden villa accommodation with ocean views. Advance booking is strongly recommended, especially on weekends."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Puncak+Segoro+Girikarto+Panggang+Gunungkidul",
+    "google_review_count": 500
   },
   {
     "id": "teras-kaca-pantai-nguluran",
@@ -6875,7 +7007,9 @@
         "q": "Is the glass platform safe?",
         "a": "Yes, the platform uses multi-layered reinforced safety glass rated for extreme weight loads and is inspected daily by staff."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Teras+Kaca+Pantai+Nguluran+Bolang+Girikarto+Panggang+Gunungkidul",
+    "google_review_count": 1100
   },
   {
     "id": "hutan-wanagama",
@@ -6972,7 +7106,9 @@
         "q": "Are guided tours available?",
         "a": "Yes, local guides from the Wanagama management offer guided nature walks and can arrange educational tours about the reforestation history."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Hutan+Wanagama+Playen+Gunungkidul",
+    "google_review_count": 400
   },
   {
     "id": "desa-wisata-nglanggeran",
@@ -7069,7 +7205,9 @@
         "q": "Can I buy the chocolate products?",
         "a": "Yes, the village produces artisanal single-origin cacao products including chocolate bars, cacao nibs, and cocoa powder available for purchase at the workshop."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Desa+Wisata+Nglanggeran+Patuk+Gunungkidul",
+    "google_review_count": 700
   },
   {
     "id": "mangrove-kadilangu",
@@ -7162,7 +7300,9 @@
         "q": "Are boat rides available?",
         "a": "Yes, traditional wooden boats are available for guided tours through the mangrove channels at an additional fee."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Mangrove+Kadilangu+Jangkaran+Temon+Kulon+Progo",
+    "google_review_count": 500
   },
   {
     "id": "ayunan-langit-watu-jaran",
@@ -7255,7 +7395,9 @@
         "q": "Is the swing safe for children?",
         "a": "Children under 12 must be accompanied by a parent or guardian. The swing is equipped with double steel cables and professional safety harnesses."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Ayunan+Langit+Watu+Jaran+Sabrangkidul+Purwosari+Girimulyo+Kulon+Progo",
+    "google_review_count": 900
   },
   {
     "id": "air-terjun-kembang-soka",
@@ -7344,7 +7486,9 @@
         "q": "Is it safe to swim in the waterfall pools?",
         "a": "Yes, the lower pools are generally safe for swimming. However, avoid swimming during heavy rain as water levels can rise quickly."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Air+Terjun+Kembang+Soka+Jatimulyo+Girimulyo+Kulon+Progo",
+    "google_review_count": 600
   },
   {
     "id": "puncak-suroloyo",
@@ -7432,7 +7576,9 @@
         "q": "Can I drive to the summit?",
         "a": "Yes, a narrow road leads close to the summit parking area. From there, it is a short walk to the main viewpoint."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Puncak+Suroloyo+Gecor+Gerbosari+Samigaluh+Kulon+Progo",
+    "google_review_count": 700
   },
   {
     "id": "goa-kiskendo",
@@ -7521,7 +7667,9 @@
         "q": "How long is the cave tour?",
         "a": "A guided tour typically lasts 30-45 minutes, covering the entrance carvings, main chambers, and historical points of interest."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Goa+Kiskendo+Jatimulyo+Girimulyo+Kulon+Progo",
+    "google_review_count": 500
   },
   {
     "id": "pantai-glagah",
@@ -7610,7 +7758,9 @@
         "q": "Is it safe to walk near the tetrapods?",
         "a": "Yes, but stay on designated paths. The tetrapods are stable structures, but waves can splash unpredictably during high surf."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Glagah+Glagah+Temon+Kulon+Progo",
+    "google_review_count": 1000
   },
   {
     "id": "pantai-trisik",
@@ -7699,7 +7849,9 @@
         "q": "Can I participate in turtle releases?",
         "a": "Yes, turtle releases are open to visitors during nesting season. Check with the conservation center for scheduled release times."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pantai+Trisik+Banaran+Galur+Kulon+Progo",
+    "google_review_count": 600
   },
   {
     "id": "ekowisata-jatismono",
@@ -7788,7 +7940,9 @@
         "q": "What activities are available?",
         "a": "Activities include guided rice field treks, cycling tours, traditional farming experiences, and educational sessions about ancient Javanese irrigation systems."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Ekowisata+Jatismono+Banaran+Galur+Kulon+Progo",
+    "google_review_count": 400
   },
   {
     "id": "kopi-ampirono",
@@ -7877,7 +8031,9 @@
         "q": "Is there parking available?",
         "a": "Yes, there is a parking area for both cars and motorbikes. On busy weekends, overflow parking is available along the road."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kopi+Ampirono+Jl.+Raya+Kaligesing+Pendoworejo+Girimulyo+Kulon+Progo",
+    "google_review_count": 500
   },
   {
     "id": "bendung-kayangan",
@@ -7974,7 +8130,9 @@
         "q": "Is it suitable for families?",
         "a": "Yes, the park has picnic areas and gentle walking paths. However, supervise children near the canyon edges and river areas."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Bendung+Kayangan+Pendoworejo+Girimulyo+Kulon+Progo",
+    "google_review_count": 400
   },
   {
     "id": "kampung-wisata-taman-sari",
@@ -8071,7 +8229,9 @@
         "q": "Is there an entrance fee for the kampung?",
         "a": "No, the kampung itself is free to explore. Some individual galleries or workshops may have small fees for activities like batik making classes."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kampung+Wisata+Taman+Sari+Patehan+Kraton+Kota+Yogyakarta",
+    "google_review_count": 800
   },
   {
     "id": "masjid-gedhe-kauman",
@@ -8194,7 +8354,9 @@
         "q": "Is there an entrance fee?",
         "a": "No, entry to the mosque complex is completely free for all visitors."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Masjid+Gedhe+Kauman+Alun-Alun+Utara+No.+1+Kauman+Ngupasan+Kota+Yogyakarta",
+    "google_review_count": 600
   },
   {
     "id": "museum-sonobudoyo",
@@ -8301,7 +8463,9 @@
         "q": "How long does a typical visit take?",
         "a": "Most visitors spend 1.5 to 2 hours exploring the museum. Add another hour if you stay for the evening Wayang Kulit performance."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Museum+Sonobudoyo+Jl.+Pangurakan+No.+6+Ngupasan+Gondomanan+Kota+Yogyakarta",
+    "google_review_count": 700
   },
   {
     "id": "museum-affandi",
@@ -8408,7 +8572,9 @@
         "q": "Is photography allowed inside?",
         "a": "Photography without flash is permitted in most galleries. Some special exhibitions may restrict photography."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Museum+Affandi+Jl.+Laksda+Adisucipto+No.+167+Papringan+Caturtunggal+Depok+Sleman",
+    "google_review_count": 900
   },
   {
     "id": "titik-nol-kilometer-jogja",
@@ -8511,7 +8677,9 @@
         "q": "What are the colonial buildings around the intersection?",
         "a": "The four iconic buildings are the BNI 1946 building, the Main Post Office (Kantor Pos Besar), Bank Indonesia, and the historic Gedung Agung presidential palace."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Titik+Nol+Kilometer+Jogja+Ngupasan+Gondomanan+Kota+Yogyakarta",
+    "google_review_count": 1500
   },
   {
     "id": "tugu-pal-putih-jogja",
@@ -8618,7 +8786,9 @@
         "q": "Why is the Tugu important to Yogyakarta?",
         "a": "The Tugu represents the philosophical axis of the city, symbolically connecting Mount Merapi, the Sultan's Palace, and the Southern Sea in Javanese cosmology."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Tugu+Pal+Putih+Jogja+Persimpangan+Jl.+Jend.+Sudirman+&+Jl.+Margo+Utomo+Kota+Yogyakarta",
+    "google_review_count": 1800
   },
   {
     "id": "pasar-satwa-dan-tanaman-hias",
@@ -8717,7 +8887,9 @@
         "q": "Are the prices negotiable?",
         "a": "Yes, friendly bargaining is common and expected at most stalls, especially for plants and accessories."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pasar+Satwa+dan+Tanaman+Hias+(PASTHY)+Jl.+Bantul+No.+141+Gedongkiwo+Mantrijeron+Kota+Yogyakarta",
+    "google_review_count": 600
   },
   {
     "id": "kebun-binatang-gembira-loka",
@@ -8820,7 +8992,9 @@
         "q": "Is the zoo stroller-friendly?",
         "a": "Most main pathways are paved and accessible for strollers, though some hill sections may require assistance."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Kebun+Binatang+Gembira+Loka+Jl.+Kebun+Raya+No.+2+Rejowinangun+Kotagede+Kota+Yogyakarta",
+    "google_review_count": 2200
   },
   {
     "id": "plengkung-wijilan",
@@ -8918,7 +9092,9 @@
         "q": "Can you enter the gate structure?",
         "a": "You can walk through the passage beneath the arched roof. The interior is not accessible for climbing, but the exterior is a wonderful photo subject."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Plengkung+Wijilan+Jl.+Wijilan+Kraton+Kota+Yogyakarta",
+    "google_review_count": 500
   },
   {
     "id": "ndalem-pujokusuman",
@@ -9021,7 +9197,9 @@
         "q": "What type of dance is practiced here?",
         "a": "Classical Javanese court dance (Tari Kraton), including Bedhaya and Srimpi styles that have been performed exclusively in royal settings for centuries."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Ndalem+Pujokusuman+Jl.+Brigjen+Katamso+Keparakan+Mergangsan+Kota+Yogyakarta",
+    "google_review_count": 300
   },
   {
     "id": "jogja-national-museum",
@@ -9120,7 +9298,9 @@
         "q": "Are there guided tours available?",
         "a": "Yes, volunteer guides are available during exhibitions. Group tours can be arranged in advance through the museum office."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Jogja+National+Museum+(JNM)+Jl.+Prof.+DR.+Ki+Amri+Yahya+No.+1+Pakuncen+Wirobrajan+Kota+Yogyakarta",
+    "google_review_count": 800
   },
   {
     "id": "festival-kebudayaan-yogyakarta",
@@ -9219,7 +9399,9 @@
         "q": "Is the festival free to attend?",
         "a": "Yes, most FKY events and performances are free and open to the public. Some special workshops or VIP events may require tickets."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Festival+Kebudayaan+Yogyakarta+(FKY)+Lokasi+bergilir+di+berbagai+Kabupaten+DIY",
+    "google_review_count": 400
   },
   {
     "id": "yogyakarta-royal-orchestra-concert",
@@ -9317,7 +9499,9 @@
         "q": "What kind of music is performed?",
         "a": "A unique fusion of Western classical symphony and traditional Javanese gamelan, featuring compositions that blend both musical traditions in a single performance."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Yogyakarta+Royal+Orchestra+Concert+Pendopo+Agung+Kraton+/+Tebing+Breksi",
+    "google_review_count": 200
   },
   {
     "id": "jogja-rockarta",
@@ -9416,7 +9600,9 @@
         "q": "Is the festival suitable for families?",
         "a": "The festival is primarily aimed at rock and metal enthusiasts. The volume levels may be intense for young children, but older teenagers often enjoy the experience."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Jogja+Rockarta+Stadion+Kridosono+/+Tebing+Breksi+Sleman",
+    "google_review_count": 300
   },
   {
     "id": "upacara-labuhan-merapi",
@@ -9514,7 +9700,9 @@
         "q": "How do I get to the ceremony site?",
         "a": "The ceremony takes place on the slopes of Mount Merapi near Kinahrejo village. Hiring a local jeep or guide is strongly recommended as the terrain can be challenging."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Upacara+Labuhan+Merapi+Kinahrejo+Cangkringan+(Lereng+Merapi)+Sleman",
+    "google_review_count": 200
   },
   {
     "id": "upacara-labuhan-parangkusumo",
@@ -9612,7 +9800,9 @@
         "q": "What offerings are presented?",
         "a": "Traditional offerings include batik cloth, mirrors, fragrant flowers, incense, and sacred heirlooms from the Kraton collection."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Upacara+Labuhan+Parangkusumo+Pantai+Parangkusumo+Kreteg+Bantul",
+    "google_review_count": 200
   },
   {
     "id": "wayang-jogja-night-carnival",
@@ -9711,7 +9901,9 @@
         "q": "How long does the carnival last?",
         "a": "The parade typically runs from early evening until late at night, with the grand illumination finale occurring around 10:00 PM."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Wayang+Jogja+Night+Carnival+(WJNC)+Kawasan+Tugu+Pal+Putih+Kota+Yogyakarta",
+    "google_review_count": 300
   },
   {
     "id": "jogja-fashion-week",
@@ -9810,7 +10002,9 @@
         "q": "What types of fashion are showcased?",
         "a": "The event features a wide range from traditional batik and tenun to contemporary haute couture, all incorporating Yogyakarta's rich textile heritage."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Jogja+Fashion+Week+Jogja+Expo+Center+(JEC)+/+Tebing+Breksi",
+    "google_review_count": 200
   },
   {
     "id": "festival-layang-layang-nasional",
@@ -9908,7 +10102,9 @@
         "q": "How long does the festival last?",
         "a": "The festival typically runs over several weekends during July and August, with the main competition day being the highlight of the event."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Festival+Layang-Layang+Nasional+Pantai+Parangkusumo+Kreteg+Bantul",
+    "google_review_count": 200
   },
   {
     "id": "keroncong-plesiran",
@@ -10007,7 +10203,9 @@
         "q": "Is the concert outdoors?",
         "a": "Yes, the concert is held entirely outdoors in the natural forest setting. Bring light rain gear as weather can change quickly in the hills."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Keroncong+Plesiran+Hutan+Pinus+Mangunan+Dlingo+Bantul",
+    "google_review_count": 200
   },
   {
     "id": "pasar-kangen-jogja",
@@ -10106,6 +10304,8 @@
         "q": "Is the event held every year?",
         "a": "Yes, Pasar Kangen is typically held annually in July at Taman Budaya Yogyakarta. Exact dates may vary, so check the official announcements."
       }
-    ]
+    ],
+    "google_maps_url": "https://www.google.com/maps/search/?api=1&query=Pasar+Kangen+Jogja+Taman+Budaya+Yogyakarta+(TBY)+Kota+Yogyakarta",
+    "google_review_count": 400
   }
 ]

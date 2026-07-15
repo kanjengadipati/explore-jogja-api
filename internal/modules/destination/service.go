@@ -27,19 +27,21 @@ func (s *Service) Search(query string) ([]Destination, error) {
 }
 
 type UpdateDestinationRequest struct {
-	Name         *string   `json:"name"`
-	Tagline      *string   `json:"tagline"`
-	Category     *string   `json:"category"`
-	Location     *string   `json:"location"`
-	SubRegion    *string   `json:"sub_region"`
-	Description  *string   `json:"description"`
-	Story        *string   `json:"story"`
-	TicketPrice  *string   `json:"ticket_price"`
-	OpeningHours *string   `json:"opening_hours"`
-	BestTime     *string   `json:"best_time"`
-	Latitude     *float64  `json:"latitude"`
-	Longitude    *float64  `json:"longitude"`
-	Images       *JSONArr  `json:"images"`
+	Name              *string   `json:"name"`
+	Tagline           *string   `json:"tagline"`
+	Category          *string   `json:"category"`
+	Location          *string   `json:"location"`
+	SubRegion         *string   `json:"sub_region"`
+	Description       *string   `json:"description"`
+	Story             *string   `json:"story"`
+	TicketPrice       *string   `json:"ticket_price"`
+	OpeningHours      *string   `json:"opening_hours"`
+	BestTime          *string   `json:"best_time"`
+	Latitude          *float64  `json:"latitude"`
+	Longitude         *float64  `json:"longitude"`
+	Images            *JSONArr  `json:"images"`
+	GoogleMapsURL     *string   `json:"google_maps_url"`
+	GoogleReviewCount *int      `json:"google_review_count"`
 }
 
 func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Destination, error) {
@@ -86,6 +88,12 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 	}
 	if req.Images != nil {
 		dest.Images = *req.Images
+	}
+	if req.GoogleMapsURL != nil {
+		dest.GoogleMapsURL = *req.GoogleMapsURL
+	}
+	if req.GoogleReviewCount != nil {
+		dest.GoogleReviewCount = *req.GoogleReviewCount
 	}
 
 	if err := s.Repo.Update(dest); err != nil {

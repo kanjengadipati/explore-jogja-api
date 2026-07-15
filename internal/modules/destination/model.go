@@ -77,7 +77,9 @@ type Destination struct {
 	Weather       JSONMap `gorm:"type:jsonb" json:"weather"`
 	Latitude      float64 `json:"latitude"`
 	Longitude     float64 `json:"longitude"`
-	Reviews       JSONArr `gorm:"type:jsonb" json:"reviews"`
-	Partners      JSONArr `gorm:"type:jsonb" json:"partners"`
-	FAQs          JSONArr `gorm:"type:jsonb;column:faqs" json:"faqs"`
+	Reviews          JSONArr `gorm:"type:jsonb" json:"reviews"`
+	Partners         JSONArr `gorm:"type:jsonb" json:"partners"`
+	FAQs             JSONArr `gorm:"type:jsonb;column:faqs" json:"faqs"`
+	GoogleMapsURL    string  `json:"google_maps_url"`
+	GoogleReviewCount int    `json:"google_review_count"`
 }
