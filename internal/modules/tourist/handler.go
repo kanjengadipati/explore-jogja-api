@@ -39,6 +39,13 @@ type AIQueryResponse struct {
 	MatchedDestinationIDs []string `json:"matchedDestinationIds"`
 }
 
+type AIRecommendResponse struct {
+	DestinationID string `json:"destinationId"`
+	Headline      string `json:"headline"`
+	Reason        string `json:"reason"`
+	Crowd         string `json:"crowd"`
+}
+
 type AIImageSearchRequest struct {
 	Image    string `json:"image" binding:"required"`
 	MimeType string `json:"mimeType" binding:"required"`
@@ -154,6 +161,93 @@ Respond ONLY with valid JSON matching this schema:
 	}
 
 	httpx.Success(c, 200, "Image analyzed", parsed, nil)
+}
+
+func (h *Handler) Recommend(c *gin.Context) {
+	now := fmt.Sprintf("%s", c.Query("time"))
+	if now == "" {
+		now = "morning"
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.Success(c, 200, "AI disabled, using offline mode", h.offlineRecommendResponse(now), nil)
+		return
+	}
+
+	dests, err := h.DestinationRepo.FindAll()
+	if err != nil {
+		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
+		return
+	}
+
+	destContext := destinationsContextJSON(dests)
+	systemInstruction := fmt.Sprintf(`You are an AI tourism assistant for Yogyakarta, Indonesia.
+Pick EXACTLY ONE best destination from the catalog for tourists to visit right now (time of day: %s).
+Consider: time of day, typical weather, crowd patterns, and uniqueness of experience.
+
+Here is the exact catalog of Yogyakarta destinations:
+%s
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "destinationId": "the exact id field from the catalog",
+  "headline": "A punchy 5-8 word reason why this is the best spot right now (e.g. 'Perfect morning light for temple shots')",
+  "reason": "One sentence explaining why this destination is ideal right now.",
+  "crowd": "Low" or "Medium" or "High"
+}`, now, destContext)
+
+	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		SystemPrompt: systemInstruction,
+		UserPrompt:   fmt.Sprintf("Current time of day: %s. Pick the single best destination for a tourist to visit right now.", now),
+		Temperature:  0.6,
+		MaxTokens:    400,
+	})
+	if err != nil {
+		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", "Failed to generate recommendation")
+		return
+	}
+
+	var parsed AIRecommendResponse
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+		// fallback to offline if AI response is not parseable
+		httpx.Success(c, 200, "Recommendation generated", h.offlineRecommendResponse(now), nil)
+		return
+	}
+
+	httpx.Success(c, 200, "Recommendation generated", parsed, nil)
+}
+
+func (h *Handler) offlineRecommendResponse(timeOfDay string) *AIRecommendResponse {
+	switch {
+	case containsAny(timeOfDay, "morning"):
+		return &AIRecommendResponse{
+			DestinationID: "merapi",
+			Headline:      "Perfect morning light for Merapi views",
+			Reason:        "Clear morning skies offer the best visibility for Mount Merapi's majestic silhouette.",
+			Crowd:         "Low",
+		}
+	case containsAny(timeOfDay, "afternoon"):
+		return &AIRecommendResponse{
+			DestinationID: "prambanan",
+			Headline:      "Golden afternoon at Prambanan Temple",
+			Reason:        "Afternoon light makes the ancient spires glow in warm gold tones.",
+			Crowd:         "Medium",
+		}
+	case containsAny(timeOfDay, "evening", "sunset"):
+		return &AIRecommendResponse{
+			DestinationID: "parangtritis",
+			Headline:      "Magic sunset at Parangtritis Beach",
+			Reason:        "The southern coast offers a spectacular sunset over the Indian Ocean every evening.",
+			Crowd:         "High",
+		}
+	default:
+		return &AIRecommendResponse{
+			DestinationID: "tamansari",
+			Headline:      "Explore Taman Sari's hidden tunnels",
+			Reason:        "Taman Sari Water Castle is magnificent at any time of day.",
+			Crowd:         "Low",
+		}
+	}
 }
 
 func (h *Handler) offlineQueryResponse(query string) *AIQueryResponse {
