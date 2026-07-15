@@ -12,6 +12,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler) {
 	aiGroup.POST("/query", handler.Query)
 	aiGroup.POST("/image-search", handler.ImageSearch)
 	aiGroup.GET("/recommend", handler.Recommend)
+	aiGroup.POST("/journey", handler.Journey)
 }
 
 type Module struct {

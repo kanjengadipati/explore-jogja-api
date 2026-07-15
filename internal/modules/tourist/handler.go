@@ -46,6 +46,20 @@ type AIRecommendResponse struct {
 	Crowd         string `json:"crowd"`
 }
 
+type AIJourneyRequest struct {
+	DestinationName string `json:"destinationName" binding:"required"`
+}
+
+type AIJourneyResponse struct {
+	Steps []JourneyStep `json:"steps"`
+}
+
+type JourneyStep struct {
+	Time  string `json:"time"`
+	Title string `json:"title"`
+	Desc  string `json:"desc"`
+}
+
 type AIImageSearchRequest struct {
 	Image    string `json:"image" binding:"required"`
 	MimeType string `json:"mimeType" binding:"required"`
@@ -334,4 +348,78 @@ func buildUserPrompt(query string, history []ChatMessage) string {
 	}
 	prompt += fmt.Sprintf("User: %s", query)
 	return prompt
+}
+
+func (h *Handler) Journey(c *gin.Context) {
+	var req AIJourneyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.Success(c, 200, "AI disabled, using offline journey fallback", h.offlineJourneyResponse(req.DestinationName), nil)
+		return
+	}
+
+	systemInstruction := `You are an AI tourism itinerary planner for Yogyakarta, Indonesia.
+Your task is to generate a highly cohesive, premium, 3-step daily timeline (itinerary) centered around a single main destination.
+Structure the timeline into 3 distinct parts of the day:
+1. Morning (around 08:00 - 10:00)
+2. Afternoon / Lunch (around 12:00 - 14:00)
+3. Late Afternoon / Sunset (around 16:00 - 18:00)
+
+Return ONLY valid JSON matching this schema:
+{
+  "steps": [
+    {
+      "time": "HH:MM",
+      "title": "A punchy, enticing 4-7 word title",
+      "desc": "A descriptive sentence detailing the activities, local vibe, and unique advice (1-2 sentences max)."
+    }
+  ]
+}`
+
+	userPrompt := fmt.Sprintf("Generate a cohesive 3-step daily journey timeline centered around visiting '%s' in Yogyakarta.", req.DestinationName)
+
+	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		SystemPrompt: systemInstruction,
+		UserPrompt:   userPrompt,
+		Temperature:  0.7,
+		MaxTokens:    800,
+	})
+	if err != nil {
+		httpx.Success(c, 200, "AI error, using offline journey fallback", h.offlineJourneyResponse(req.DestinationName), nil)
+		return
+	}
+
+	var parsed AIJourneyResponse
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+		httpx.Success(c, 200, "AI response parse failure, using offline journey fallback", h.offlineJourneyResponse(req.DestinationName), nil)
+		return
+	}
+
+	httpx.Success(c, 200, "Journey generated", parsed, nil)
+}
+
+func (h *Handler) offlineJourneyResponse(destinationName string) *AIJourneyResponse {
+	return &AIJourneyResponse{
+		Steps: []JourneyStep{
+			{
+				Time:  "08:00",
+				Title: fmt.Sprintf("Morning Discovery at %s", destinationName),
+				Desc:  fmt.Sprintf("Start your journey early to enjoy the cool morning breeze and capture pristine photos of %s.", destinationName),
+			},
+			{
+				Time:  "12:30",
+				Title: "Culinary Heritage Lunch",
+				Desc:  "Head to a nearby traditional restaurant to savor signature Yogyakarta dishes like Gudeg or hot wedang drinks.",
+			},
+			{
+				Time:  "16:00",
+				Title: "Sunset Exploration",
+				Desc:  "Wind down your adventure by exploring local handicraft stalls and capturing the beautiful golden hour glow.",
+			},
+		},
+	}
 }
