@@ -49,6 +49,19 @@ func (r *GormRepository) Search(query string) ([]Review, error) {
 }
 
 func (r *GormRepository) Create(review *Review) error {
+	if review.UserID != "" {
+		var user struct {
+			Name  string
+			Email string
+		}
+		if err := r.db.Table("users").Select("name, email").Where("id = ? AND deleted_at IS NULL", review.UserID).Scan(&user).Error; err == nil {
+			if user.Name != "" {
+				review.UserName = user.Name
+			} else if user.Email != "" {
+				review.UserName = user.Email
+			}
+		}
+	}
 	return r.db.Create(review).Error
 }
 
