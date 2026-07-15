@@ -45,12 +45,16 @@ type SocialConfig struct {
 }
 
 type AIConfig struct {
-	Enabled        bool
-	Provider       string
-	Model          string
-	BaseURL        string
-	APIKey         string
-	TimeoutSeconds int
+	Enabled          bool
+	Provider         string
+	Model            string
+	BaseURL          string
+	APIKey           string
+	TimeoutSeconds   int
+	FallbackProvider string
+	FallbackModel    string
+	FallbackBaseURL  string
+	FallbackAPIKey   string
 }
 
 type OTPRateLimitConfig struct {
@@ -127,12 +131,16 @@ func LoadAppConfig() AppConfig {
 		},
 		Social: loadSocialConfig(),
 		AI: AIConfig{
-			Enabled:        envBool("AI_ENABLED"),
-			Provider:       strings.ToLower(GetEnv("AI_PROVIDER", "mock")),
-			Model:          GetEnv("AI_MODEL", "qwen2.5:3b"),
-			BaseURL:        GetEnv("AI_BASE_URL", ""),
-			APIKey:         GetEnv("AI_API_KEY", ""),
-			TimeoutSeconds: envInt("AI_TIMEOUT_SECONDS", 30),
+			Enabled:          envBool("AI_ENABLED"),
+			Provider:         strings.ToLower(GetEnv("AI_PROVIDER", "mock")),
+			Model:            GetEnv("AI_MODEL", "qwen2.5:3b"),
+			BaseURL:          GetEnv("AI_BASE_URL", ""),
+			APIKey:           GetEnv("AI_API_KEY", ""),
+			TimeoutSeconds:   envInt("AI_TIMEOUT_SECONDS", 30),
+			FallbackProvider: strings.ToLower(GetEnv("AI_FALLBACK_PROVIDER", "")),
+			FallbackModel:    GetEnv("AI_FALLBACK_MODEL", ""),
+			FallbackBaseURL:  GetEnv("AI_FALLBACK_BASE_URL", ""),
+			FallbackAPIKey:   GetEnv("AI_FALLBACK_API_KEY", ""),
 		},
 		OTPRateLimit: OTPRateLimitConfig{
 			Requests:              envInt("OTP_RATE_LIMIT_REQUESTS", 5),
