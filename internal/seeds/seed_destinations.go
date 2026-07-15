@@ -208,7 +208,7 @@ func getDestinationSeedData() []destination.Destination {
 			Category:    "adventure",
 			Location:    "Sleman, Yogyakarta",
 			SubRegion:   "Sleman",
-			Images:      ja([]string{"https://images.unsplash.com/photo-1586319826484-b7f386bf3e72?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1646806512881-1c169782a970?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1200&q=80"}),
+			Images:      ja([]string{"https://images.unsplash.com/photo-1655861467672-215aaeb119ff?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1704287824391-b3bc1e04ea33?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1518070588484-2b53926cba76?auto=format&fit=crop&w=1200&q=80"}),
 			Rating:      4.8,
 			ReviewCount: 5120,
 			Description: "Ride inside open-cabin vintage 4x4 Willys Jeeps along the trails left by Mount Merapi's historical eruptions. The Lava Tour takes you through devastated villages, buried homes, and the eerie Kaliadem Bunker — all with the smoking crater as your backdrop.",

@@ -1,9 +1,11 @@
 package review
 
 import (
+	"fmt"
 	"pleco-api/internal/httpx"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -53,6 +55,22 @@ func (h *Handler) Create(c *gin.Context) {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
+
+	// Auto-generate ExternalID if not provided
+	if review.ExternalID == "" {
+		review.ExternalID = uuid.NewString()
+	}
+
+	// Set UserID from JWT context
+	if userID, exists := c.Get("user_id"); exists {
+		review.UserID = fmt.Sprintf("%v", userID)
+	}
+
+	// Default status
+	if review.Status == "" {
+		review.Status = "published"
+	}
+
 	if err := h.Service.Create(&review); err != nil {
 		httpx.HandleError(c, err)
 		return

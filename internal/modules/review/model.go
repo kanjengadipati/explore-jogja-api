@@ -31,12 +31,13 @@ func (j *JSONArr) Scan(value interface{}) error {
 
 type Review struct {
 	gorm.Model
-	ExternalID   string `gorm:"uniqueIndex;not null" json:"id"`
-	UserID       string `gorm:"index" json:"user_id"`
-	DestinationID string `gorm:"index" json:"destination_id"`
-	UserName     string `json:"user_name"`
-	Rating       int    `json:"rating"`
-	Comment      string `gorm:"type:text" json:"comment"`
-	Images       JSONArr `gorm:"type:jsonb" json:"images"`
-	Status       string `gorm:"index" json:"status"`
+	ExternalID    string  `gorm:"uniqueIndex;not null" json:"id"`
+	UserID        string  `gorm:"index" json:"user_id"`
+	DestinationID string  `gorm:"index" json:"destination_id"`
+	UserName      string  `json:"user_name"`
+	TravelerType  string  `gorm:"index" json:"traveler_type"` // Solo | Couple | Family | Friends
+	Rating        int     `json:"rating"`
+	Comment       string  `gorm:"type:text" json:"comment"`
+	Images        JSONArr `gorm:"type:jsonb" json:"images"`
+	Status        string  `gorm:"index" json:"status"`
 }

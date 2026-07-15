@@ -23,13 +23,14 @@ func (s *Service) Search(query string) ([]Review, error) {
 }
 
 type UpdateReviewRequest struct {
-	UserID        *string `json:"user_id"`
-	DestinationID *string `json:"destination_id"`
-	UserName      *string `json:"user_name"`
-	Rating        *int    `json:"rating"`
-	Comment       *string `json:"comment"`
+	UserID        *string  `json:"user_id"`
+	DestinationID *string  `json:"destination_id"`
+	UserName      *string  `json:"user_name"`
+	TravelerType  *string  `json:"traveler_type"`
+	Rating        *int     `json:"rating"`
+	Comment       *string  `json:"comment"`
 	Images        *JSONArr `json:"images"`
-	Status        *string `json:"status"`
+	Status        *string  `json:"status"`
 }
 
 func (s *Service) Create(review *Review) error {
@@ -50,6 +51,9 @@ func (s *Service) Update(externalID string, req UpdateReviewRequest) (*Review, e
 	}
 	if req.UserName != nil {
 		review.UserName = *req.UserName
+	}
+	if req.TravelerType != nil {
+		review.TravelerType = *req.TravelerType
 	}
 	if req.Rating != nil {
 		review.Rating = *req.Rating
