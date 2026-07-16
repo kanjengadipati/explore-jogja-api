@@ -9,7 +9,8 @@ CREATE TABLE site_configs (
     value TEXT DEFAULT '',
     category VARCHAR(50) DEFAULT 'general',
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
 
 CREATE INDEX idx_site_configs_key ON site_configs(key);
