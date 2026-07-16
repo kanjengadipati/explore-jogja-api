@@ -26,6 +26,15 @@ func (h *Handler) GetAll(c *gin.Context) {
 		httpx.Success(c, 200, "Reviews fetched", reviews, nil)
 		return
 	}
+	if userID := c.Query("user_id"); userID != "" {
+		reviews, err := h.Service.GetByUserID(userID)
+		if err != nil {
+			httpx.HandleError(c, err)
+			return
+		}
+		httpx.Success(c, 200, "Reviews fetched", reviews, nil)
+		return
+	}
 	reviews, err := h.Service.GetAll()
 	if err != nil {
 		httpx.HandleError(c, err)

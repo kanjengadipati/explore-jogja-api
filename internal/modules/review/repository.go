@@ -7,6 +7,7 @@ import (
 type Repository interface {
 	FindAll() ([]Review, error)
 	FindByDestinationID(destinationID string) ([]Review, error)
+	FindByUserID(userID string) ([]Review, error)
 	FindByID(externalID string) (*Review, error)
 	Search(query string) ([]Review, error)
 	Create(review *Review) error
@@ -33,6 +34,13 @@ func (r *GormRepository) FindAll() ([]Review, error) {
 func (r *GormRepository) FindByDestinationID(destinationID string) ([]Review, error) {
 	var reviews []Review
 	err := r.db.Where("destination_id = ? AND status = ?", destinationID, "published").
+		Order("created_at DESC").Find(&reviews).Error
+	return reviews, err
+}
+
+func (r *GormRepository) FindByUserID(userID string) ([]Review, error) {
+	var reviews []Review
+	err := r.db.Where("user_id = ?", userID).
 		Order("created_at DESC").Find(&reviews).Error
 	return reviews, err
 }

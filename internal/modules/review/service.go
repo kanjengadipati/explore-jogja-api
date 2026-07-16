@@ -18,6 +18,10 @@ func (s *Service) GetByDestinationID(destinationID string) ([]Review, error) {
 	return s.Repo.FindByDestinationID(destinationID)
 }
 
+func (s *Service) GetByUserID(userID string) ([]Review, error) {
+	return s.Repo.FindByUserID(userID)
+}
+
 func (s *Service) GetByID(externalID string) (*Review, error) {
 	return s.Repo.FindByID(externalID)
 }
