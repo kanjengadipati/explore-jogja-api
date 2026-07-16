@@ -83,7 +83,7 @@ func (s *authService) SocialLogin(provider string, token string, deviceID, userA
 
 	// For Facebook with public_profile scope, email may not be available
 	// Generate a placeholder email using provider user ID
-	if profile.Email == "" && normalizedProvider == "facebook" {
+	if profile.Email == "" && provider == "facebook" {
 		profile.Email = fmt.Sprintf("fb_%s@facebook.local", profile.ProviderUserID)
 	}
 
