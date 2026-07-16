@@ -22,7 +22,7 @@ INSERT INTO site_configs (key, value, category) VALUES
 ('site_keywords', 'wisata Yogyakarta, jogja, travel guide Yogyakarta, destinasi wisata jogja, Candi Prambanan, Malioboro, Pantai Parangtritis, Gunung Merapi, AI tourism, paket wisata jogja', 'seo'),
 ('og_default_image', '/og-default.png', 'seo'),
 ('twitter_handle', '@jogjagem', 'seo'),
-('landing_hero_title', 'Jelajahi Yogyakarta dengan AI', 'landing'),
-('landing_hero_subtitle', 'Temukan destinasi wisata terbaik, rekomendasi personal, dan panduan perjalanan lengkap untuk petualangan Anda di Jogja.', 'landing'),
+('landing_hero_title', 'Jogja is\nCalling You', 'landing'),
+('landing_hero_subtitle', 'Discover unforgettable places, authentic experiences, and warm Javanese hospitality.', 'landing'),
 ('landing_cta_text', 'Mulai Jelajahi', 'landing')
 ON CONFLICT (key) DO NOTHING;
