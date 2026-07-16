@@ -14,6 +14,10 @@ func (s *Service) GetAll() ([]Review, error) {
 	return s.Repo.FindAll()
 }
 
+func (s *Service) GetByDestinationID(destinationID string) ([]Review, error) {
+	return s.Repo.FindByDestinationID(destinationID)
+}
+
 func (s *Service) GetByID(externalID string) (*Review, error) {
 	return s.Repo.FindByID(externalID)
 }

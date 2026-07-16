@@ -17,6 +17,15 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) GetAll(c *gin.Context) {
+	if destID := c.Query("destination_id"); destID != "" {
+		reviews, err := h.Service.GetByDestinationID(destID)
+		if err != nil {
+			httpx.HandleError(c, err)
+			return
+		}
+		httpx.Success(c, 200, "Reviews fetched", reviews, nil)
+		return
+	}
 	reviews, err := h.Service.GetAll()
 	if err != nil {
 		httpx.HandleError(c, err)
