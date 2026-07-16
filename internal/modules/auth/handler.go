@@ -565,7 +565,7 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 	}
 
 	if h.Cache != nil {
-		var cached profileResponse
+		var cached EnrichedProfile
 		key := fmt.Sprintf("user:profile:%d", userID)
 		if ok, err := h.Cache.GetJSON(c.Request.Context(), key, &cached); err == nil && ok {
 			httpx.Success(c, http.StatusOK, "Profile fetched", cached, nil)
@@ -581,22 +581,17 @@ func (h *AuthHandler) Profile(c *gin.Context) {
 
 	permissions, _ := h.PermissionSvc.ListRolePermissionsByName(user.Role)
 
-	response := profileResponse{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		PhoneNumber:   user.PhoneNumber,
-		Role:          user.Role,
-		IsVerified:    user.IsVerified,
-		PhoneVerified: user.PhoneVerified,
-		EmailVerified: user.EmailVerified,
-		Permissions:   permissions,
-	}
-	if h.Cache != nil {
-		_ = h.Cache.SetJSON(context.Background(), fmt.Sprintf("user:profile:%d", userID), response, 5*time.Minute)
+	enriched, err := h.AuthService.GetEnrichedProfile(userID, permissions)
+	if err != nil {
+		httpx.Error(c, http.StatusNotFound, "User not found")
+		return
 	}
 
-	httpx.Success(c, http.StatusOK, "Profile fetched", response, nil)
+	if h.Cache != nil {
+		_ = h.Cache.SetJSON(context.Background(), fmt.Sprintf("user:profile:%d", userID), enriched, 5*time.Minute)
+	}
+
+	httpx.Success(c, http.StatusOK, "Profile fetched", enriched, nil)
 }
 
 type profileResponse struct {

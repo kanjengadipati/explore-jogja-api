@@ -13,6 +13,8 @@ type Repository interface {
 	Create(dest *Destination) error
 	CreateBatch(dests []Destination) error
 	Update(dest *Destination) error
+	CreateOrUpdateUserDestination(userID uint, slug string, status string) error
+	GetUserDestinations(userID uint) ([]UserDestination, error)
 }
 
 type GormRepository struct {
@@ -85,4 +87,20 @@ func (r *GormRepository) CreateBatch(dests []Destination) error {
 
 func (r *GormRepository) Update(dest *Destination) error {
 	return r.db.Save(dest).Error
+}
+
+func (r *GormRepository) CreateOrUpdateUserDestination(userID uint, slug string, status string) error {
+	var ud UserDestination
+	err := r.db.Where("user_id = ? AND destination_slug = ?", userID, slug).First(&ud).Error
+	if err == nil {
+		ud.Status = status
+		return r.db.Save(&ud).Error
+	}
+	return r.db.Create(&UserDestination{UserID: userID, DestinationSlug: slug, Status: status}).Error
+}
+
+func (r *GormRepository) GetUserDestinations(userID uint) ([]UserDestination, error) {
+	var uds []UserDestination
+	err := r.db.Where("user_id = ?", userID).Find(&uds).Error
+	return uds, err
 }

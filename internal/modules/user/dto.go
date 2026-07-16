@@ -44,8 +44,10 @@ type UpdateUserRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	Name        string `json:"name" binding:"required,min=3"`
-	PhoneNumber string `json:"phone_number" binding:"omitempty,e164"`
+	Name          string `json:"name" binding:"required,min=3"`
+	PhoneNumber   string `json:"phone_number" binding:"omitempty,e164"`
+	AvatarURL     string `json:"avatar_url" binding:"omitempty"`
+	CoverImageURL string `json:"cover_image_url" binding:"omitempty"`
 }
 
 type ChangePasswordRequest struct {

@@ -144,6 +144,8 @@ func (s *Service) UpdateProfile(id uint, input UpdateProfileRequest) (*User, err
 
 	user.Name = input.Name
 	user.PhoneNumber = input.PhoneNumber
+	user.AvatarURL = input.AvatarURL
+	user.CoverImageURL = input.CoverImageURL
 	if err := s.UserRepo.Update(user); err != nil {
 		return nil, err
 	}

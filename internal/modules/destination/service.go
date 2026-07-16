@@ -26,6 +26,14 @@ func (s *Service) Search(query string) ([]Destination, error) {
 	return s.Repo.Search(query)
 }
 
+func (s *Service) UpdateUserDestination(userID uint, slug string, status string) error {
+	return s.Repo.CreateOrUpdateUserDestination(userID, slug, status)
+}
+
+func (s *Service) GetUserDestinations(userID uint) ([]UserDestination, error) {
+	return s.Repo.GetUserDestinations(userID)
+}
+
 type UpdateDestinationRequest struct {
 	Name              *string   `json:"name"`
 	Tagline           *string   `json:"tagline"`

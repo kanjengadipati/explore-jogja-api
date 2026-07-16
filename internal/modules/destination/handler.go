@@ -73,3 +73,38 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 	httpx.Success(c, 200, "Destination updated", dest, nil)
 }
+
+func (h *Handler) UpdateUserDestinationStatus(c *gin.Context) {
+	userID, ok := httpx.GetUserIDFromContext(c)
+	if !ok {
+		httpx.Error(c, 401, "Unauthorized")
+		return
+	}
+	slug := c.Param("slug")
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.Error(c, 400, "Invalid request")
+		return
+	}
+	if err := h.Service.UpdateUserDestination(userID, slug, req.Status); err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Status updated", nil, nil)
+}
+
+func (h *Handler) GetUserDestinations(c *gin.Context) {
+	userID, ok := httpx.GetUserIDFromContext(c)
+	if !ok {
+		httpx.Error(c, 401, "Unauthorized")
+		return
+	}
+	uds, err := h.Service.GetUserDestinations(userID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "User destinations fetched", uds, nil)
+}

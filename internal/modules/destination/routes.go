@@ -14,8 +14,10 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	dest.GET("/:id", handler.GetByID)
 	dest.GET("/category/:category", handler.GetByCategory)
 
-	// Protected routes (require admin auth)
+	// Protected routes (require auth)
 	protected := dest.Group("")
 	protected.Use(middleware.AuthMiddleware(jwtService))
 	protected.PUT("/:id", handler.Update)
+	protected.GET("/my-status", handler.GetUserDestinations)
+	protected.POST("/my-status/:slug", handler.UpdateUserDestinationStatus)
 }

@@ -87,3 +87,10 @@ type Destination struct {
 	SeoDescription   string  `gorm:"type:text" json:"seo_description"`
 	OgImageUrl       string  `json:"og_image_url"`
 }
+
+type UserDestination struct {
+	gorm.Model
+	UserID          uint   `gorm:"index;not null" json:"user_id"`
+	DestinationSlug string `gorm:"index;not null" json:"destination_slug"`
+	Status          string `gorm:"not null" json:"status"`
+}

@@ -65,6 +65,7 @@ type AuthService interface {
 	LogoutOtherSessions(userID uint, currentDeviceID, userAgent, ipAddress string) (*AuthTokens, error)
 	RefreshToken(oldRefreshToken string) (*AuthTokens, error)
 	GetProfile(userID uint) (*userModule.User, error)
+	GetEnrichedProfile(userID uint, permissions []string) (*EnrichedProfile, error)
 	ListSessions(userID uint, currentDeviceID string) ([]Session, error)
 	RevokeSession(userID, sessionID uint, userAgent, ipAddress string) error
 	RevokeTrustedDevice(userID uint, trustedDeviceID string, userAgent, ipAddress string) error
@@ -197,6 +198,60 @@ func NewAuthService(
 		s.socialHTTPClient = &http.Client{Timeout: 10 * time.Second}
 	}
 	return s
+}
+
+type EnrichedProfile struct {
+	ID            uint     `json:"id"`
+	Name          string   `json:"name"`
+	Email         string   `json:"email"`
+	PhoneNumber   string   `json:"phone_number,omitempty"`
+	Role          string   `json:"role"`
+	IsVerified    bool     `json:"is_verified"`
+	PhoneVerified bool     `json:"phone_verified"`
+	EmailVerified bool     `json:"email_verified"`
+	Permissions   []string `json:"permissions"`
+	AvatarURL     string   `json:"avatar_url"`
+	CoverImageURL string   `json:"cover_image_url"`
+	ReviewsCount  int      `json:"reviews_count"`
+}
+
+func (s *authService) GetEnrichedProfile(userID uint, permissions []string) (*EnrichedProfile, error) {
+	user, err := s.UserRepo.FindByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	avatarURL := user.AvatarURL
+	if avatarURL == "" {
+		if socialAcc, err := s.SocialRepo.FindByUserAndProvider(userID, "google"); err == nil && socialAcc != nil && socialAcc.AvatarURL != "" {
+			avatarURL = socialAcc.AvatarURL
+		}
+	}
+	if avatarURL == "" {
+		if socialAcc, err := s.SocialRepo.FindByUserAndProvider(userID, "facebook"); err == nil && socialAcc != nil && socialAcc.AvatarURL != "" {
+			avatarURL = socialAcc.AvatarURL
+		}
+	}
+
+	var reviewsCount int64
+	if s.DB != nil {
+		s.DB.Table("reviews").Where("user_id = ? AND deleted_at IS NULL", fmt.Sprintf("%d", userID)).Count(&reviewsCount)
+	}
+
+	return &EnrichedProfile{
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		PhoneNumber:   user.PhoneNumber,
+		Role:          user.Role,
+		IsVerified:    user.IsVerified,
+		PhoneVerified: user.PhoneVerified,
+		EmailVerified: user.EmailVerified,
+		Permissions:   permissions,
+		AvatarURL:     avatarURL,
+		CoverImageURL: user.CoverImageURL,
+		ReviewsCount:  int(reviewsCount),
+	}, nil
 }
 
 func (s *authService) runUserRefreshTx(fn func(userRepo userRepositoryTx, refreshRepo refreshTokenRepositoryTx) error) error {
