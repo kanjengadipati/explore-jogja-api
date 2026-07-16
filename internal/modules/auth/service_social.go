@@ -81,6 +81,12 @@ func (s *authService) SocialLogin(provider string, token string, deviceID, userA
 		return nil, errors.New("invalid provider id")
 	}
 
+	// For Facebook with public_profile scope, email may not be available
+	// Generate a placeholder email using provider user ID
+	if profile.Email == "" && normalizedProvider == "facebook" {
+		profile.Email = fmt.Sprintf("fb_%s@facebook.local", profile.ProviderUserID)
+	}
+
 	if profile.Email == "" {
 		return nil, fmt.Errorf("email not available from %s", provider)
 	}
