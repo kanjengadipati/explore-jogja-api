@@ -9,4 +9,6 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler) {
 	cfg.GET("/categories", handler.GetCategories)
 	cfg.GET("/sub-regions", handler.GetSubRegions)
 	cfg.GET("/quotes", handler.GetQuotes)
+	cfg.GET("/seo", handler.GetSiteConfig)
+	cfg.PUT("/seo", handler.UpdateSiteConfig)
 }

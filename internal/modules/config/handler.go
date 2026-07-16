@@ -1,14 +1,18 @@
 package config
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"pleco-api/internal/httpx"
 )
 
-type Handler struct{}
+type Handler struct {
+	Service *Service
+}
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(service *Service) *Handler {
+	return &Handler{Service: service}
 }
 
 type Category struct {
@@ -64,4 +68,47 @@ func (h *Handler) GetSubRegions(c *gin.Context) {
 
 func (h *Handler) GetQuotes(c *gin.Context) {
 	httpx.Success(c, 200, "Quotes fetched", quotes, nil)
+}
+
+func (h *Handler) GetSiteConfig(c *gin.Context) {
+	category := c.Query("category")
+	var configs []SiteConfig
+	var err error
+
+	if category != "" {
+		configs, err = h.Service.GetByCategory(category)
+	} else {
+		configs, err = h.Service.GetAll()
+	}
+
+	if err != nil {
+		httpx.Error(c, http.StatusInternalServerError, "Failed to fetch site config")
+		return
+	}
+
+	result := make(map[string]string)
+	for _, cfg := range configs {
+		result[cfg.Key] = cfg.Value
+	}
+	httpx.Success(c, 200, "Site config fetched", result, nil)
+}
+
+func (h *Handler) UpdateSiteConfig(c *gin.Context) {
+	var req BulkUpdateSiteConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.Error(c, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	configs, err := h.Service.BulkUpdate(req)
+	if err != nil {
+		httpx.Error(c, http.StatusInternalServerError, "Failed to update site config")
+		return
+	}
+
+	result := make(map[string]string)
+	for _, cfg := range configs {
+		result[cfg.Key] = cfg.Value
+	}
+	httpx.Success(c, 200, "Site config updated", result, nil)
 }

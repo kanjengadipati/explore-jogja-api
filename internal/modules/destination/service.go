@@ -42,6 +42,10 @@ type UpdateDestinationRequest struct {
 	Images            *JSONArr  `json:"images"`
 	GoogleMapsURL     *string   `json:"google_maps_url"`
 	GoogleReviewCount *int      `json:"google_review_count"`
+	SeoTitle          *string   `json:"seo_title"`
+	SeoKeywords       *string   `json:"seo_keywords"`
+	SeoDescription    *string   `json:"seo_description"`
+	OgImageUrl        *string   `json:"og_image_url"`
 }
 
 func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Destination, error) {
@@ -94,6 +98,18 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 	}
 	if req.GoogleReviewCount != nil {
 		dest.GoogleReviewCount = *req.GoogleReviewCount
+	}
+	if req.SeoTitle != nil {
+		dest.SeoTitle = *req.SeoTitle
+	}
+	if req.SeoKeywords != nil {
+		dest.SeoKeywords = *req.SeoKeywords
+	}
+	if req.SeoDescription != nil {
+		dest.SeoDescription = *req.SeoDescription
+	}
+	if req.OgImageUrl != nil {
+		dest.OgImageUrl = *req.OgImageUrl
 	}
 
 	if err := s.Repo.Update(dest); err != nil {
