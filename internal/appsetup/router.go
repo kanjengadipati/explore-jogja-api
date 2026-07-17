@@ -24,6 +24,7 @@ import (
 	"pleco-api/internal/modules/souvenir"
 	"pleco-api/internal/modules/story"
 	"pleco-api/internal/modules/tourist"
+	"pleco-api/internal/modules/trips"
 	"pleco-api/internal/modules/user"
 	"pleco-api/internal/services"
 
@@ -105,6 +106,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository)
 	tourist.SetupRoutes(api, touristModule.Handler)
+
+	tripsModule := trips.BuildModule(db)
+	trips.SetupRoutes(api, tripsModule.Handler, jwtService)
 
 	router.GET("/health", func(c *gin.Context) {
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
