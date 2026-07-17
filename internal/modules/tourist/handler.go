@@ -165,16 +165,7 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, destCont
 		if item.ImageURL == "" {
 			if item.Type == "destination" {
 				if d, ok := destMap[item.ID]; ok {
-					if len(d.Images) > 0 {
-						type imgEntry struct{ URL string `json:"url"` }
-						var imgs []imgEntry
-						if b, err2 := json.Marshal(d.Images); err2 == nil {
-							_ = json.Unmarshal(b, &imgs)
-							if len(imgs) > 0 {
-								parsed.Items[i].ImageURL = imgs[0].URL
-							}
-						}
-					}
+					parsed.Items[i].ImageURL = destImageURL(d)
 				}
 			} else if item.Type == "event" {
 				if ev, ok := eventMap[item.ID]; ok {
@@ -193,41 +184,55 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, destCont
 	httpx.Success(c, 200, "Trending picks loaded", parsed, nil)
 }
 
+// destImageURL extracts the first image URL from a destination's Images JSON field.
+func destImageURL(d destination.Destination) string {
+	if len(d.Images) == 0 {
+		return ""
+	}
+	type imgEntry struct {
+		URL string `json:"url"`
+	}
+	var imgs []imgEntry
+	if b, err := json.Marshal(d.Images); err == nil {
+		_ = json.Unmarshal(b, &imgs)
+		if len(imgs) > 0 {
+			return imgs[0].URL
+		}
+	}
+	return ""
+}
+
+// offlineTrendingResponse builds a curated fallback from the real DB — no AI required.
+// It prefers well-known destinations by external_id, then fills remaining slots from
+// whatever is in the DB so callers always receive up to 5 items.
 func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event) *AITrendingResponse {
-	picks := []struct {
+	// Preferred picks with curated badges/headlines — matched by external_id.
+	preferred := []struct {
 		id    string
 		badge string
 		head  string
 		why   string
 	}{
 		{"merapi", "Spesial Hari Ini", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah"},
-		{"prambanan", "Trending", "Tugu Yogyakarta", "Ikon kota yang selalu memukau"},
-		{"goajomblang", "Cahaya Surga", "Goa Jomblang", "Fenomena cahaya alam yang langka"},
+		{"prambanan", "Trending", "Prambanan Temple", "Candi Hindu terbesar di Asia Tenggara"},
+		{"goajomblang", "Hidden Gem", "Celestial Beam Cave", "Fenomena cahaya surgawi yang langka"},
 		{"tamansari", "Warisan Budaya", "Taman Sari", "Istana air penuh misteri sultan"},
 		{"parangtritis", "Populer", "Pantai Parangtritis", "Sunset spektakuler di tepi samudra"},
 	}
 
 	destMap := make(map[string]destination.Destination, len(dests))
+	usedIDs := make(map[string]bool)
 	for _, d := range dests {
 		destMap[d.ExternalID] = d
 	}
 
 	items := make([]AITrendingItem, 0, 5)
-	for _, p := range picks {
+
+	// Phase 1: add preferred picks that exist in the DB.
+	for _, p := range preferred {
 		d, ok := destMap[p.id]
 		if !ok {
 			continue
-		}
-		imgURL := ""
-		if len(d.Images) > 0 {
-			type imgEntry struct{ URL string `json:"url"` }
-			var imgs []imgEntry
-			if b, err := json.Marshal(d.Images); err == nil {
-				_ = json.Unmarshal(b, &imgs)
-				if len(imgs) > 0 {
-					imgURL = imgs[0].URL
-				}
-			}
 		}
 		items = append(items, AITrendingItem{
 			Type:     "destination",
@@ -235,28 +240,53 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 			Badge:    p.badge,
 			Headline: p.head,
 			Reason:   p.why,
-			ImageURL: imgURL,
+			ImageURL: destImageURL(d),
 			Rating:   d.Rating,
-			Distance: "",
 			Location: d.SubRegion,
 		})
+		usedIDs[p.id] = true
 		if len(items) == 5 {
 			break
 		}
 	}
 
-	// If we have an upcoming event, swap the last item
-	if len(events) > 0 && len(items) == 5 {
+	// Phase 2: fill remaining slots from DB destinations (highest-rated first).
+	if len(items) < 5 {
+		badges := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya", "Ikon Dunia"}
+		bi := 0
+		for _, d := range dests {
+			if len(items) == 5 {
+				break
+			}
+			if usedIDs[d.ExternalID] {
+				continue
+			}
+			badge := badges[bi%len(badges)]
+			bi++
+			items = append(items, AITrendingItem{
+				Type:     "destination",
+				ID:       d.ExternalID,
+				Badge:    badge,
+				Headline: d.Name,
+				Reason:   d.Tagline,
+				ImageURL: destImageURL(d),
+				Rating:   d.Rating,
+				Location: d.SubRegion,
+			})
+			usedIDs[d.ExternalID] = true
+		}
+	}
+
+	// Phase 3: swap the last destination slot for the nearest upcoming event if available.
+	if len(events) > 0 && len(items) > 0 {
 		ev := events[0]
-		items[4] = AITrendingItem{
+		items[len(items)-1] = AITrendingItem{
 			Type:     "event",
 			ID:       ev.ExternalID,
 			Badge:    "Akan Datang",
 			Headline: ev.Title,
 			Reason:   ev.Description,
 			ImageURL: ev.ImageURL,
-			Rating:   0,
-			Distance: "",
 			Location: ev.Location,
 		}
 	}
