@@ -88,6 +88,8 @@ func (r *GormRepository) Update(user *User) error {
 		"last_login_at":        user.LastLoginAt,
 		"last_password_change": user.LastPasswordChange,
 		"access_token_version": user.AccessTokenVersion,
+		"avatar_url":           user.AvatarURL,
+		"cover_image_url":      user.CoverImageURL,
 	}
 	if user.Password != "" {
 		updates["password"] = user.Password

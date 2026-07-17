@@ -13,6 +13,8 @@ type UserResponse struct {
 	IsVerified         bool                 `json:"is_verified"`
 	PhoneVerified      bool                 `json:"phone_verified"`
 	EmailVerified      bool                 `json:"email_verified"`
+	AvatarURL          string               `json:"avatar_url,omitempty"`
+	CoverImageURL      string               `json:"cover_image_url,omitempty"`
 	LastLoginAt        *time.Time           `json:"last_login_at,omitempty"`
 	LastPasswordChange *time.Time           `json:"last_password_change_at,omitempty"`
 }
@@ -66,6 +68,8 @@ func ToUserResponse(user User) UserResponse {
 		IsVerified:    user.IsVerified,
 		PhoneVerified: user.PhoneVerified,
 		EmailVerified: user.EmailVerified,
+		AvatarURL:     user.AvatarURL,
+		CoverImageURL: user.CoverImageURL,
 	}
 	response.LastLoginAt = user.LastLoginAt
 	response.LastPasswordChange = user.LastPasswordChange
