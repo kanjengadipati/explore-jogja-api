@@ -103,7 +103,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	promotionModule := promotion.BuildModule(db)
 	promotion.SetupRoutes(api, promotionModule.Handler, jwtService)
 
-	touristModule := tourist.BuildModule(aiService, destinationModule.Repository)
+	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository)
 	tourist.SetupRoutes(api, touristModule.Handler)
 
 	router.GET("/health", func(c *gin.Context) {

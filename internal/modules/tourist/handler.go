@@ -8,19 +8,22 @@ import (
 	"pleco-api/internal/ai"
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/modules/destination"
+	"pleco-api/internal/modules/event"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	AIService         *ai.Service
-	DestinationRepo   destination.Repository
+	AIService       *ai.Service
+	DestinationRepo destination.Repository
+	EventRepo       event.Repository
 }
 
-func NewHandler(aiService *ai.Service, destRepo destination.Repository) *Handler {
+func NewHandler(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository) *Handler {
 	return &Handler{
 		AIService:       aiService,
 		DestinationRepo: destRepo,
+		EventRepo:       eventRepo,
 	}
 }
 
@@ -63,6 +66,202 @@ type JourneyStep struct {
 type AIImageSearchRequest struct {
 	Image    string `json:"image" binding:"required"`
 	MimeType string `json:"mimeType" binding:"required"`
+}
+
+// AITrendingItem represents a single trending pick — can be a destination or event.
+type AITrendingItem struct {
+	Type      string `json:"type"`      // "destination" or "event"
+	ID        string `json:"id"`        // external_id of the item
+	Badge     string `json:"badge"`     // e.g. "Spesial Hari Ini", "Trending", "Akan Datang"
+	Headline  string `json:"headline"`  // short punchy label
+	Reason    string `json:"reason"`    // one-sentence reason
+	ImageURL  string `json:"imageUrl"`  // thumbnail image
+	Rating    float64 `json:"rating"`   // 0 if event
+	Distance  string `json:"distance"`  // e.g. "18 km", empty if unknown
+	Location  string `json:"location"`  // sub-region or event location
+}
+
+type AITrendingResponse struct {
+	Items []AITrendingItem `json:"items"`
+}
+
+func (h *Handler) Trending(c *gin.Context) {
+	dests, err := h.DestinationRepo.FindAll()
+	if err != nil {
+		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
+		return
+	}
+
+	events, err := h.EventRepo.FindAll()
+	if err != nil {
+		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load events")
+		return
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.Success(c, 200, "Trending picks loaded", h.offlineTrendingResponse(dests, events), nil)
+		return
+	}
+
+	destContext := destinationsContextJSON(dests)
+	eventContext := eventsContextJSON(events)
+
+	systemInstruction := fmt.Sprintf(`You are an AI tourism curator for Yogyakarta, Indonesia.
+Your task is to select exactly 5 trending picks for tourists TODAY. The picks can be a mix of destinations and upcoming events.
+Prioritize variety: mix adventure, culture, nature, and events. Make the selection feel fresh and curated.
+
+DESTINATION CATALOG:
+%s
+
+UPCOMING EVENTS:
+%s
+
+Respond ONLY with valid JSON matching this schema exactly:
+{
+  "items": [
+    {
+      "type": "destination" or "event",
+      "id": "exact external_id or event id from the catalog",
+      "badge": "short badge label in Indonesian, e.g. Spesial Hari Ini / Trending / Hidden Gem / Akan Datang / Populer",
+      "headline": "punchy 3-6 word Indonesian or English label",
+      "reason": "one sentence why this is trending today",
+      "imageUrl": "image URL from the item if available, else empty string",
+      "rating": number (destination rating, or 0 for events),
+      "distance": "approximate distance string like '18 km' if known, else empty string",
+      "location": "sub_region for destinations, location field for events"
+    }
+  ]
+}
+Return exactly 5 items. Mix at least 1 event if events are available.`, destContext, eventContext)
+
+	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		SystemPrompt: systemInstruction,
+		UserPrompt:   "Pilihkan 5 trending picks terbaik untuk wisatawan di Yogyakarta hari ini.",
+		Temperature:  0.65,
+		MaxTokens:    1200,
+	})
+	if err != nil {
+		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events), nil)
+		return
+	}
+
+	var parsed AITrendingResponse
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events), nil)
+		return
+	}
+
+	// Enrich imageUrl from local catalog when AI leaves it empty
+	destMap := make(map[string]destination.Destination, len(dests))
+	for _, d := range dests {
+		destMap[d.ExternalID] = d
+	}
+	eventMap := make(map[string]event.Event, len(events))
+	for _, e := range events {
+		eventMap[e.ExternalID] = e
+	}
+
+	for i, item := range parsed.Items {
+		if item.ImageURL == "" {
+			if item.Type == "destination" {
+				if d, ok := destMap[item.ID]; ok {
+					if len(d.Images) > 0 {
+						type imgEntry struct{ URL string `json:"url"` }
+						var imgs []imgEntry
+						if b, err2 := json.Marshal(d.Images); err2 == nil {
+							_ = json.Unmarshal(b, &imgs)
+							if len(imgs) > 0 {
+								parsed.Items[i].ImageURL = imgs[0].URL
+							}
+						}
+					}
+				}
+			} else if item.Type == "event" {
+				if ev, ok := eventMap[item.ID]; ok {
+					parsed.Items[i].ImageURL = ev.ImageURL
+				}
+			}
+		}
+		// Enrich rating for destinations
+		if item.Type == "destination" && item.Rating == 0 {
+			if d, ok := destMap[item.ID]; ok {
+				parsed.Items[i].Rating = d.Rating
+			}
+		}
+	}
+
+	httpx.Success(c, 200, "Trending picks loaded", parsed, nil)
+}
+
+func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event) *AITrendingResponse {
+	picks := []struct {
+		id    string
+		badge string
+		head  string
+		why   string
+	}{
+		{"merapi", "Spesial Hari Ini", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah"},
+		{"prambanan", "Trending", "Tugu Yogyakarta", "Ikon kota yang selalu memukau"},
+		{"goajomblang", "Cahaya Surga", "Goa Jomblang", "Fenomena cahaya alam yang langka"},
+		{"tamansari", "Warisan Budaya", "Taman Sari", "Istana air penuh misteri sultan"},
+		{"parangtritis", "Populer", "Pantai Parangtritis", "Sunset spektakuler di tepi samudra"},
+	}
+
+	destMap := make(map[string]destination.Destination, len(dests))
+	for _, d := range dests {
+		destMap[d.ExternalID] = d
+	}
+
+	items := make([]AITrendingItem, 0, 5)
+	for _, p := range picks {
+		d, ok := destMap[p.id]
+		if !ok {
+			continue
+		}
+		imgURL := ""
+		if len(d.Images) > 0 {
+			type imgEntry struct{ URL string `json:"url"` }
+			var imgs []imgEntry
+			if b, err := json.Marshal(d.Images); err == nil {
+				_ = json.Unmarshal(b, &imgs)
+				if len(imgs) > 0 {
+					imgURL = imgs[0].URL
+				}
+			}
+		}
+		items = append(items, AITrendingItem{
+			Type:     "destination",
+			ID:       p.id,
+			Badge:    p.badge,
+			Headline: p.head,
+			Reason:   p.why,
+			ImageURL: imgURL,
+			Rating:   d.Rating,
+			Distance: "",
+			Location: d.SubRegion,
+		})
+		if len(items) == 5 {
+			break
+		}
+	}
+
+	// If we have an upcoming event, swap the last item
+	if len(events) > 0 && len(items) == 5 {
+		ev := events[0]
+		items[4] = AITrendingItem{
+			Type:     "event",
+			ID:       ev.ExternalID,
+			Badge:    "Akan Datang",
+			Headline: ev.Title,
+			Reason:   ev.Description,
+			ImageURL: ev.ImageURL,
+			Rating:   0,
+			Distance: "",
+			Location: ev.Location,
+		}
+	}
+
+	return &AITrendingResponse{Items: items}
 }
 
 func (h *Handler) Query(c *gin.Context) {
@@ -311,12 +510,13 @@ func containsAny(s string, substrs ...string) bool {
 
 func destinationsContextJSON(dests []destination.Destination) string {
 	type destSummary struct {
-		ID        string `json:"id"`
-		Name      string `json:"name"`
-		Tagline   string `json:"tagline"`
-		Category  string `json:"category"`
-		BestTime  string `json:"bestTime"`
-		SubRegion string `json:"subRegion"`
+		ID        string  `json:"id"`
+		Name      string  `json:"name"`
+		Tagline   string  `json:"tagline"`
+		Category  string  `json:"category"`
+		BestTime  string  `json:"bestTime"`
+		SubRegion string  `json:"subRegion"`
+		Rating    float64 `json:"rating"`
 	}
 	limit := len(dests)
 	if limit > 25 {
@@ -328,9 +528,37 @@ func destinationsContextJSON(dests []destination.Destination) string {
 		summaries[i] = destSummary{
 			ID: d.ExternalID, Name: d.Name, Tagline: d.Tagline,
 			Category: d.Category, BestTime: d.BestTime, SubRegion: d.SubRegion,
+			Rating: d.Rating,
 		}
 	}
-	b, _ := json.Marshal(summaries) // compact JSON, no indent
+	b, _ := json.Marshal(summaries)
+	return string(b)
+}
+
+func eventsContextJSON(events []event.Event) string {
+	type eventSummary struct {
+		ID        string `json:"id"`
+		Title     string `json:"title"`
+		Category  string `json:"category"`
+		Location  string `json:"location"`
+		StartDate string `json:"startDate"`
+		EndDate   string `json:"endDate"`
+		Status    string `json:"status"`
+	}
+	limit := len(events)
+	if limit > 15 {
+		limit = 15
+	}
+	summaries := make([]eventSummary, limit)
+	for i := 0; i < limit; i++ {
+		e := events[i]
+		summaries[i] = eventSummary{
+			ID: e.ExternalID, Title: e.Title, Category: e.Category,
+			Location: e.Location, StartDate: e.StartDate, EndDate: e.EndDate,
+			Status: e.Status,
+		}
+	}
+	b, _ := json.Marshal(summaries)
 	return string(b)
 }
 

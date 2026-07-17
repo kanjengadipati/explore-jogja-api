@@ -17,7 +17,7 @@ CREATE INDEX idx_site_configs_key ON site_configs(key);
 CREATE INDEX idx_site_configs_category ON site_configs(category);
 
 INSERT INTO site_configs (key, value, category) VALUES
-('site_title', 'Jogjagem — Jelajahi Yogyakarta dengan AI', 'seo'),
+('site_title', 'Jogjagem — Jogja /n is', 'seo'),
 ('site_description', 'Temukan destinasi wisata terbaik di Yogyakarta dengan rekomendasi AI. Panduan lengkap Candi Prambanan, Malioboro, Pantai Parangtritis, Gunung Merapi, dan 100+ destinasi lainnya.', 'seo'),
 ('site_keywords', 'wisata Yogyakarta, jogja, travel guide Yogyakarta, destinasi wisata jogja, Candi Prambanan, Malioboro, Pantai Parangtritis, Gunung Merapi, AI tourism, paket wisata jogja', 'seo'),
 ('og_default_image', '/og-default.png', 'seo'),
