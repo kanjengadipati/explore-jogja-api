@@ -144,8 +144,14 @@ func (s *Service) UpdateProfile(id uint, input UpdateProfileRequest) (*User, err
 
 	user.Name = input.Name
 	user.PhoneNumber = input.PhoneNumber
-	user.AvatarURL = input.AvatarURL
-	user.CoverImageURL = input.CoverImageURL
+	// Only overwrite avatar/cover when the caller explicitly provides a value,
+	// preventing partial updates (e.g. avatar-only) from blanking the other field.
+	if input.AvatarURL != "" {
+		user.AvatarURL = input.AvatarURL
+	}
+	if input.CoverImageURL != "" {
+		user.CoverImageURL = input.CoverImageURL
+	}
 	if err := s.UserRepo.Update(user); err != nil {
 		return nil, err
 	}
