@@ -13,6 +13,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler) {
 	aiGroup.POST("/query", handler.Query)
 	aiGroup.POST("/image-search", handler.ImageSearch)
 	aiGroup.GET("/recommend", handler.Recommend)
+	aiGroup.GET("/recommend/multi", handler.MultiRecommend)
 	aiGroup.POST("/journey", handler.Journey)
 	aiGroup.GET("/trending", handler.Trending)
 }

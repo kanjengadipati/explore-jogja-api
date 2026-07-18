@@ -681,3 +681,198 @@ func (h *Handler) offlineJourneyResponse(destinationName string) *AIJourneyRespo
 		},
 	}
 }
+
+// AIMultiRecommendItem is a single pick in the multi-recommendation response.
+type AIMultiRecommendItem struct {
+	DestinationID string `json:"destinationId"`
+	Headline      string `json:"headline"`
+	Reason        string `json:"reason"`
+	Badge         string `json:"badge"`
+	Crowd         string `json:"crowd"`
+	ImageURL      string `json:"imageUrl"`
+	Rating        float64 `json:"rating"`
+	Location      string `json:"location"`
+}
+
+type AIMultiRecommendResponse struct {
+	Items []AIMultiRecommendItem `json:"items"`
+}
+
+// MultiRecommend returns 2-4 AI-curated destination picks with variety (different categories).
+func (h *Handler) MultiRecommend(c *gin.Context) {
+	now := c.Query("time")
+	if now == "" {
+		now = "morning"
+	}
+
+	dests, err := h.DestinationRepo.FindAll()
+	if err != nil {
+		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
+		return
+	}
+
+	destMap := make(map[string]destination.Destination, len(dests))
+	for _, d := range dests {
+		destMap[d.ExternalID] = d
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.Success(c, 200, "AI disabled, using offline picks", h.offlineMultiRecommend(now, dests), nil)
+		return
+	}
+
+	destContext := destinationsContextJSON(dests)
+	systemInstruction := fmt.Sprintf(`You are an AI tourism curator for Yogyakarta, Indonesia.
+Select EXACTLY 4 destinations from the catalog to display in an "AI Picks Just for You" section.
+Time of day: %s.
+
+Rules:
+- Pick destinations from DIFFERENT categories (e.g. nature, heritage, beach, adventure, hidden-gem, culinary)
+- Vary the crowd levels (Low / Medium / High)
+- Assign a short punchy badge per pick (e.g. "AI Pick Today", "Hidden Gem", "Sunset Spot", "Adventure Call")
+- Make picks feel fresh and curated for right now
+
+DESTINATION CATALOG:
+%s
+
+Respond ONLY with valid JSON:
+{
+  "items": [
+    {
+      "destinationId": "exact id from catalog",
+      "headline": "punchy 4-6 word label",
+      "reason": "one sentence why now",
+      "badge": "short badge label",
+      "crowd": "Low" or "Medium" or "High",
+      "imageUrl": "image URL from catalog or empty string",
+      "rating": number,
+      "location": "sub_region from catalog"
+    }
+  ]
+}
+Return exactly 4 items.`, now, destContext)
+
+	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		SystemPrompt: systemInstruction,
+		UserPrompt:   fmt.Sprintf("Time of day: %s. Pick 4 diverse AI-curated destinations for tourists right now.", now),
+		Temperature:  0.7,
+		MaxTokens:    900,
+	})
+	if err != nil {
+		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests), nil)
+		return
+	}
+
+	var parsed AIMultiRecommendResponse
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil || len(parsed.Items) == 0 {
+		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests), nil)
+		return
+	}
+
+	// Enrich imageUrl and rating from catalog when AI leaves them empty
+	for i, item := range parsed.Items {
+		if d, ok := destMap[item.DestinationID]; ok {
+			if item.ImageURL == "" {
+				parsed.Items[i].ImageURL = destImageURL(d)
+			}
+			if item.Rating == 0 {
+				parsed.Items[i].Rating = d.Rating
+			}
+			if item.Location == "" {
+				parsed.Items[i].Location = d.SubRegion
+			}
+		}
+	}
+
+	httpx.Success(c, 200, "AI picks loaded", parsed, nil)
+}
+
+// offlineMultiRecommend returns curated fallback picks without calling the AI.
+func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.Destination) *AIMultiRecommendResponse {
+	type pick struct {
+		id    string
+		badge string
+		head  string
+		why   string
+	}
+
+	var ordered []pick
+	switch {
+	case containsAny(timeOfDay, "morning"):
+		ordered = []pick{
+			{"merapi", "AI Pick Today", "Merapi Sunrise Jeep Tour", "Best morning views of the active volcano"},
+			{"goajomblang", "Hidden Gem", "Celestial Beam Cave", "Rare heavenly light column at peak morning"},
+			{"prambanan", "Heritage Gem", "Prambanan Temple", "Golden morning light on ancient spires"},
+			{"kalibiru", "Nature Pick", "Kalibiru Forest", "Misty canopy walks at their best"},
+		}
+	case containsAny(timeOfDay, "afternoon"):
+		ordered = []pick{
+			{"prambanan", "AI Pick Today", "Prambanan Temple", "Warm afternoon glow on Hindu spires"},
+			{"tamansari", "Heritage Pick", "Taman Sari Castle", "Afternoon exploration of royal tunnels"},
+			{"ratuboko", "Sunset Prep", "Ratu Boko Palace", "Prime spot to wait for the golden hour"},
+			{"pindul", "Adventure Call", "Goa Pindul", "Refreshing cave tubing in afternoon coolness"},
+		}
+	default: // evening / sunset / night
+		ordered = []pick{
+			{"parangtritis", "Sunset Spot", "Parangtritis Beach", "Spectacular Indian Ocean sunset"},
+			{"tamansari", "AI Pick Today", "Taman Sari Castle", "Mystical evening atmosphere"},
+			{"malioboro", "Night Vibes", "Malioboro Street", "Vibrant evening street food and culture"},
+			{"tebingbreksi", "Hidden Gem", "Tebing Breksi", "Dramatic cliffs lit by the setting sun"},
+		}
+	}
+
+	destMap := make(map[string]destination.Destination, len(dests))
+	for _, d := range dests {
+		destMap[d.ExternalID] = d
+	}
+
+	items := make([]AIMultiRecommendItem, 0, 4)
+	for _, p := range ordered {
+		d, ok := destMap[p.id]
+		if !ok {
+			continue
+		}
+		items = append(items, AIMultiRecommendItem{
+			DestinationID: p.id,
+			Headline:      p.head,
+			Reason:        p.why,
+			Badge:         p.badge,
+			Crowd:         "Low",
+			ImageURL:      destImageURL(d),
+			Rating:        d.Rating,
+			Location:      d.SubRegion,
+		})
+	}
+
+	// If preferred IDs weren't in DB, fill from first available destinations
+	if len(items) < 4 {
+		used := make(map[string]bool)
+		for _, item := range items {
+			used[item.DestinationID] = true
+		}
+		badges := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya"}
+		bi := 0
+		for _, d := range dests {
+			if len(items) >= 4 {
+				break
+			}
+			if used[d.ExternalID] {
+				continue
+			}
+			items = append(items, AIMultiRecommendItem{
+				DestinationID: d.ExternalID,
+				Headline:      d.Name,
+				Reason:        d.Tagline,
+				Badge:         badges[bi%len(badges)],
+				Crowd:         "Low",
+				ImageURL:      destImageURL(d),
+				Rating:        d.Rating,
+				Location:      d.SubRegion,
+			})
+			used[d.ExternalID] = true
+			bi++
+		}
+	}
+
+	return &AIMultiRecommendResponse{Items: items}
+}
