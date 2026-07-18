@@ -53,12 +53,38 @@ func RunMigrationsForDriver(dbURL, driver string) error {
 		return err
 	}
 
-	err = m.Up()
-	if err != nil && err != migrate.ErrNoChange {
-		return err
+	// If the database is in a dirty state, force it back to the previous
+	// clean version so the failed migration can be re-applied.
+	if dbErr := m.Up(); dbErr != nil {
+		if dbErr.Error() != "no change" {
+			// Check for dirty state error
+			if isDirtyError(dbErr) {
+				version, _, verErr := m.Version()
+				if verErr == nil && version > 0 {
+					log.Printf("⚠️  dirty migration version %d detected — forcing back to %d and retrying", version, version-1)
+					if forceErr := m.Force(int(version) - 1); forceErr != nil {
+						return forceErr
+					}
+					// Retry the migration
+					if retryErr := m.Up(); retryErr != nil && retryErr != migrate.ErrNoChange {
+						return retryErr
+					}
+					return nil
+				}
+			}
+			return dbErr
+		}
 	}
 
 	return nil
+}
+
+// isDirtyError checks whether the error is a migrate dirty-state error.
+func isDirtyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return len(err.Error()) > 5 && err.Error()[:5] == "Dirty"
 }
 
 func RunSeeds(db *gorm.DB, cfg config.AppConfig) {
