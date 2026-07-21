@@ -59,7 +59,12 @@ func (r *GormRepository) FindBySlug(slug string) (*Destination, error) {
 
 func (r *GormRepository) FindByCategory(category string) ([]Destination, error) {
 	var dests []Destination
-	err := r.db.Where("category = ?", category).Order("rating DESC").Find(&dests).Error
+	var err error
+	if category == "hidden-gem" {
+		err = r.db.Where("rating >= ? AND review_count < ?", 4.5, 2500).Order("rating DESC").Find(&dests).Error
+	} else {
+		err = r.db.Where("category = ?", category).Order("rating DESC").Find(&dests).Error
+	}
 	return dests, err
 }
 

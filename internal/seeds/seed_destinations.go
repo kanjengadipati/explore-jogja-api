@@ -275,7 +275,7 @@ func getDestinationSeedData() []destination.Destination {
 			ExternalID:  "goajomblang",
 			Name:        "Goa Jomblang Cave",
 			Tagline:     "The Celestial Beam of Heavenly Light",
-			Category:    "hidden-gem",
+			Category:    "nature",
 			Location:    "Gunungkidul, Yogyakarta",
 			SubRegion:   "Gunungkidul",
 			Images:      ja([]string{"https://images.unsplash.com/photo-1628047563315-d1e8b8d222b9?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1571607023618-c93917452ed3?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80"}),

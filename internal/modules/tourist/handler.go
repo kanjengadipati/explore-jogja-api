@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"pleco-api/internal/ai"
+	"pleco-api/internal/cache"
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
@@ -17,13 +18,15 @@ type Handler struct {
 	AIService       *ai.Service
 	DestinationRepo destination.Repository
 	EventRepo       event.Repository
+	Cache           cache.Store
 }
 
-func NewHandler(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository) *Handler {
+func NewHandler(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store) *Handler {
 	return &Handler{
 		AIService:       aiService,
 		DestinationRepo: destRepo,
 		EventRepo:       eventRepo,
+		Cache:           cacheStore,
 	}
 }
 
@@ -86,6 +89,17 @@ type AITrendingResponse struct {
 }
 
 func (h *Handler) Trending(c *gin.Context) {
+	ctx := context.Background()
+
+	// ── Cache hit: return stored response without calling AI ─────────────────
+	if h.Cache != nil {
+		var cached AITrendingResponse
+		if ok, err := h.Cache.GetJSON(ctx, cache.KeyAITrendingResponse, &cached); err == nil && ok {
+			httpx.Success(c, 200, "Trending picks loaded (cached)", cached, nil)
+			return
+		}
+	}
+
 	dests, err := h.DestinationRepo.FindAll()
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
@@ -98,6 +112,7 @@ func (h *Handler) Trending(c *gin.Context) {
 		return
 	}
 
+	// ── AI disabled: return offline fallback ─────────────────────────────────
 	if !h.AIService.Enabled() {
 		httpx.Success(c, 200, "Trending picks loaded", h.offlineTrendingResponse(dests, events), nil)
 		return
@@ -134,7 +149,7 @@ Respond ONLY with valid JSON matching this schema exactly:
 }
 Return exactly 5 items. Mix at least 1 event if events are available.`, destContext, eventContext)
 
-	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+	result, err := h.AIService.Generate(ctx, ai.GenerateInput{
 		SystemPrompt: systemInstruction,
 		UserPrompt:   "Pilihkan 5 trending picks terbaik untuk wisatawan di Yogyakarta hari ini.",
 		Temperature:  0.65,
@@ -162,15 +177,14 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, destCont
 	}
 
 	for i, item := range parsed.Items {
-		if item.ImageURL == "" {
-			if item.Type == "destination" {
-				if d, ok := destMap[item.ID]; ok {
-					parsed.Items[i].ImageURL = destImageURL(d)
-				}
-			} else if item.Type == "event" {
-				if ev, ok := eventMap[item.ID]; ok {
-					parsed.Items[i].ImageURL = ev.ImageURL
-				}
+		// Always replace imageUrl from local catalog — AI often hallucinates fake URLs
+		if item.Type == "destination" {
+			if d, ok := destMap[item.ID]; ok {
+				parsed.Items[i].ImageURL = destImageURL(d)
+			}
+		} else if item.Type == "event" {
+			if ev, ok := eventMap[item.ID]; ok {
+				parsed.Items[i].ImageURL = ev.ImageURL
 			}
 		}
 		// Enrich rating for destinations
@@ -179,6 +193,21 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, destCont
 				parsed.Items[i].Rating = d.Rating
 			}
 		}
+	}
+
+	// ── Save to Redis cache (weekly TTL) ─────────────────────────────────────
+	if h.Cache != nil {
+		// 1. Full response — used by this endpoint on subsequent calls
+		_ = h.Cache.SetJSON(ctx, cache.KeyAITrendingResponse, parsed, cache.TTLAITrending)
+
+		// 2. Just the destination IDs — used by badge logic in destination handler
+		var trendingDestIDs []string
+		for _, item := range parsed.Items {
+			if item.Type == "destination" {
+				trendingDestIDs = append(trendingDestIDs, item.ID)
+			}
+		}
+		_ = h.Cache.SetJSON(ctx, cache.KeyAITrendingIDs, trendingDestIDs, cache.TTLAITrending)
 	}
 
 	httpx.Success(c, 200, "Trending picks loaded", parsed, nil)
@@ -769,12 +798,10 @@ Return exactly 4 items.`, now, destContext)
 		return
 	}
 
-	// Enrich imageUrl and rating from catalog when AI leaves them empty
+	// Always replace imageUrl from local catalog — AI often hallucinates fake URLs
 	for i, item := range parsed.Items {
 		if d, ok := destMap[item.DestinationID]; ok {
-			if item.ImageURL == "" {
-				parsed.Items[i].ImageURL = destImageURL(d)
-			}
+			parsed.Items[i].ImageURL = destImageURL(d)
 			if item.Rating == 0 {
 				parsed.Items[i].Rating = d.Rating
 			}

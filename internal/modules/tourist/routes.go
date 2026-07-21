@@ -2,6 +2,7 @@ package tourist
 
 import (
 	"pleco-api/internal/ai"
+	"pleco-api/internal/cache"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
 
@@ -22,7 +23,7 @@ type Module struct {
 	Handler *Handler
 }
 
-func BuildModule(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository) *Module {
-	handler := NewHandler(aiService, destRepo, eventRepo)
+func BuildModule(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store) *Module {
+	handler := NewHandler(aiService, destRepo, eventRepo, cacheStore)
 	return &Module{Handler: handler}
 }

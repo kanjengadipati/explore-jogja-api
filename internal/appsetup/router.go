@@ -68,13 +68,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	audit.SetupRoutes(api, auditModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
-	destinationModule := destination.BuildModule(db)
+	destinationModule := destination.BuildModule(db, cacheStore)
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService)
 
 	configModule := configmodule.BuildModule(db)
 	configmodule.SetupRoutes(api, configModule.Handler)
 
-	eventModule := event.BuildModule(db)
+	eventModule := event.BuildModule(db, cacheStore)
 	event.SetupRoutes(api, eventModule.Handler, jwtService)
 
 	hotelModule := hotel.BuildModule(db)
@@ -104,7 +104,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	promotionModule := promotion.BuildModule(db)
 	promotion.SetupRoutes(api, promotionModule.Handler, jwtService)
 
-	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository)
+	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
 	tourist.SetupRoutes(api, touristModule.Handler)
 
 	tripsModule := trips.BuildModule(db)

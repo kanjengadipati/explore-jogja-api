@@ -1,6 +1,10 @@
 package destination
 
-import "gorm.io/gorm"
+import (
+	"pleco-api/internal/cache"
+
+	"gorm.io/gorm"
+)
 
 type Module struct {
 	Repository Repository
@@ -8,10 +12,10 @@ type Module struct {
 	Handler    *Handler
 }
 
-func BuildModule(db *gorm.DB) *Module {
+func BuildModule(db *gorm.DB, cacheStore cache.Store) *Module {
 	repository := NewRepository(db)
 	service := NewService(repository)
-	handler := NewHandler(service)
+	handler := NewHandler(service, cacheStore)
 
 	return &Module{
 		Repository: repository,
