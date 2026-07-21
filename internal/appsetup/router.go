@@ -26,6 +26,7 @@ import (
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/trips"
 	"pleco-api/internal/modules/user"
+	"pleco-api/internal/modules/sitemap"
 	"pleco-api/internal/scraper"
 	"pleco-api/internal/services"
 
@@ -120,6 +121,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		results := scraper.RunAll(db)
 		httpx.Success(c, 200, "Scrape completed", gin.H{"results": results}, nil)
 	})
+
+	// Sitemap
+	sitemapHandler := sitemap.NewHandler(db, cfg.Email.FrontendURL)
+	router.GET("/sitemap.xml", sitemapHandler.GetSitemap)
 
 	router.GET("/health/live", func(c *gin.Context) {
 		httpx.Success(c, 200, "Service is live", gin.H{"status": "ok"}, nil)
