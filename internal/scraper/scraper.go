@@ -53,7 +53,34 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 
 		results = append(results, result)
 	}
+	
+	// Populate missing videos for a few items per run
+	populateMissingVideos(db)
+	
 	return results
+}
+
+func populateMissingVideos(db *gorm.DB) {
+	// Limit to 10 each to save quota
+	var dests []destination.Destination
+	db.Where("video_url = '' OR video_url IS NULL").Limit(10).Find(&dests)
+	for _, d := range dests {
+		url := FetchYouTubeVideoURL(d.Name)
+		if url != "" {
+			db.Model(&d).Update("video_url", url)
+			log.Printf("[scraper] auto-populated video for destination: %s", d.Name)
+		}
+	}
+
+	var events []event.Event
+	db.Where("video_url = '' OR video_url IS NULL").Limit(10).Find(&events)
+	for _, e := range events {
+		url := FetchYouTubeVideoURL(e.Title + " " + e.Location)
+		if url != "" {
+			db.Model(&e).Update("video_url", url)
+			log.Printf("[scraper] auto-populated video for event: %s", e.Title)
+		}
+	}
 }
 
 // buildDestMap loads all destination external_id → name for matching.
@@ -93,6 +120,7 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 				TicketPrice: item.TicketPrice,
 				Latitude:    item.Latitude,
 				Longitude:   item.Longitude,
+				VideoURL:    item.VideoURL,
 			}
 			if err := db.Create(&d).Error; err != nil {
 				log.Printf("[scraper] failed to create destination %s: %v", item.ExternalID, err)
@@ -116,6 +144,9 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 			existing.TicketPrice = item.TicketPrice
 			existing.Latitude = item.Latitude
 			existing.Longitude = item.Longitude
+			if item.VideoURL != "" {
+				existing.VideoURL = item.VideoURL
+			}
 			if err := db.Save(&existing).Error; err != nil {
 				log.Printf("[scraper] failed to update destination %s: %v", item.ExternalID, err)
 				continue
@@ -160,6 +191,7 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 				Organizer:     item.Organizer,
 				Highlights:    strsToEventJSONArr(item.Highlights),
 				DestinationID: item.DestinationID,
+				VideoURL:      item.VideoURL,
 			}
 			if err := db.Create(&e).Error; err != nil {
 				log.Printf("[scraper] failed to create event %s: %v", item.ExternalID, err)
@@ -188,6 +220,9 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 			}
 			if item.DestinationID != "" {
 				existing.DestinationID = item.DestinationID
+			}
+			if item.VideoURL != "" {
+				existing.VideoURL = item.VideoURL
 			}
 			if err := db.Save(&existing).Error; err != nil {
 				log.Printf("[scraper] failed to update event %s: %v", item.ExternalID, err)

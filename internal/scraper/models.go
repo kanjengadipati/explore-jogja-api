@@ -16,6 +16,7 @@ type ScrapedEvent struct {
 	Organizer     string
 	Highlights    []string
 	DestinationID string
+	VideoURL      string
 	Source        string
 }
 
@@ -33,6 +34,7 @@ type ScrapedDestination struct {
 	TicketPrice string
 	Latitude    float64
 	Longitude   float64
+	VideoURL    string
 	Source      string
 }
 

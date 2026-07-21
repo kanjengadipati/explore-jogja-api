@@ -1,0 +1,1 @@
+ALTER TABLE destinations ADD COLUMN IF NOT EXISTS video_url VARCHAR(255);

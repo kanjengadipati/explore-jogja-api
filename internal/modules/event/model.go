@@ -47,4 +47,5 @@ type Event struct {
 	Organizer     string  `json:"organizer"`
 	Highlights    JSONArr `gorm:"type:jsonb" json:"highlights"`
 	DestinationID string  `json:"destination_id"`
+	VideoURL      string  `gorm:"column:video_url" json:"video_url"`
 }
