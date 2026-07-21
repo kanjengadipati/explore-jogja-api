@@ -26,6 +26,7 @@ import (
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/trips"
 	"pleco-api/internal/modules/user"
+	"pleco-api/internal/scraper"
 	"pleco-api/internal/services"
 
 	"gorm.io/gorm"
@@ -112,6 +113,12 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	router.GET("/health", func(c *gin.Context) {
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
+	})
+
+	// Manual scraper trigger endpoint (for testing)
+	router.GET("/admin/scrape", func(c *gin.Context) {
+		results := scraper.RunAll(db)
+		httpx.Success(c, 200, "Scrape completed", gin.H{"results": results}, nil)
 	})
 
 	router.GET("/health/live", func(c *gin.Context) {

@@ -94,8 +94,9 @@ func seedEvents(db *gorm.DB) {
 	// Use upsert logic so new festival events can be added even if table is non-empty
 	allEvents := []event.Event{
 		{
-			ExternalID:   "evt-1",
-			Title:        "Yogyakarta Jazz Festival",
+			ExternalID:    "evt-1",
+			DestinationID: "prambanan",
+			Title:         "Yogyakarta Jazz Festival",
 			Description:  "Annual jazz music festival featuring local and international artists at the stunning Prambanan temple complex.",
 			Location:     "Prambanan Temple, Sleman",
 			StartDate:    "2026-07-20",
@@ -128,8 +129,9 @@ func seedEvents(db *gorm.DB) {
 			Highlights:   eja([]string{"Bakpia Cooking Workshop", "Street Food Market", "Cultural Performances"}),
 		},
 		{
-			ExternalID:   "evt-3",
-			Title:        "Saman Dance Festival",
+			ExternalID:    "evt-3",
+			DestinationID: "keraton",
+			Title:         "Saman Dance Festival",
 			Description:  "Annual showcase of the traditional Saman dance from Gayo, performed by troupes across Indonesia.",
 			Location:     "Kraton Complex, Yogyakarta",
 			StartDate:    "2026-09-01",
@@ -146,8 +148,9 @@ func seedEvents(db *gorm.DB) {
 		},
 		// --- FESTIVALS from frontend static data (merged) ---
 		{
-			ExternalID:   "f-sekaten",
-			Title:        "Sekaten Festival",
+			ExternalID:    "f-sekaten",
+			DestinationID: "keraton",
+			Title:         "Sekaten Festival",
 			Description:  "A week-long royal and spiritual festival celebrating the birth of Prophet Muhammad. The sacred royal gamelans are carried from the palace to the Grand Mosque.",
 			Location:     "Yogyakarta",
 			StartDate:    "2025-05-07",
@@ -180,8 +183,9 @@ func seedEvents(db *gorm.DB) {
 			Highlights:   eja([]string{"Street Art Carnivals", "Wayang Kulit Puppetry Night"}),
 		},
 		{
-			ExternalID:   "f-grebeg",
-			Title:        "Grebeg Maulud",
+			ExternalID:    "f-grebeg",
+			DestinationID: "keraton",
+			Title:         "Grebeg Maulud",
 			Description:  "The spectacular peak of royal gratitude. The Sultan of Yogyakarta paraded colossal mountain-shaped offerings made of harvest crops.",
 			Location:     "Yogyakarta",
 			StartDate:    "2025-10-05",

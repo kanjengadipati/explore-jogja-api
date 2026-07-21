@@ -12,6 +12,7 @@ import (
 	"pleco-api/internal/ai"
 	"pleco-api/internal/config"
 	"pleco-api/internal/middleware"
+	"pleco-api/internal/scraper"
 	"pleco-api/internal/services"
 	"pleco-api/internal/services/monitoring"
 	"syscall"
@@ -33,6 +34,16 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 
 	db := config.ConnectDBWithDriver(appConfig.DatabaseURL, appConfig.DatabaseDriver)
 	RunStartupTasks(appConfig, db)
+
+	// Start the background scraper scheduler (runs every Sunday at midnight by default)
+	if os.Getenv("SCRAPER_ENABLED") == "true" {
+		schedule := os.Getenv("SCRAPER_SCHEDULE")
+		if schedule == "" {
+			schedule = "0 0 * * 0"
+		}
+		scraper.StartScheduler(db, schedule)
+		slog.Info("Scraper scheduler started", "schedule", schedule)
+	}
 
 	jwtService := services.NewJWTService(appConfig.JWTSecret)
 	rateStore := newRateLimitStore(redisConnectionURL(appConfig))
