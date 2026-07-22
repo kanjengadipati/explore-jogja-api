@@ -374,13 +374,13 @@ Respond ONLY with valid JSON matching this schema:
 		MaxTokens:    1500,
 	})
 	if err != nil {
-		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", "Failed to generate recommendation")
+		httpx.Success(c, 200, "Query processed (offline)", h.offlineQueryResponse(req.Query), nil)
 		return
 	}
 
 	var parsed AIQueryResponse
 	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", "Invalid AI response format")
+		httpx.Success(c, 200, "Query processed (offline)", h.offlineQueryResponse(req.Query), nil)
 		return
 	}
 
@@ -430,13 +430,19 @@ Respond ONLY with valid JSON matching this schema:
 		MaxTokens:    1500,
 	})
 	if err != nil {
-		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", "Failed to analyze image")
+		httpx.Success(c, 200, "Image analyzed (offline)", &AIQueryResponse{
+			Reply:                 "Sugeng rawuh! Gambar yang menarik. Berikut beberapa destinasi Yogyakarta yang mungkin relevan.",
+			MatchedDestinationIDs: []string{"tamansari", "prambanan"},
+		}, nil)
 		return
 	}
 
 	var parsed AIQueryResponse
 	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", "Invalid AI response format")
+		httpx.Success(c, 200, "Image analyzed (offline)", &AIQueryResponse{
+			Reply:                 "Sugeng rawuh! Gambar yang menarik. Berikut beberapa destinasi Yogyakarta yang mungkin relevan.",
+			MatchedDestinationIDs: []string{"tamansari", "prambanan"},
+		}, nil)
 		return
 	}
 
@@ -483,14 +489,14 @@ Respond ONLY with valid JSON matching this schema:
 		MaxTokens:    400,
 	})
 	if err != nil {
-		httpx.ErrorWithCode(c, 502, "AI_PROVIDER_ERROR", fmt.Sprintf("Failed to generate recommendation: %v", err))
+		// AI call failed — return offline fallback instead of error
+		httpx.Success(c, 200, "Recommendation generated (offline)", h.offlineRecommendResponse(now), nil)
 		return
 	}
 
 	var parsed AIRecommendResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		// fallback to offline if AI response is not parseable
-		httpx.Success(c, 200, "Recommendation generated", h.offlineRecommendResponse(now), nil)
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil || parsed.DestinationID == "" {
+		httpx.Success(c, 200, "Recommendation generated (offline)", h.offlineRecommendResponse(now), nil)
 		return
 	}
 
