@@ -332,6 +332,42 @@ func imgs(s string) []string {
 	return []string{s}
 }
 
+// normalizeSubRegion normalizes raw location text into a standard sub_region value.
+// e.g. "Kabupaten Bantul" → "Bantul", "Kota Yogyakarta" → "Yogyakarta".
+func normalizeSubRegion(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+	// strip common prefixes
+	s = strings.TrimPrefix(s, "Kabupaten ")
+	s = strings.TrimPrefix(s, "Kab. ")
+	s = strings.TrimPrefix(s, "Kota ")
+	s = strings.TrimPrefix(s, "Kota ")
+	s = strings.TrimSpace(s)
+
+	// map known variations to canonical names
+	lower := strings.ToLower(s)
+	regionMap := map[string]string{
+		"bantul":       "Bantul",
+		"gunungkidul":  "Gunungkidul",
+		"gunung kidul": "Gunungkidul",
+		"kulon progo":  "Kulon Progo",
+		"sleman":       "Sleman",
+		"yogyakarta":   "Yogyakarta",
+		"jogja":        "Yogyakarta",
+		"jogjakarta":   "Yogyakarta",
+	}
+	if canonical, ok := regionMap[lower]; ok {
+		return canonical
+	}
+	// fallback: title-case the cleaned string
+	if len(s) > 0 {
+		return strings.ToUpper(s[:1]) + s[1:]
+	}
+	return s
+}
+
 // matchFromDestMap tries to find a destination whose name is contained in the event
 // title or location.
 func matchFromDestMap(destMap map[string]string, title, location string) string {

@@ -23,19 +23,20 @@ func (s *Service) Search(query string) ([]Event, error) {
 }
 
 type UpdateEventRequest struct {
-	Title        *string  `json:"title"`
-	Description  *string  `json:"description"`
-	Location     *string  `json:"location"`
-	StartDate    *string  `json:"start_date"`
-	EndDate      *string  `json:"end_date"`
-	ImageURL     *string  `json:"image_url"`
-	Category     *string  `json:"category"`
-	Status       *string  `json:"status"`
-	Latitude     *float64 `json:"latitude"`
-	Longitude    *float64 `json:"longitude"`
-	MaxAttendees *int     `json:"max_attendees"`
-	TicketPrice  *string  `json:"ticket_price"`
-	Organizer    *string  `json:"organizer"`
+	Title         *string  `json:"title"`
+	Description   *string  `json:"description"`
+	Location      *string  `json:"location"`
+	StartDate     *string  `json:"start_date"`
+	EndDate       *string  `json:"end_date"`
+	ImageURL      *string  `json:"image_url"`
+	Category      *string  `json:"category"`
+	Status        *string  `json:"status"`
+	Latitude      *float64 `json:"latitude"`
+	Longitude     *float64 `json:"longitude"`
+	MaxAttendees  *int     `json:"max_attendees"`
+	TicketPrice   *string  `json:"ticket_price"`
+	Organizer     *string  `json:"organizer"`
+	DestinationID *string  `json:"destination_id"`
 }
 
 func (s *Service) Create(event *Event) error {
@@ -86,6 +87,9 @@ func (s *Service) Update(externalID string, req UpdateEventRequest) (*Event, err
 	}
 	if req.Organizer != nil {
 		event.Organizer = *req.Organizer
+	}
+	if req.DestinationID != nil {
+		event.DestinationID = *req.DestinationID
 	}
 
 	if err := s.Repo.Update(event); err != nil {

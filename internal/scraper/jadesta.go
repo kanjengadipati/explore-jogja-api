@@ -65,11 +65,15 @@ func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 		}
 
 		location := "Yogyakarta"
+		subRegion := "Yogyakarta"
 		spanText := strings.TrimSpace(sel.Find("span").First().Text())
 		if spanText != "" {
 			parts := strings.SplitN(spanText, ", ", 2)
 			if len(parts) == 2 {
 				location = strings.TrimSpace(parts[0])
+				subRegion = normalizeSubRegion(parts[len(parts)-1])
+			} else {
+				subRegion = normalizeSubRegion(spanText)
 			}
 		}
 
@@ -79,7 +83,7 @@ func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			Tagline:     "",
 			Category:    "Desa Wisata",
 			Location:    location,
-			SubRegion:   "",
+			SubRegion:   subRegion,
 			Images:      nil,
 			Description: "",
 			TicketPrice: "Cek website resmi",

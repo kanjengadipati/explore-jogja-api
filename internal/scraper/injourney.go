@@ -120,7 +120,7 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			Tagline:     "",
 			Category:    "Cultural",
 			Location:    "Yogyakarta",
-			SubRegion:   "",
+			SubRegion:   "Yogyakarta",
 			Images:      imgs(img),
 			Description: desc,
 			TicketPrice: "Cek website resmi",

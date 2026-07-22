@@ -6,24 +6,25 @@ import (
 )
 
 type EventResponse struct {
-	ID           uint        `json:"id_numeric"`
-	ExternalID   string      `json:"id"`
-	Title        string      `json:"title"`
-	Description  string      `json:"description"`
-	Location     string      `json:"location"`
-	StartDate    string      `json:"start_date"`
-	EndDate      string      `json:"end_date"`
-	ImageURL     string      `json:"image_url"`
-	Category     string      `json:"category"`
-	Status       string      `json:"status"`
-	Latitude     float64     `json:"latitude"`
-	Longitude    float64     `json:"longitude"`
-	MaxAttendees int         `json:"max_attendees"`
-	TicketPrice  string      `json:"ticket_price"`
-	Organizer    string      `json:"organizer"`
-	Highlights   JSONArr     `json:"highlights"`
-	Badge        string      `json:"badge"`
-	Badges       []string    `json:"badges"`
+	ID            uint        `json:"id_numeric"`
+	ExternalID    string      `json:"id"`
+	Title         string      `json:"title"`
+	Description   string      `json:"description"`
+	Location      string      `json:"location"`
+	StartDate     string      `json:"start_date"`
+	EndDate       string      `json:"end_date"`
+	ImageURL      string      `json:"image_url"`
+	Category      string      `json:"category"`
+	Status        string      `json:"status"`
+	Latitude      float64     `json:"latitude"`
+	Longitude     float64     `json:"longitude"`
+	MaxAttendees  int         `json:"max_attendees"`
+	TicketPrice   string      `json:"ticket_price"`
+	Organizer     string      `json:"organizer"`
+	DestinationID string      `json:"destination_id"`
+	Highlights    JSONArr     `json:"highlights"`
+	Badge         string      `json:"badge"`
+	Badges        []string    `json:"badges"`
 }
 
 func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
@@ -59,24 +60,25 @@ func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
 	}
 
 	return EventResponse{
-		ID:           e.ID,
-		ExternalID:   e.ExternalID,
-		Title:        e.Title,
-		Description:  e.Description,
-		Location:     e.Location,
-		StartDate:    e.StartDate,
-		EndDate:      e.EndDate,
-		ImageURL:     e.ImageURL,
-		Category:     e.Category,
-		Status:       e.Status,
-		Latitude:     e.Latitude,
-		Longitude:    e.Longitude,
-		MaxAttendees: e.MaxAttendees,
-		TicketPrice:  e.TicketPrice,
-		Organizer:    e.Organizer,
-		Highlights:   e.Highlights,
-		Badge:        primaryBadge,
-		Badges:       badges,
+		ID:            e.ID,
+		ExternalID:    e.ExternalID,
+		Title:         e.Title,
+		Description:   e.Description,
+		Location:      e.Location,
+		StartDate:     e.StartDate,
+		EndDate:       e.EndDate,
+		ImageURL:      e.ImageURL,
+		Category:      e.Category,
+		Status:        e.Status,
+		Latitude:      e.Latitude,
+		Longitude:     e.Longitude,
+		MaxAttendees:  e.MaxAttendees,
+		TicketPrice:   e.TicketPrice,
+		Organizer:     e.Organizer,
+		DestinationID: e.DestinationID,
+		Highlights:    e.Highlights,
+		Badge:         primaryBadge,
+		Badges:        badges,
 	}
 }
 
