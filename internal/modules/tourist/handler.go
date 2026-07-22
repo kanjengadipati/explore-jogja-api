@@ -341,21 +341,29 @@ func (h *Handler) Query(c *gin.Context) {
 		return
 	}
 
-	destContext := destinationsContextJSON(dests)
+	eventsData, _ := h.EventRepo.FindAll() // best-effort — don't fail if events unavailable
+
+	destContext  := destinationsContextJSON(dests)
+	eventContext := eventsContextJSON(eventsData)
+
 	systemInstruction := fmt.Sprintf(`You are a warm, highly knowledgeable, and deeply hospitable local guide from Yogyakarta, Indonesia.
-Your task is to act as a "knowledgeable local friend" helping tourists discover destinations in Yogyakarta.
+Your task is to act as a "knowledgeable local friend" helping tourists discover destinations and events in Yogyakarta.
 Adopt a premium, elegant, yet warm and conversational tone.
 Occasionally use gentle Javanese greetings (like 'Sugeng rawuh' for Welcome, 'Matur nuwun' for Thank you, 'Monggo' for Please proceed).
 Answer inquiries thoroughly and recommend specific places from the list of actual destinations provided.
+If the user asks about events or festivals, refer to the UPCOMING EVENTS catalog.
 
 Here is the exact catalog of Yogyakarta destinations you can recommend. Do NOT invent new places; map the user's request intelligently to these options:
+%s
+
+UPCOMING EVENTS & FESTIVALS:
 %s
 
 Respond ONLY with valid JSON matching this schema:
 {
   "reply": "Your friendly narrative advice, 3-5 sentences.",
-  "matchedDestinationIds": ["array of destination IDs from the catalog"]
-}`, destContext)
+  "matchedDestinationIds": ["array of destination IDs from the catalog that are relevant"]
+}`, destContext, eventContext)
 
 	userPrompt := buildUserPrompt(req.Query, req.History)
 
@@ -577,13 +585,10 @@ func destinationsContextJSON(dests []destination.Destination) string {
 		SubRegion string  `json:"subRegion"`
 		Rating    float64 `json:"rating"`
 	}
-	limit := len(dests)
-	if limit > 25 {
-		limit = 25
-	}
-	summaries := make([]destSummary, limit)
-	for i := 0; i < limit; i++ {
-		d := dests[i]
+	// Send all destinations — AI needs full catalog to give accurate recommendations.
+	// Summaries are compact so token count stays manageable (~60 tokens per destination).
+	summaries := make([]destSummary, len(dests))
+	for i, d := range dests {
 		summaries[i] = destSummary{
 			ID: d.ExternalID, Name: d.Name, Tagline: d.Tagline,
 			Category: d.Category, BestTime: d.BestTime, SubRegion: d.SubRegion,
