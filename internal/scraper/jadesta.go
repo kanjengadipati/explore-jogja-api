@@ -47,40 +47,8 @@ func (s *jadestaScraper) fetchDoc(url string) (*goquery.Document, error) {
 }
 
 func (s *jadestaScraper) ScrapeEvents() ([]ScrapedEvent, error) {
-	doc, err := s.fetchDoc(jadestaSearch)
-	if err != nil {
-		return nil, fmt.Errorf("fetch jadesta events: %w", err)
-	}
-
-	var events []ScrapedEvent
-	doc.Find(".listing-item-content").Each(func(i int, sel *goquery.Selection) {
-		title := strings.TrimSpace(sel.Find("h3").First().Text())
-		if title == "" {
-			return
-		}
-
-		location := "Yogyakarta"
-		spanText := strings.TrimSpace(sel.Find("span").First().Text())
-		if spanText != "" {
-			parts := strings.SplitN(spanText, ", ", 2)
-			if len(parts) == 2 {
-				location = strings.TrimSpace(parts[0])
-			}
-		}
-
-		events = append(events, ScrapedEvent{
-			ExternalID:  slugify(title),
-			Title:       title,
-			Description: "",
-			Location:    location,
-			Category:    "Event",
-			TicketPrice: "Cek website resmi",
-			Organizer:   "Jadesta Kemenparekraf",
-			Source:      "jadesta",
-		})
-	})
-
-	return events, nil
+	// Jadesta only lists tourism villages (desa wisata), not events.
+	return nil, nil
 }
 
 func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
