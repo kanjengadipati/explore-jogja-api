@@ -92,13 +92,22 @@ func (s *Service) Generate(ctx context.Context, input GenerateInput) (*GenerateR
 		return res, nil
 	}
 
-	// If primary fails and fallback provider is configured, try the fallback
+	// If primary fails and fallback provider is configured, try the fallback.
+	// Use a fresh background context so an expired primary ctx doesn't kill the fallback.
 	if s.fallbackProvider != nil {
 		fallbackInput := input
 		if fallbackInput.Model == "" {
 			fallbackInput.Model = s.fallbackModel
 		}
-		return s.fallbackProvider.Generate(ctx, fallbackInput)
+		// Derive a fresh context with the same timeout from background,
+		// independent of the (possibly expired) primary context.
+		fallbackCtx := context.Background()
+		if deadline, ok := ctx.Deadline(); ok {
+			var cancel context.CancelFunc
+			fallbackCtx, cancel = context.WithDeadline(context.Background(), deadline)
+			defer cancel()
+		}
+		return s.fallbackProvider.Generate(fallbackCtx, fallbackInput)
 	}
 
 	return nil, err
