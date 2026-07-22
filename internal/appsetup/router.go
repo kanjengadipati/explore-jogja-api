@@ -116,10 +116,18 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
 	})
 
-	// Manual scraper trigger endpoint (for testing)
+	// Manual scraper trigger endpoints (for testing)
 	router.GET("/admin/scrape", func(c *gin.Context) {
 		results := scraper.RunAll(db)
 		httpx.Success(c, 200, "Scrape completed", gin.H{"results": results}, nil)
+	})
+	router.GET("/admin/scrape/destinations", func(c *gin.Context) {
+		results := scraper.RunDestinationsOnly(db)
+		httpx.Success(c, 200, "Destination scrape completed", gin.H{"results": results}, nil)
+	})
+	router.GET("/admin/scrape/events", func(c *gin.Context) {
+		results := scraper.RunEventsOnly(db)
+		httpx.Success(c, 200, "Event scrape completed", gin.H{"results": results}, nil)
 	})
 
 	// Sitemap

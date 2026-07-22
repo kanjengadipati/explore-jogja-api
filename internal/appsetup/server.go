@@ -35,14 +35,15 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 	db := config.ConnectDBWithDriver(appConfig.DatabaseURL, appConfig.DatabaseDriver)
 	RunStartupTasks(appConfig, db)
 
-	// Start the background scraper scheduler (runs every Sunday at midnight by default)
+	// Start the background scraper scheduler
 	if os.Getenv("SCRAPER_ENABLED") == "true" {
-		schedule := os.Getenv("SCRAPER_SCHEDULE")
-		if schedule == "" {
-			schedule = "0 0 * * 0"
-		}
-		scraper.StartScheduler(db, schedule)
-		slog.Info("Scraper scheduler started", "schedule", schedule)
+		destSchedule := os.Getenv("SCRAPER_DEST_SCHEDULE")
+		eventSchedule := os.Getenv("SCRAPER_EVENT_SCHEDULE")
+		scraper.StartSplitScheduler(db, destSchedule, eventSchedule)
+		slog.Info("Split scraper scheduler started",
+			"dest_schedule", destSchedule,
+			"event_schedule", eventSchedule,
+		)
 	}
 
 	jwtService := services.NewJWTService(appConfig.JWTSecret)

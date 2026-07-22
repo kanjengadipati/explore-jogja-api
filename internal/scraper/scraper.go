@@ -60,6 +60,77 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 	return results
 }
 
+// RunDestinationsOnly runs only destination scrapers (for monthly schedule).
+func RunDestinationsOnly(db *gorm.DB) []ScrapeResult {
+	var results []ScrapeResult
+	for _, s := range scrapers {
+		log.Printf("[scraper] starting %s destinations", s.Name())
+		result := ScrapeResult{Source: s.Name()}
+
+		dests, err := s.ScrapeDestinations()
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("destinations: %v", err))
+			log.Printf("[scraper] %s destinations error: %v", s.Name(), err)
+		} else {
+			di, du := upsertDestinations(db, dests, s.Name())
+			result.DestinationsInserted = di
+			result.DestinationsUpdated = du
+			log.Printf("[scraper] %s destinations: %d inserted, %d updated", s.Name(), di, du)
+		}
+
+		results = append(results, result)
+	}
+
+	// Populate missing videos for destinations only
+	var dests []destination.Destination
+	db.Where("video_url = '' OR video_url IS NULL").Limit(10).Find(&dests)
+	for _, d := range dests {
+		url := FetchYouTubeVideoURL(d.Name)
+		if url != "" {
+			db.Model(&d).Update("video_url", url)
+			log.Printf("[scraper] auto-populated video for destination: %s", d.Name)
+		}
+	}
+
+	return results
+}
+
+// RunEventsOnly runs only event scrapers (for 3-day schedule).
+func RunEventsOnly(db *gorm.DB) []ScrapeResult {
+	destMap := buildDestMap(db)
+	var results []ScrapeResult
+	for _, s := range scrapers {
+		log.Printf("[scraper] starting %s events", s.Name())
+		result := ScrapeResult{Source: s.Name()}
+
+		events, err := s.ScrapeEvents()
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("events: %v", err))
+			log.Printf("[scraper] %s events error: %v", s.Name(), err)
+		} else {
+			ei, eu := upsertEvents(db, events, s.Name(), destMap)
+			result.EventsInserted = ei
+			result.EventsUpdated = eu
+			log.Printf("[scraper] %s events: %d inserted, %d updated", s.Name(), ei, eu)
+		}
+
+		results = append(results, result)
+	}
+
+	// Populate missing videos for events only
+	var events []event.Event
+	db.Where("video_url = '' OR video_url IS NULL").Limit(10).Find(&events)
+	for _, e := range events {
+		url := FetchYouTubeVideoURL(e.Title + " " + e.Location)
+		if url != "" {
+			db.Model(&e).Update("video_url", url)
+			log.Printf("[scraper] auto-populated video for event: %s", e.Title)
+		}
+	}
+
+	return results
+}
+
 func populateMissingVideos(db *gorm.DB) {
 	// Limit to 10 each to save quota
 	var dests []destination.Destination
