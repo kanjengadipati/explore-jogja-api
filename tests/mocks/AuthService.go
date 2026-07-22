@@ -51,6 +51,29 @@ func (_m *AuthService) GetProfile(userID uint) (*user.User, error) {
 	return r0, r1
 }
 
+func (_m *AuthService) GetEnrichedProfile(userID uint, permissions []string) (*auth.EnrichedProfile, error) {
+	ret := _m.Called(userID, permissions)
+	if len(ret) == 0 {
+		panic("no return value specified for GetEnrichedProfile")
+	}
+	var r0 *auth.EnrichedProfile
+	if rf, ok := ret.Get(0).(func(uint, []string) (*auth.EnrichedProfile, error)); ok {
+		return rf(userID, permissions)
+	}
+	if rf, ok := ret.Get(0).(func(uint, []string) *auth.EnrichedProfile); ok {
+		r0 = rf(userID, permissions)
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*auth.EnrichedProfile)
+	}
+	var r1 error
+	if rf, ok := ret.Get(1).(func(uint, []string) error); ok {
+		r1 = rf(userID, permissions)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
 func (_m *AuthService) GetSocialAccount(userID uint, provider string) (*social.SocialAccount, error) {
 	ret := _m.Called(userID, provider)
 	if len(ret) == 0 {

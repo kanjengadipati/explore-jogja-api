@@ -1110,6 +1110,13 @@ func TestProfile_Success(t *testing.T) {
 		Email: "test@mail.com",
 		Role:  "user",
 	}, nil)
+	mockService.On("GetEnrichedProfile", uint(1), []string{"session.read"}).Return(&auth.EnrichedProfile{
+		ID:          1,
+		Name:        "Test",
+		Email:       "test@mail.com",
+		Role:        "user",
+		Permissions: []string{"session.read"},
+	}, nil)
 
 	c, w := setupTest()
 	req := httptest.NewRequest(http.MethodGet, "/profile", nil)

@@ -225,7 +225,7 @@ func TestCreateUser_EmailAlreadyExists(t *testing.T) {
 		Password: "Secret123!",
 	})
 
-	assert.EqualError(t, err, "email already in use")
+	assert.EqualError(t, err, "conflict: resource already exists")
 }
 
 func TestCreateUser_RejectsSuperadminRole(t *testing.T) {
