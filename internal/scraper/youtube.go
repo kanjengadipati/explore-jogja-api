@@ -19,12 +19,30 @@ type ytItem struct {
 
 type ytVideoItem struct {
 	ID         string `json:"id"`
+	Title      string `json:"title"`
 	Statistics struct {
 		ViewCount string `json:"viewCount"`
 	} `json:"statistics"`
 	ContentDetails struct {
 		Definition string `json:"definition"`
 	} `json:"contentDetails"`
+}
+
+var compilationKeywords = []string{
+	"compilation", "kompilasi", "15 tempat", "10 tempat", "6 wisata",
+	"8 wisata", "5 wisata", "tempat wisata di gunung", "tempat wisata di jogja",
+	"wisata jogja", "jogja terbaru", "lagi hits", "paling terkenal",
+	"wajib kunjung", "rekomendasi", "top 10", "top 5", "daftar",
+}
+
+func isCompilationTitle(title string) bool {
+	lower := strings.ToLower(title)
+	for _, kw := range compilationKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 func FetchYouTubeVideoURL(query string) string {
@@ -35,12 +53,13 @@ func FetchYouTubeVideoURL(query string) string {
 
 	client := http.Client{Timeout: 10 * time.Second}
 	
-	// 1. Search
+	// 1. Search — use specific query without generic "wisata" suffix
 	q := url.Values{}
 	q.Set("part", "snippet")
-	q.Set("q", query+" Yogyakarta wisata")
+	q.Set("q", query)
 	q.Set("type", "video")
-	q.Set("maxResults", "3")
+	q.Set("order", "relevance")
+	q.Set("maxResults", "10")
 	q.Set("relevanceLanguage", "id")
 	q.Set("key", apiKey)
 
@@ -74,7 +93,7 @@ func FetchYouTubeVideoURL(query string) string {
 
 func pickBestVideo(client http.Client, apiKey string, videoIDs []string) string {
 	q := url.Values{}
-	q.Set("part", "contentDetails,statistics")
+	q.Set("part", "contentDetails,statistics,snippet")
 	q.Set("id", strings.Join(videoIDs, ","))
 	q.Set("key", apiKey)
 
@@ -94,15 +113,27 @@ func pickBestVideo(client http.Client, apiKey string, videoIDs []string) string 
 	}
 
 	type scored struct { id string; score int }
-	var best scored
+	var candidates []scored
 	for _, v := range videoResp.Items {
+		if isCompilationTitle(v.Title) {
+			continue
+		}
 		s := 0
 		if v.ContentDetails.Definition == "hd" { s += 100 }
 		views := 0
 		fmt.Sscanf(v.Statistics.ViewCount, "%d", &views)
-		s += views / 1000
-		if s > best.score {
-			best = scored{v.ID, s}
+		s += views / 10000
+		candidates = append(candidates, scored{v.ID, s})
+	}
+
+	if len(candidates) == 0 {
+		return videoIDs[0]
+	}
+
+	var best scored
+	for _, c := range candidates {
+		if c.score > best.score {
+			best = c
 		}
 	}
 	return best.id
