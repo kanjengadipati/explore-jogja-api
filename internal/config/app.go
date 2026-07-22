@@ -296,8 +296,15 @@ func (c *AppConfig) Validate() error {
 			if c.AI.Model == "" {
 				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is anthropic")
 			}
+		case "groq":
+			if c.AI.APIKey == "" {
+				problems = append(problems, "AI_API_KEY is required when AI_PROVIDER is groq")
+			}
+			if c.AI.Model == "" {
+				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is groq")
+			}
 		default:
-			problems = append(problems, "AI_PROVIDER must be one of: mock, ollama, openai, gemini, anthropic")
+			problems = append(problems, "AI_PROVIDER must be one of: mock, ollama, openai, gemini, anthropic, groq")
 		}
 	}
 
