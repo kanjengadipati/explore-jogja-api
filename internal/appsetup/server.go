@@ -46,6 +46,9 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 		)
 	}
 
+	// Fix stale event statuses on startup
+	scraper.BackfillEventStatuses(db)
+
 	jwtService := services.NewJWTService(appConfig.JWTSecret)
 	rateStore := newRateLimitStore(redisConnectionURL(appConfig))
 	router, err := BuildRouter(db, appConfig, jwtService, rateStore)

@@ -3,6 +3,7 @@ package seeds
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"pleco-api/internal/modules/event"
 
@@ -22,7 +23,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-08-16",
 			ImageURL:     "https://commons.wikimedia.org/wiki/Special:FilePath/Bakpia%20pathuk.jpg",
 			Category:     "Food Festival",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.8024,
 			Longitude:    110.3649,
 			MaxAttendees: 2000,
@@ -40,7 +41,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-09-07",
 			ImageURL:     "https://upload.wikimedia.org/wikipedia/commons/c/c9/Gunungan_darat_during_Garebeg_Mulud_Yogyakarta_Dec_2017_Pj_IMG_4517sm.jpg",
 			Category:     "Cultural Festival",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8052,
 			Longitude:    110.3647,
 			MaxAttendees: 10000,
@@ -58,7 +59,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-07-20",
 			ImageURL:     "https://upload.wikimedia.org/wikipedia/commons/4/4f/Prambananjazz-6-2020.png",
 			Category:     "Music Festival",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.7520,
 			Longitude:    110.4914,
 			MaxAttendees: 5000,
@@ -76,7 +77,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-08-23",
 			ImageURL:     "https://commons.wikimedia.org/wiki/Special:FilePath/Merapi%2C_Yogyakarta.jpg",
 			Category:     "Adventure",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.5407,
 			Longitude:    110.4457,
 			MaxAttendees: 500,
@@ -93,7 +94,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-10-13",
 			ImageURL:     "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Fashion & Art",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8226,
 			Longitude:    110.4107,
 			MaxAttendees: 3000,
@@ -111,7 +112,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-09-21",
 			ImageURL:     "https://images.unsplash.com/photo-1530870110042-98b2cb110834?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Cultural Festival",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -8.0257,
 			Longitude:    110.3318,
 			MaxAttendees: 8000,
@@ -128,7 +129,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-10-01",
 			ImageURL:     "https://upload.wikimedia.org/wikipedia/commons/c/c9/Gunungan_darat_during_Garebeg_Mulud_Yogyakarta_Dec_2017_Pj_IMG_4517sm.jpg",
 			Category:     "Cultural Ceremony",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8032,
 			Longitude:    110.3212,
 			MaxAttendees: 3000,
@@ -145,7 +146,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-11-01",
 			ImageURL:     "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Cultural Ceremony",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8715,
 			Longitude:    110.3951,
 			MaxAttendees: 5000,
@@ -163,7 +164,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-10-31",
 			ImageURL:     "https://commons.wikimedia.org/wiki/Special:FilePath/Ramayana_Prambanan_3.jpg",
 			Category:     "Cultural Performance",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.7520,
 			Longitude:    110.4915,
 			MaxAttendees: 3000,
@@ -180,7 +181,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-11-16",
 			ImageURL:     "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Music Festival",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.6852,
 			Longitude:    110.3541,
 			MaxAttendees: 5000,
@@ -198,7 +199,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-12-31",
 			ImageURL:     "https://images.unsplash.com/photo-1543874768-af0b9c4090d5?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Street Festival",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.7942,
 			Longitude:    110.3656,
 			MaxAttendees: 10000,
@@ -215,7 +216,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-10-05",
 			ImageURL:     "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Custom Culture",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8042,
 			Longitude:    110.4005,
 			MaxAttendees: 15000,
@@ -233,7 +234,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-12-31",
 			ImageURL:     "https://upload.wikimedia.org/wikipedia/commons/9/9b/SanabudayaMuseumEntrySign85.jpg",
 			Category:     "Film & Cinema",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.8025,
 			Longitude:    110.3635,
 			MaxAttendees: 100,
@@ -251,7 +252,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-10-31",
 			ImageURL:     "https://commons.wikimedia.org/wiki/Special:FilePath/Ramayana_Prambanan_3.jpg",
 			Category:     "Cultural Performance",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.7512,
 			Longitude:    110.4901,
 			MaxAttendees: 3000,
@@ -268,7 +269,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-09-08",
 			ImageURL:     "https://commons.wikimedia.org/wiki/Special:FilePath/Sarons_of_Gamelan_Sekati,_Yogyakarta.jpg",
 			Category:     "Music Festival",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8005,
 			Longitude:    110.3685,
 			MaxAttendees: 2000,
@@ -286,7 +287,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-10-22",
 			ImageURL:     "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Street Performance",
-			Status:       "upcoming",
+			Status:       "",
 			Latitude:     -7.8012,
 			Longitude:    110.3648,
 			MaxAttendees: 8000,
@@ -304,7 +305,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-07-03",
 			ImageURL:     "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Cultural Performance",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.7700,
 			Longitude:    110.4880,
 			MaxAttendees: 2000,
@@ -322,7 +323,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-07-13",
 			ImageURL:     "https://images.unsplash.com/photo-1545156521-77bd85671d30?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Dance & Comedy",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -7.7612,
 			Longitude:    110.5063,
 			MaxAttendees: 500,
@@ -340,7 +341,7 @@ func SeedEvents(db *gorm.DB) {
 			EndDate:      "2026-07-31",
 			ImageURL:     "https://images.unsplash.com/photo-1545156521-77bd85671d30?auto=format&fit=crop&w=1600&q=80",
 			Category:     "Dance & Comedy",
-			Status:       "active",
+			Status:       "",
 			Latitude:     -8.0285,
 			Longitude:    110.3325,
 			MaxAttendees: 800,
@@ -353,6 +354,11 @@ func SeedEvents(db *gorm.DB) {
 	inserted := 0
 	updated := 0
 	for _, e := range events {
+		// Auto-detect status from dates if not set
+		if e.Status == "" {
+			e.Status = resolveEventStatus(e.StartDate, e.EndDate)
+		}
+
 		existing := event.Event{}
 		if err := db.Where("external_id = ?", e.ExternalID).First(&existing).Error; err == nil {
 			e.ID = existing.ID
@@ -371,4 +377,26 @@ func SeedEvents(db *gorm.DB) {
 		inserted++
 	}
 	fmt.Printf("Events seeding done: %d inserted, %d updated\n", inserted, updated)
+}
+
+func resolveEventStatus(startDate, endDate string) string {
+	now := time.Now()
+	layout := "2006-01-02"
+
+	if startDate != "" {
+		if start, err := time.Parse(layout, startDate); err == nil && start.After(now) {
+			return "upcoming"
+		}
+	}
+	if endDate != "" {
+		if end, err := time.Parse(layout, endDate); err == nil && end.Before(now) {
+			return "completed"
+		}
+	}
+	if startDate != "" {
+		if _, err := time.Parse(layout, startDate); err == nil {
+			return "active"
+		}
+	}
+	return "upcoming"
 }

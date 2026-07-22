@@ -3,7 +3,7 @@
 -- InJourney / Borobudur / Ratu Boko area → Sleman
 UPDATE destinations SET sub_region = 'Sleman'
 WHERE (sub_region = '' OR sub_region IS NULL)
-  AND id IN (
+  AND external_id IN (
     'borobudur', 'ratu-boko', 'ramayana', 'manohara', 'taman-mini-indonesia-indah',
     'borobudur-sunset-meditation-class', 'waisak-di-borobudur', 'mahakarya-borobudur', 'borobudur-sunset',
     'paket-boko-picnic', 'ratu-boko-sunset', 'boko-membatik', 'boko-wedding', 'boko-prewedding',

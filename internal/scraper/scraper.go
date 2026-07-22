@@ -54,6 +54,9 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 		results = append(results, result)
 	}
 	
+	// Fix any stale event statuses based on dates
+	BackfillEventStatuses(db)
+
 	// Populate missing videos for a few items per run
 	populateMissingVideos(db)
 	
@@ -255,7 +258,7 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 				EndDate:       item.EndDate,
 				ImageURL:      item.ImageURL,
 				Category:      item.Category,
-				Status:        "upcoming",
+				Status:        resolveEventStatus(item.StartDate, item.EndDate),
 				Latitude:      item.Latitude,
 				Longitude:     item.Longitude,
 				TicketPrice:   item.TicketPrice,
@@ -295,6 +298,7 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 			if item.VideoURL != "" {
 				existing.VideoURL = item.VideoURL
 			}
+			existing.Status = resolveEventStatus(item.StartDate, item.EndDate)
 			if err := db.Save(&existing).Error; err != nil {
 				log.Printf("[scraper] failed to update event %s: %v", item.ExternalID, err)
 				continue
@@ -323,6 +327,46 @@ func strsToEventJSONArr(s []string) event.JSONArr {
 
 func slugify(s string) string {
 	return slug.Make(s)
+}
+
+// resolveEventStatus determines the event status based on start/end dates.
+func resolveEventStatus(startDate, endDate string) string {
+	now := time.Now()
+	_layout := "2006-01-02"
+
+	if startDate != "" {
+		if start, err := time.Parse(_layout, startDate); err == nil && start.After(now) {
+			return "upcoming"
+		}
+	}
+	if endDate != "" {
+		if end, err := time.Parse(_layout, endDate); err == nil && end.Before(now) {
+			return "completed"
+		}
+	}
+	if startDate != "" {
+		if _, err := time.Parse(_layout, startDate); err == nil {
+			return "active"
+		}
+	}
+	return "upcoming"
+}
+
+// BackfillEventStatuses fixes statuses for all events in the DB based on their dates.
+func BackfillEventStatuses(db *gorm.DB) {
+	var events []event.Event
+	db.Find(&events)
+	updated := 0
+	for _, e := range events {
+		correct := resolveEventStatus(e.StartDate, e.EndDate)
+		if correct != e.Status {
+			db.Model(&e).Update("status", correct)
+			updated++
+		}
+	}
+	if updated > 0 {
+		log.Printf("[scraper] backfilled status for %d events", updated)
+	}
 }
 
 func imgs(s string) []string {
