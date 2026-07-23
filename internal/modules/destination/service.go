@@ -1,6 +1,9 @@
 package destination
 
-import "errors"
+import (
+	"errors"
+	"strconv"
+)
 
 type Service struct {
 	Repo Repository
@@ -45,8 +48,8 @@ type UpdateDestinationRequest struct {
 	TicketPrice       *string   `json:"ticket_price"`
 	OpeningHours      *string   `json:"opening_hours"`
 	BestTime          *string   `json:"best_time"`
-	Latitude          *float64  `json:"latitude"`
-	Longitude         *float64  `json:"longitude"`
+	Latitude          *string   `json:"latitude"`
+	Longitude         *string   `json:"longitude"`
 	Images            *JSONArr  `json:"images"`
 	Facilities        *JSONArr  `json:"facilities"`
 	TravelTips        *JSONArr  `json:"travel_tips"`
@@ -104,10 +107,14 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 		dest.BestTime = *req.BestTime
 	}
 	if req.Latitude != nil {
-		dest.Latitude = *req.Latitude
+		if v, err := strconv.ParseFloat(*req.Latitude, 64); err == nil {
+			dest.Latitude = v
+		}
 	}
 	if req.Longitude != nil {
-		dest.Longitude = *req.Longitude
+		if v, err := strconv.ParseFloat(*req.Longitude, 64); err == nil {
+			dest.Longitude = v
+		}
 	}
 	if req.Images != nil {
 		dest.Images = *req.Images
