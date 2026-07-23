@@ -100,4 +100,5 @@ func RunSeeds(db *gorm.DB, cfg config.AppConfig) {
 	seeds.SeedPartners(db)
 	seeds.SeedModules(db)
 	seeds.SeedEvents(db)
+	seeds.SeedArticles(db)
 }

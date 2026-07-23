@@ -26,6 +26,7 @@ import (
 	"pleco-api/internal/modules/role"
 	"pleco-api/internal/modules/souvenir"
 	"pleco-api/internal/modules/staging"
+	"pleco-api/internal/modules/article"
 	"pleco-api/internal/modules/story"
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/trips"
@@ -112,6 +113,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	storyModule := story.BuildModule(db)
 	story.SetupRoutes(api, storyModule.Handler, jwtService)
+
+	articleModule := article.BuildModule(db)
+	article.SetupRoutes(api, articleModule.Handler, jwtService)
 
 	promotionModule := promotion.BuildModule(db)
 	promotion.SetupRoutes(api, promotionModule.Handler, jwtService)
