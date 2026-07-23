@@ -1,7 +1,9 @@
 package appsetup
 
 import (
+	"log"
 	"log/slog"
+	"sync/atomic"
 	"pleco-api/internal/ai"
 	"pleco-api/internal/config"
 	"pleco-api/internal/erroroptimizer"
@@ -22,6 +24,7 @@ import (
 	"pleco-api/internal/modules/review"
 	"pleco-api/internal/modules/role"
 	"pleco-api/internal/modules/souvenir"
+	"pleco-api/internal/modules/staging"
 	"pleco-api/internal/modules/story"
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/trips"
@@ -33,6 +36,12 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	scrapeAllRunning      atomic.Bool
+	scrapeDestRunning     atomic.Bool
+	scrapeEventsRunning   atomic.Bool
 )
 
 func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtService *services.JWTService, rateStore middleware.RateLimitStore) error {
@@ -112,22 +121,57 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	tripsModule := trips.BuildModule(db)
 	trips.SetupRoutes(api, tripsModule.Handler, jwtService)
 
+	stagingModule := staging.BuildModule(db, aiService)
+	stagingModule.RegisterRoutes(api)
+
 	router.GET("/health", func(c *gin.Context) {
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
 	})
 
 	// Manual scraper trigger endpoints (for testing)
 	router.GET("/admin/scrape", func(c *gin.Context) {
-		results := scraper.RunAll(db)
-		httpx.Success(c, 200, "Scrape completed", gin.H{"results": results}, nil)
+		if !scrapeAllRunning.CompareAndSwap(false, true) {
+			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "A scrape is already in progress")
+			return
+		}
+		go func() {
+			defer scrapeAllRunning.Store(false)
+			log.Println("[scraper] manual run triggered via /admin/scrape")
+			results := scraper.RunAll(db)
+			for _, r := range results {
+				log.Printf("[scraper] %s: dest(%d/%d) events(%d/%d) errors(%d)",
+					r.Source, r.DestinationsInserted, r.DestinationsUpdated,
+					r.EventsInserted, r.EventsUpdated, len(r.Errors))
+			}
+			log.Println("[scraper] manual run complete")
+		}()
+		httpx.Success(c, 202, "Scrape started in background", nil, nil)
 	})
 	router.GET("/admin/scrape/destinations", func(c *gin.Context) {
-		results := scraper.RunDestinationsOnly(db)
-		httpx.Success(c, 200, "Destination scrape completed", gin.H{"results": results}, nil)
+		if !scrapeDestRunning.CompareAndSwap(false, true) {
+			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "A destination scrape is already in progress")
+			return
+		}
+		go func() {
+			defer scrapeDestRunning.Store(false)
+			log.Println("[scraper] manual destinations run triggered")
+			scraper.RunDestinationsOnly(db)
+			log.Println("[scraper] manual destinations run complete")
+		}()
+		httpx.Success(c, 202, "Destination scrape started in background", nil, nil)
 	})
 	router.GET("/admin/scrape/events", func(c *gin.Context) {
-		results := scraper.RunEventsOnly(db)
-		httpx.Success(c, 200, "Event scrape completed", gin.H{"results": results}, nil)
+		if !scrapeEventsRunning.CompareAndSwap(false, true) {
+			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "An event scrape is already in progress")
+			return
+		}
+		go func() {
+			defer scrapeEventsRunning.Store(false)
+			log.Println("[scraper] manual events run triggered")
+			scraper.RunEventsOnly(db)
+			log.Println("[scraper] manual events run complete")
+		}()
+		httpx.Success(c, 202, "Event scrape started in background", nil, nil)
 	})
 
 	// Sitemap
