@@ -2,7 +2,9 @@ package article
 
 import (
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"pleco-api/internal/httpx"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +29,23 @@ func resolveLocale(c *gin.Context) string {
 		return "en"
 	}
 	return "id"
+}
+
+// slugify converts a string to a URL-friendly slug.
+func slugify(s string) string {
+	s = strings.ToLower(s)
+	var result strings.Builder
+	prevDash := false
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			result.WriteRune(r)
+			prevDash = false
+		} else if !prevDash && result.Len() > 0 {
+			result.WriteRune('-')
+			prevDash = true
+		}
+	}
+	return strings.TrimRight(result.String(), "-")
 }
 
 func (h *Handler) GetAll(c *gin.Context) {
@@ -128,6 +147,23 @@ func (h *Handler) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&a); err != nil {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
 		return
+	}
+	// Auto-generate ExternalID if not provided
+	if a.ExternalID == "" {
+		a.ExternalID = "art-" + uuid.New().String()[:8]
+	}
+	// Auto-generate slug from title if not provided
+	if a.Slug == "" && a.Title != "" {
+		a.Slug = slugify(a.Title)
+	}
+	// Normalize nil tags to empty array
+	if a.Tags == nil {
+		a.Tags = JSONArr{}
+	}
+	// Auto-set published_at when creating as published
+	if a.Status == "published" && a.PublishedAt == nil {
+		now := time.Now()
+		a.PublishedAt = &now
 	}
 	if err := h.Service.Create(&a); err != nil {
 		httpx.HandleError(c, err)
