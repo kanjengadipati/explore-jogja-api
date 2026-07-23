@@ -152,7 +152,10 @@ func SeedArticles(db *gorm.DB) {
 		existing := &article.Article{}
 		err := db.Where("external_id = ?", a.ExternalID).First(existing).Error
 		if err == nil {
-			// Already exists — skip to preserve any edits made via admin
+			// Already exists — only update cover_image if it changed
+			if existing.CoverImage != a.CoverImage && a.CoverImage != "" {
+				db.Model(existing).Update("cover_image", a.CoverImage)
+			}
 			continue
 		}
 		if err := db.Create(&a).Error; err != nil {
