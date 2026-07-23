@@ -18,6 +18,7 @@ import (
 	"pleco-api/internal/modules/guide"
 	"pleco-api/internal/modules/hotel"
 	"pleco-api/internal/modules/imagereport"
+	"pleco-api/internal/modules/analytics"
 	"pleco-api/internal/modules/partner"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/rental"
@@ -132,6 +133,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	imageReportModule := imagereport.BuildModule(db)
 	imageReportModule.RegisterPublicRoutes(api.Group("destinations"))
 	imageReportModule.RegisterAdminRoutes(api.Group("admin"))
+
+	analyticsModule := analytics.BuildModule(db)
+	analyticsModule.RegisterAdminRoutes(api)
 
 	router.GET("/health", func(c *gin.Context) {
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
