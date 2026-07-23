@@ -38,6 +38,7 @@ type Event struct {
 	StartDate     string  `json:"start_date"`
 	EndDate       string  `json:"end_date"`
 	ImageURL      string  `json:"image_url"`
+	Images        JSONArr `gorm:"type:jsonb" json:"images"`
 	Category      string  `gorm:"index" json:"category"`
 	Status        string  `gorm:"index" json:"status"`
 	Latitude      float64 `json:"latitude"`

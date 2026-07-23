@@ -29,6 +29,7 @@ type UpdateEventRequest struct {
 	StartDate     *string  `json:"start_date"`
 	EndDate       *string  `json:"end_date"`
 	ImageURL      *string  `json:"image_url"`
+	Images        *JSONArr `json:"images"`
 	Category      *string  `json:"category"`
 	Status        *string  `json:"status"`
 	Latitude      *float64 `json:"latitude"`
@@ -37,6 +38,7 @@ type UpdateEventRequest struct {
 	TicketPrice   *string  `json:"ticket_price"`
 	Organizer     *string  `json:"organizer"`
 	DestinationID *string  `json:"destination_id"`
+	VideoURL      *string  `json:"video_url"`
 }
 
 func (s *Service) Create(event *Event) error {
@@ -66,6 +68,22 @@ func (s *Service) Update(externalID string, req UpdateEventRequest) (*Event, err
 	}
 	if req.ImageURL != nil {
 		event.ImageURL = *req.ImageURL
+	}
+	if req.Images != nil {
+		event.Images = *req.Images
+		// Keep image_url in sync with the first image for backwards compatibility
+		if len(*req.Images) > 0 {
+			if first, ok := (*req.Images)[0].(map[string]interface{}); ok {
+				if url, ok := first["url"].(string); ok && url != "" {
+					event.ImageURL = url
+				}
+			} else if url, ok := (*req.Images)[0].(string); ok && url != "" {
+				event.ImageURL = url
+			}
+		}
+	}
+	if req.VideoURL != nil {
+		event.VideoURL = *req.VideoURL
 	}
 	if req.Category != nil {
 		event.Category = *req.Category

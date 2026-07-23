@@ -14,6 +14,7 @@ type EventResponse struct {
 	StartDate     string      `json:"start_date"`
 	EndDate       string      `json:"end_date"`
 	ImageURL      string      `json:"image_url"`
+	Images        JSONArr     `json:"images"`
 	Category      string      `json:"category"`
 	Status        string      `json:"status"`
 	Latitude      float64     `json:"latitude"`
@@ -23,6 +24,7 @@ type EventResponse struct {
 	Organizer     string      `json:"organizer"`
 	DestinationID string      `json:"destination_id"`
 	Highlights    JSONArr     `json:"highlights"`
+	VideoURL      string      `json:"video_url"`
 	Badge         string      `json:"badge"`
 	Badges        []string    `json:"badges"`
 }
@@ -68,6 +70,7 @@ func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
 		StartDate:     e.StartDate,
 		EndDate:       e.EndDate,
 		ImageURL:      e.ImageURL,
+		Images:        e.Images,
 		Category:      e.Category,
 		Status:        e.Status,
 		Latitude:      e.Latitude,
@@ -77,6 +80,7 @@ func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
 		Organizer:     e.Organizer,
 		DestinationID: e.DestinationID,
 		Highlights:    e.Highlights,
+		VideoURL:      e.VideoURL,
 		Badge:         primaryBadge,
 		Badges:        badges,
 	}
