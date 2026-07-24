@@ -8,14 +8,20 @@ import (
 type BadgeType string
 
 const (
-	BadgeTrending       BadgeType = "trending"
-	BadgeHiddenGem      BadgeType = "hidden_gem"
-	BadgeBestForHealing BadgeType = "best_for_healing"
-	BadgeInstagramable  BadgeType = "instagramable"
-	BadgeSunsetSpot     BadgeType = "sunset_spot"
-	BadgeCultural       BadgeType = "cultural"
-	BadgePerfectMorning BadgeType = "perfect_morning"
-	BadgeAdventure      BadgeType = "adventure"
+	BadgeTrending        BadgeType = "trending"
+	BadgeHiddenGem       BadgeType = "hidden_gem"
+	BadgeBestForHealing  BadgeType = "best_for_healing"
+	BadgeInstagramable   BadgeType = "instagramable"
+	BadgeSunsetSpot      BadgeType = "sunset_spot"
+	BadgeSunriseSpot     BadgeType = "sunrise_spot"
+	BadgeCultural        BadgeType = "cultural"
+	BadgePerfectMorning  BadgeType = "perfect_morning"
+	BadgeAdventure       BadgeType = "adventure"
+	BadgeCampingSpot     BadgeType = "camping_spot"
+	BadgeBudgetFriendly  BadgeType = "budget_friendly"
+	BadgeWaterfall       BadgeType = "waterfall"
+	BadgeNightSpot       BadgeType = "night_spot"
+	BadgePhotographerPick BadgeType = "photographer_pick"
 )
 
 // ResolveBadges returns all badges that apply to the given destination.
@@ -28,6 +34,9 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 
 	cat := strings.ToLower(strings.TrimSpace(d.Category))
 	bestTime := strings.ToLower(d.BestTime)
+	tips := strings.ToLower(travelTipsString(d.TravelTips))
+	ticketPrice := strings.ToLower(strings.TrimSpace(d.TicketPrice))
+	name := strings.ToLower(strings.TrimSpace(d.Name))
 
 	// Trending: AI-selected as trending today
 	if trendingIDs[d.ExternalID] {
@@ -49,9 +58,14 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeInstagramable)
 	}
 
-	// Sunset Spot: Category: beach + bestTime mengandung "sore" atau "sunset"
-	if cat == "beach" && (strings.Contains(bestTime, "sore") || strings.Contains(bestTime, "sunset")) {
+	// Sunset Spot: bestTime mengandung "sore" atau "sunset"
+	if strings.Contains(bestTime, "sore") || strings.Contains(bestTime, "sunset") {
 		badges = append(badges, BadgeSunsetSpot)
+	}
+
+	// Sunrise Spot: bestTime mengandung "sunrise" / "fajar" / "dawn"
+	if strings.Contains(bestTime, "sunrise") || strings.Contains(bestTime, "fajar") || strings.Contains(bestTime, "dawn") {
+		badges = append(badges, BadgeSunriseSpot)
 	}
 
 	// Cultural: Category: heritage
@@ -69,7 +83,42 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeAdventure)
 	}
 
+	// Camping Spot: bestTime mengandung "camping"
+	if strings.Contains(bestTime, "camping") {
+		badges = append(badges, BadgeCampingSpot)
+	}
+
+	// Budget Friendly: ticket_price kosong / gratis / free
+	if ticketPrice == "" || strings.Contains(ticketPrice, "gratis") || strings.Contains(ticketPrice, "free") {
+		badges = append(badges, BadgeBudgetFriendly)
+	}
+
+	// Waterfall: name mengandung "air terjun" / "curug" / "waterfall"
+	if strings.Contains(name, "air terjun") || strings.Contains(name, "curug") || strings.Contains(name, "waterfall") {
+		badges = append(badges, BadgeWaterfall)
+	}
+
+	// Night Spot: bestTime mengandung "malam" / "night" / "stargaz"
+	if strings.Contains(bestTime, "malam") || strings.Contains(bestTime, "night") || strings.Contains(bestTime, "stargaz") {
+		badges = append(badges, BadgeNightSpot)
+	}
+
+	// Photographer Pick: travelTips mengandung "foto" / "photo" / "fotografi"
+	if strings.Contains(tips, "foto") || strings.Contains(tips, "photo") || strings.Contains(tips, "fotografi") {
+		badges = append(badges, BadgePhotographerPick)
+	}
+
 	return badges
+}
+
+func travelTipsString(tips JSONArr) string {
+	var parts []string
+	for _, t := range tips {
+		if s, ok := t.(string); ok {
+			parts = append(parts, s)
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 // badgePriority defines display priority order (highest first).
@@ -79,9 +128,15 @@ var badgePriority = []BadgeType{
 	BadgeBestForHealing,
 	BadgeInstagramable,
 	BadgeSunsetSpot,
+	BadgeSunriseSpot,
 	BadgeCultural,
 	BadgePerfectMorning,
 	BadgeAdventure,
+	BadgeCampingSpot,
+	BadgeBudgetFriendly,
+	BadgeWaterfall,
+	BadgeNightSpot,
+	BadgePhotographerPick,
 }
 
 // PrimaryBadge returns the single highest-priority badge for card overlay display.

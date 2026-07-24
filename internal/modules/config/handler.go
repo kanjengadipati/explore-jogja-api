@@ -42,6 +42,8 @@ var categories = []Category{
 	{ID: "beach", Name: "Beaches & Sunsets", Icon: "Sun", Description: "Vast golden sand cliffside coastlines"},
 	{ID: "family", Name: "Family Friendly", Icon: "Users", Description: "Amusements and cultural experiences"},
 	{ID: "weekend", Name: "Weekend Ideas", Icon: "CalendarDays", Description: "Short-trip custom curated escapes"},
+	{ID: "camping", Name: "Camping Grounds", Icon: "Tent", Description: "Under the stars overnight experiences"},
+	{ID: "sunset", Name: "Sunset Spots", Icon: "Sunset", Description: "Golden hour panoramic viewpoints"},
 }
 
 var subRegions = []SubRegion{
