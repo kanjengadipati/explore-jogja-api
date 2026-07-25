@@ -18,6 +18,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected := dest.Group("")
 	protected.Use(middleware.AuthMiddleware(jwtService))
 	protected.PUT("/:id", handler.Update)
+	protected.DELETE("/:id", handler.Delete)
 	protected.GET("/my-status", handler.GetUserDestinations)
 	protected.POST("/my-status/:slug", handler.UpdateUserDestinationStatus)
 }

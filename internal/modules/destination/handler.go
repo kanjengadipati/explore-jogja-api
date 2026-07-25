@@ -213,6 +213,22 @@ func (h *Handler) Update(c *gin.Context) {
 	httpx.Success(c, 200, "Destination updated", dest, nil)
 }
 
+func (h *Handler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.Service.Delete(id); err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+
+	// Invalidate cache
+	ctx := c.Request.Context()
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsAllPrefix)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsCategoryPrefix)
+	_ = h.Cache.Delete(ctx, cache.KeyDestinationsIDPrefix+id+":id", cache.KeyDestinationsIDPrefix+id+":en")
+
+	httpx.Success(c, 200, "Destination deleted", nil, nil)
+}
+
 func (h *Handler) UpdateUserDestinationStatus(c *gin.Context) {
 	userID, ok := httpx.GetUserIDFromContext(c)
 	if !ok {

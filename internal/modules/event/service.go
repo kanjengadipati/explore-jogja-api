@@ -1,6 +1,9 @@
 package event
 
-import "errors"
+import (
+	"errors"
+	"strconv"
+)
 
 type Service struct {
 	Repo Repository
@@ -32,8 +35,8 @@ type UpdateEventRequest struct {
 	Images        *JSONArr `json:"images"`
 	Category      *string  `json:"category"`
 	Status        *string  `json:"status"`
-	Latitude      *float64 `json:"latitude"`
-	Longitude     *float64 `json:"longitude"`
+	Latitude      *string `json:"latitude"`
+	Longitude     *string `json:"longitude"`
 	MaxAttendees  *int     `json:"max_attendees"`
 	TicketPrice   *string  `json:"ticket_price"`
 	Organizer     *string  `json:"organizer"`
@@ -92,10 +95,14 @@ func (s *Service) Update(externalID string, req UpdateEventRequest) (*Event, err
 		event.Status = *req.Status
 	}
 	if req.Latitude != nil {
-		event.Latitude = *req.Latitude
+		if v, err := strconv.ParseFloat(*req.Latitude, 64); err == nil {
+			event.Latitude = v
+		}
 	}
 	if req.Longitude != nil {
-		event.Longitude = *req.Longitude
+		if v, err := strconv.ParseFloat(*req.Longitude, 64); err == nil {
+			event.Longitude = v
+		}
 	}
 	if req.MaxAttendees != nil {
 		event.MaxAttendees = *req.MaxAttendees

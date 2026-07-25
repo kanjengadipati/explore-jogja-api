@@ -37,6 +37,10 @@ func (s *Service) GetUserDestinations(userID uint) ([]UserDestination, error) {
 	return s.Repo.GetUserDestinations(userID)
 }
 
+func (s *Service) Delete(externalID string) error {
+	return s.Repo.Delete(externalID)
+}
+
 type UpdateDestinationRequest struct {
 	Name              *string   `json:"name"`
 	Tagline           *string   `json:"tagline"`

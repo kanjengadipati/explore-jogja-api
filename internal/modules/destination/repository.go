@@ -15,6 +15,7 @@ type Repository interface {
 	Update(dest *Destination) error
 	CreateOrUpdateUserDestination(userID uint, slug string, status string) error
 	GetUserDestinations(userID uint) ([]UserDestination, error)
+	Delete(externalID string) error
 }
 
 type GormRepository struct {
@@ -117,4 +118,8 @@ func (r *GormRepository) GetUserDestinations(userID uint) ([]UserDestination, er
 	var uds []UserDestination
 	err := r.db.Where("user_id = ?", userID).Find(&uds).Error
 	return uds, err
+}
+
+func (r *GormRepository) Delete(externalID string) error {
+	return r.db.Where("external_id = ?", externalID).Delete(&Destination{}).Error
 }
