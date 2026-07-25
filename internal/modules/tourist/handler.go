@@ -1219,6 +1219,27 @@ type NextStopNode struct {
 	ScheduledFor string  `json:"scheduledFor,omitempty"`
 }
 
+func matchMoodCategory(destCategory, filter string) bool {
+	filter = strings.ToLower(strings.TrimSpace(filter))
+	if filter == "" || filter == "all" || filter == "semua" {
+		return true
+	}
+	cat := strings.ToLower(strings.TrimSpace(destCategory))
+	if filter == "pantai" || filter == "beach" {
+		return strings.Contains(cat, "beach") || strings.Contains(cat, "pantai") || strings.Contains(cat, "bahari")
+	}
+	if filter == "nature" || filter == "alam" {
+		return strings.Contains(cat, "nature") || strings.Contains(cat, "alam") || strings.Contains(cat, "bukit") || strings.Contains(cat, "desa") || strings.Contains(cat, "gunung") || strings.Contains(cat, "air terjun")
+	}
+	if filter == "cultural" || filter == "budaya" || filter == "heritage" {
+		return strings.Contains(cat, "cultural") || strings.Contains(cat, "budaya") || strings.Contains(cat, "heritage") || strings.Contains(cat, "candi") || strings.Contains(cat, "sejarah") || strings.Contains(cat, "museum")
+	}
+	if filter == "culinary" || filter == "kuliner" || filter == "food" {
+		return strings.Contains(cat, "culinary") || strings.Contains(cat, "kuliner") || strings.Contains(cat, "food") || strings.Contains(cat, "makanan") || strings.Contains(cat, "kopi")
+	}
+	return strings.Contains(cat, filter) || strings.Contains(filter, cat)
+}
+
 // NextStop resolves a single next destination near the given ref coordinates, filtered by mood category and hour of day.
 // GET /ai/next-stop?lat=...&lng=...&category=...&exclude=id1,id2,...&hour=18
 func (h *Handler) NextStop(c *gin.Context) {
@@ -1258,16 +1279,35 @@ func (h *Handler) NextStop(c *gin.Context) {
 		return
 	}
 
+	// First filter by requested mood category strictly if passed
+	var matchingDests []destination.Destination
+	if categoryFilter != "" && categoryFilter != "all" && categoryFilter != "semua" {
+		for _, d := range dests {
+			if excludeMap[d.ExternalID] {
+				continue
+			}
+			if matchMoodCategory(d.Category, categoryFilter) {
+				matchingDests = append(matchingDests, d)
+			}
+		}
+	}
+
+	// Fallback to all unexcluded dests if no specific match
+	if len(matchingDests) == 0 {
+		for _, d := range dests {
+			if !excludeMap[d.ExternalID] {
+				matchingDests = append(matchingDests, d)
+			}
+		}
+	}
+
 	type scored struct {
 		dest  destination.Destination
 		score float64
 	}
 	var candidates []scored
 
-	for _, d := range dests {
-		if excludeMap[d.ExternalID] {
-			continue
-		}
+	for _, d := range matchingDests {
 		dist := haversineKm(refLat, refLng, d.Latitude, d.Longitude)
 		score := (d.Rating * 2.5) - (dist * 1.2)
 
@@ -1281,12 +1321,6 @@ func (h *Handler) NextStop(c *gin.Context) {
 			score -= 80.0
 		}
 
-		// Mood match bonus
-		if categoryFilter != "" && categoryFilter != "all" {
-			if strings.Contains(cat, categoryFilter) || strings.Contains(categoryFilter, cat) {
-				score += 30.0
-			}
-		}
 		candidates = append(candidates, scored{dest: d, score: score})
 	}
 
@@ -1312,7 +1346,7 @@ func (h *Handler) NextStop(c *gin.Context) {
 	if hour >= 17 && isNatureOrBeach {
 		isTomorrow = true
 		scheduledFor = "Besok Pagi (07:00)"
-		timeWarning = "Destinasi alam/pantai umumnya tutup atau kurang aman setelah jam 17:00. Kami jadwalkan untuk besok pagi."
+		timeWarning = "Destinasi pantai/alam umumnya tutup atau kurang aman setelah jam 17:00. Kami jadwalkan untuk besok pagi."
 	} else if hour >= 20 && isCultural {
 		isTomorrow = true
 		scheduledFor = "Besok Siang (12:00)"
