@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
 
 	"pleco-api/internal/ai"
 	"pleco-api/internal/cache"
@@ -977,4 +982,316 @@ func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.De
 	}
 
 	return &AIMultiRecommendResponse{Items: items}
+}
+
+// RouteTimelineNode is a single slot in the rolling 4-slot route.
+type RouteTimelineNode struct {
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	Type        string  `json:"type"`
+	Category    string  `json:"category"`
+	Image       string  `json:"image"`
+	Location    string  `json:"location"`
+	SubRegion   string  `json:"subRegion"`
+	Rating      float64 `json:"rating"`
+	DistanceKm  float64 `json:"distanceKm"`
+	IsPast      bool    `json:"isPast"`
+	IsCurrent   bool    `json:"isCurrent"`
+	IsTomorrow  bool    `json:"isTomorrow"`
+	DayLabel    string  `json:"dayLabel"`
+	DisplayTime string  `json:"displayTime"`
+	TimeSlot    string  `json:"timeSlot"`
+	Duration    string  `json:"duration"`
+}
+
+type RouteTimelineResponse struct {
+	HeaderTitle string              `json:"headerTitle"`
+	TimeRange   string              `json:"timeRange"`
+	Nodes       []RouteTimelineNode `json:"nodes"`
+}
+
+func haversineKm(lat1, lon1, lat2, lon2 float64) float64 {
+	if lat1 == 0 || lon1 == 0 || lat2 == 0 || lon2 == 0 {
+		return 1.5
+	}
+	const R = 6371.0
+	dLat := (lat2 - lat1) * (math.Pi / 180.0)
+	dLon := (lon2 - lon1) * (math.Pi / 180.0)
+	a := math.Sin(dLat/2.0)*math.Sin(dLat/2.0) +
+		math.Cos(lat1*(math.Pi/180.0))*math.Cos(lat2*(math.Pi/180.0))*
+			math.Sin(dLon/2.0)*math.Sin(dLon/2.0)
+	return R * 2.0 * math.Atan2(math.Sqrt(a), math.Sqrt(1.0-a))
+}
+
+func isFarRegionJump(reg1, reg2 string) bool {
+	r1 := strings.ToLower(reg1)
+	r2 := strings.ToLower(reg2)
+	if (strings.Contains(r1, "gunungkidul") && strings.Contains(r2, "kulon")) ||
+		(strings.Contains(r1, "kulon") && strings.Contains(r2, "gunungkidul")) {
+		return true
+	}
+	return false
+}
+
+// RouteTimeline returns 4 sequential rolling timeline slots starting from current time.
+func (h *Handler) RouteTimeline(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	hourStr := c.Query("hour")
+	savedIDsStr := c.Query("saved_ids")
+	categoryFilter := strings.ToLower(strings.TrimSpace(c.Query("category")))
+
+	savedMap := make(map[string]bool)
+	if savedIDsStr != "" {
+		for _, id := range strings.Split(savedIDsStr, ",") {
+			id = strings.TrimSpace(id)
+			if id != "" {
+				savedMap[id] = true
+			}
+		}
+	}
+
+	userLat := -7.7828
+	userLng := 110.3671
+	if v, err := strconv.ParseFloat(latStr, 64); err == nil && v != 0 {
+		userLat = v
+	}
+	if v, err := strconv.ParseFloat(lngStr, 64); err == nil && v != 0 {
+		userLng = v
+	}
+
+	currentHour := time.Now().Hour()
+	if hVal, err := strconv.Atoi(hourStr); err == nil && hVal >= 0 && hVal <= 23 {
+		currentHour = hVal
+	}
+
+	startPeriod := 0
+	if currentHour >= 5 && currentHour < 11 {
+		startPeriod = 0 // Pagi (07.00 AM)
+	} else if currentHour >= 11 && currentHour < 15 {
+		startPeriod = 1 // Siang (12.00 PM)
+	} else if currentHour == 15 {
+		startPeriod = 2 // Sore (03.30 PM)
+	} else {
+		startPeriod = 3 // Malam (07.30 PM) - 16:00 (4 PM+) onwards
+	}
+
+	dests, err := h.DestinationRepo.FindAll()
+	if err != nil || len(dests) == 0 {
+		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
+		return
+	}
+
+	slots := []struct {
+		Name       string
+		Time       string
+		Duration   string
+		Categories []string
+	}{
+		{Name: "Pagi", Time: "07.00 AM", Duration: "~2.5 jam", Categories: []string{"heritage", "nature", "adventure"}},
+		{Name: "Siang", Time: "12.00 PM", Duration: "~1.5 jam", Categories: []string{"culinary", "cultural"}},
+		{Name: "Sore", Time: "03.30 PM", Duration: "~2.5 jam", Categories: []string{"nature", "beach", "sunset", "hidden-gem"}},
+		{Name: "Malam", Time: "07.30 PM", Duration: "~3 jam", Categories: []string{"night_vibes", "culinary", "heritage", "cultural", "shopping"}},
+	}
+
+	usedIDs := make(map[string]bool)
+	var nodes []RouteTimelineNode
+
+	refLat := userLat
+	refLng := userLng
+	refSubRegion := ""
+
+	for offset := 0; offset < 4; offset++ {
+		periodIdx := (startPeriod + offset) % 4
+		isTomorrow := (startPeriod + offset) >= 4
+		slot := slots[periodIdx]
+
+		type scoredDest struct {
+			dest  destination.Destination
+			score float64
+			dist  float64
+		}
+		var candidates []scoredDest
+
+		for _, d := range dests {
+			if usedIDs[d.ExternalID] {
+				continue
+			}
+			distFromRef := haversineKm(refLat, refLng, d.Latitude, d.Longitude)
+
+			// Distance penalty: 1 km = -1.2 score points
+			score := (d.Rating * 2.5) - (distFromRef * 1.2)
+
+			// Heavy penalty for jumping across opposite ends of Yogyakarta (Gunungkidul <-> Kulon Progo)
+			if refSubRegion != "" && isFarRegionJump(refSubRegion, d.SubRegion) {
+				score -= 300.0
+			}
+
+			if isTomorrow {
+				// Priority 1: Wishlist / Saved items get top priority
+				if savedMap[d.ExternalID] {
+					score += 500.0
+				}
+				// Priority 2: Mood category filter match bonus (balanced so it respects geographic proximity!)
+				if categoryFilter != "" && categoryFilter != "all" {
+					catLower := strings.ToLower(d.Category)
+					if strings.Contains(catLower, categoryFilter) || strings.Contains(categoryFilter, catLower) {
+						score += 20.0
+					}
+				}
+			}
+
+			candidates = append(candidates, scoredDest{dest: d, score: score, dist: distFromRef})
+		}
+
+		sort.Slice(candidates, func(i, j int) bool {
+			return candidates[i].score > candidates[j].score
+		})
+
+		var chosen destination.Destination
+		if len(candidates) > 0 {
+			chosen = candidates[0].dest
+		} else {
+			chosen = dests[0]
+		}
+		usedIDs[chosen.ExternalID] = true
+
+		// Calculate step-by-step leg distance (from previous node coordinates to chosen node)
+		stepDist := haversineKm(refLat, refLng, chosen.Latitude, chosen.Longitude)
+
+		// Update reference location & subregion for next chained node
+		if chosen.Latitude != 0 && chosen.Longitude != 0 {
+			refLat = chosen.Latitude
+			refLng = chosen.Longitude
+		}
+		if chosen.SubRegion != "" {
+			refSubRegion = chosen.SubRegion
+		}
+
+		dayLabel := "HARI INI"
+		displayTime := slot.Time
+		if isTomorrow {
+			dayLabel = "BESOK"
+			displayTime = "Besok " + slot.Time
+		}
+
+		nodes = append(nodes, RouteTimelineNode{
+			ID:          chosen.ExternalID,
+			Title:       chosen.Name,
+			Type:        "destination",
+			Category:    chosen.Category,
+			Image:       destImageURL(chosen),
+			Location:    chosen.SubRegion,
+			SubRegion:   chosen.SubRegion,
+			Rating:      chosen.Rating,
+			DistanceKm:  stepDist,
+			IsPast:      false,
+			IsCurrent:   offset == 0,
+			IsTomorrow:  isTomorrow,
+			DayLabel:    dayLabel,
+			DisplayTime: displayTime,
+			TimeSlot:    slot.Name,
+			Duration:    slot.Duration,
+		})
+	}
+
+	timeRange := nodes[0].DisplayTime + " → " + nodes[3].DisplayTime
+
+	httpx.Success(c, 200, "Route timeline retrieved successfully", RouteTimelineResponse{
+		HeaderTitle: "Rute & Timeline",
+		TimeRange:   timeRange,
+		Nodes:       nodes,
+	}, nil)
+}
+
+// NextStopNode is the response for a single next-destination request.
+type NextStopNode struct {
+	ID         string  `json:"id"`
+	Title      string  `json:"title"`
+	Category   string  `json:"category"`
+	Image      string  `json:"image"`
+	Location   string  `json:"location"`
+	SubRegion  string  `json:"subRegion"`
+	Rating     float64 `json:"rating"`
+	DistanceKm float64 `json:"distanceKm"`
+}
+
+// NextStop resolves a single next destination near the given ref coordinates, filtered by mood category.
+// GET /ai/next-stop?lat=...&lng=...&category=...&exclude=id1,id2,...
+func (h *Handler) NextStop(c *gin.Context) {
+	latStr := c.Query("lat")
+	lngStr := c.Query("lng")
+	categoryFilter := strings.ToLower(strings.TrimSpace(c.Query("category")))
+	excludeStr := c.Query("exclude")
+
+	refLat := -7.7828
+	refLng := 110.3671
+	if v, err := strconv.ParseFloat(latStr, 64); err == nil && v != 0 {
+		refLat = v
+	}
+	if v, err := strconv.ParseFloat(lngStr, 64); err == nil && v != 0 {
+		refLng = v
+	}
+
+	excludeMap := make(map[string]bool)
+	if excludeStr != "" {
+		for _, id := range strings.Split(excludeStr, ",") {
+			id = strings.TrimSpace(id)
+			if id != "" {
+				excludeMap[id] = true
+			}
+		}
+	}
+
+	dests, err := h.DestinationRepo.FindAll()
+	if err != nil || len(dests) == 0 {
+		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
+		return
+	}
+
+	type scored struct {
+		dest  destination.Destination
+		score float64
+	}
+	var candidates []scored
+
+	for _, d := range dests {
+		if excludeMap[d.ExternalID] {
+			continue
+		}
+		dist := haversineKm(refLat, refLng, d.Latitude, d.Longitude)
+		score := (d.Rating * 2.5) - (dist * 1.2)
+
+		// Mood match bonus
+		if categoryFilter != "" && categoryFilter != "all" {
+			cat := strings.ToLower(d.Category)
+			if strings.Contains(cat, categoryFilter) || strings.Contains(categoryFilter, cat) {
+				score += 30.0
+			}
+		}
+		candidates = append(candidates, scored{dest: d, score: score})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].score > candidates[j].score
+	})
+
+	if len(candidates) == 0 {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "No destination found")
+		return
+	}
+
+	chosen := candidates[0].dest
+	dist := haversineKm(refLat, refLng, chosen.Latitude, chosen.Longitude)
+
+	httpx.Success(c, 200, "Next stop resolved", NextStopNode{
+		ID:         chosen.ExternalID,
+		Title:      chosen.Name,
+		Category:   chosen.Category,
+		Image:      destImageURL(chosen),
+		Location:   chosen.SubRegion,
+		SubRegion:  chosen.SubRegion,
+		Rating:     chosen.Rating,
+		DistanceKm: dist,
+	}, nil)
 }
