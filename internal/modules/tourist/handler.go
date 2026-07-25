@@ -1219,25 +1219,55 @@ type NextStopNode struct {
 	ScheduledFor string  `json:"scheduledFor,omitempty"`
 }
 
-func matchMoodCategory(destCategory, filter string) bool {
+func matchMoodCategory(dest destination.Destination, filter string) bool {
 	filter = strings.ToLower(strings.TrimSpace(filter))
 	if filter == "" || filter == "all" || filter == "semua" {
 		return true
 	}
-	cat := strings.ToLower(strings.TrimSpace(destCategory))
-	if filter == "pantai" || filter == "beach" {
-		return strings.Contains(cat, "beach") || strings.Contains(cat, "pantai") || strings.Contains(cat, "bahari")
-	}
+
+	cat := strings.ToLower(strings.TrimSpace(dest.Category))
+	name := strings.ToLower(strings.TrimSpace(dest.Name))
+	combined := name + " " + cat
+
 	if filter == "nature" || filter == "alam" {
-		return strings.Contains(cat, "nature") || strings.Contains(cat, "alam") || strings.Contains(cat, "bukit") || strings.Contains(cat, "desa") || strings.Contains(cat, "gunung") || strings.Contains(cat, "air terjun")
+		// Explicit exclusions: if it's craft, weaving, cultural, temple, or museum -> NOT nature!
+		if strings.Contains(combined, "budaya") || strings.Contains(combined, "tenun") ||
+		   strings.Contains(combined, "batik") || strings.Contains(combined, "candi") ||
+		   strings.Contains(combined, "situs") || strings.Contains(combined, "museum") ||
+		   strings.Contains(combined, "kerajinan") {
+			return false
+		}
+		return strings.Contains(cat, "nature") || strings.Contains(cat, "alam") ||
+		       strings.Contains(combined, "bukit") || strings.Contains(combined, "gunung") ||
+		       strings.Contains(combined, "air terjun") || strings.Contains(combined, "hutan") ||
+		       strings.Contains(combined, "curug") || strings.Contains(combined, "embung") ||
+		       strings.Contains(combined, "gua") || strings.Contains(combined, "puncak") ||
+		       strings.Contains(combined, "tebing") || strings.Contains(combined, "pantai") ||
+		       strings.Contains(combined, "beach")
 	}
+
+	if filter == "pantai" || filter == "beach" {
+		return strings.Contains(combined, "pantai") || strings.Contains(combined, "beach") || strings.Contains(combined, "bahari")
+	}
+
 	if filter == "cultural" || filter == "budaya" || filter == "heritage" {
-		return strings.Contains(cat, "cultural") || strings.Contains(cat, "budaya") || strings.Contains(cat, "heritage") || strings.Contains(cat, "candi") || strings.Contains(cat, "sejarah") || strings.Contains(cat, "museum")
+		return strings.Contains(combined, "cultural") || strings.Contains(combined, "budaya") ||
+		       strings.Contains(combined, "heritage") || strings.Contains(combined, "candi") ||
+		       strings.Contains(combined, "sejarah") || strings.Contains(combined, "museum") ||
+		       strings.Contains(combined, "situs") || strings.Contains(combined, "tenun") ||
+		       strings.Contains(combined, "batik") || strings.Contains(combined, "keraton") ||
+		       strings.Contains(combined, "tamansari") || strings.Contains(combined, "kerajinan")
 	}
+
 	if filter == "culinary" || filter == "kuliner" || filter == "food" {
-		return strings.Contains(cat, "culinary") || strings.Contains(cat, "kuliner") || strings.Contains(cat, "food") || strings.Contains(cat, "makanan") || strings.Contains(cat, "kopi")
+		return strings.Contains(combined, "culinary") || strings.Contains(combined, "kuliner") ||
+		       strings.Contains(combined, "food") || strings.Contains(combined, "makanan") ||
+		       strings.Contains(combined, "kopi") || strings.Contains(combined, "gudeg") ||
+		       strings.Contains(combined, "sate") || strings.Contains(combined, "warung") ||
+		       strings.Contains(combined, "resto") || strings.Contains(combined, "soto")
 	}
-	return strings.Contains(cat, filter) || strings.Contains(filter, cat)
+
+	return strings.Contains(combined, filter) || strings.Contains(filter, combined)
 }
 
 // NextStop resolves a single next destination near the given ref coordinates, filtered by mood category and hour of day.
@@ -1286,7 +1316,7 @@ func (h *Handler) NextStop(c *gin.Context) {
 			if excludeMap[d.ExternalID] {
 				continue
 			}
-			if matchMoodCategory(d.Category, categoryFilter) {
+			if matchMoodCategory(d, categoryFilter) {
 				matchingDests = append(matchingDests, d)
 			}
 		}
