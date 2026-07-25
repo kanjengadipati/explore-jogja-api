@@ -69,6 +69,8 @@ func (r *GormRepository) FindByCategory(category string) ([]Destination, error) 
 		err = r.db.Where("LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?", "%sunrise%", "%fajar%", "%dawn%").Order("rating DESC").Find(&dests).Error
 	case "camping":
 		err = r.db.Where("LOWER(best_time) LIKE ?", "%camping%").Order("rating DESC").Find(&dests).Error
+	case "temple", "candi":
+		err = r.db.Where("LOWER(category) = ? OR LOWER(category) = ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(tagline) LIKE ? OR LOWER(tagline) LIKE ?", "temple", "candi", "%candi%", "%temple%", "%candi%", "%temple%").Order("rating DESC").Find(&dests).Error
 	default:
 		err = r.db.Where("category = ?", category).Order("rating DESC").Find(&dests).Error
 	}
