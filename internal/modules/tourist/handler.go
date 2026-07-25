@@ -90,6 +90,8 @@ type AITrendingResponse struct {
 
 func (h *Handler) Trending(c *gin.Context) {
 	ctx := context.Background()
+	locale := resolveLocale(c)
+	isID := locale == "id"
 
 	// ── Cache hit: return stored response without calling AI ─────────────────
 	if h.Cache != nil {
@@ -114,16 +116,22 @@ func (h *Handler) Trending(c *gin.Context) {
 
 	// ── AI disabled: return offline fallback ─────────────────────────────────
 	if !h.AIService.Enabled() {
-		httpx.Success(c, 200, "Trending picks loaded", h.offlineTrendingResponse(dests, events), nil)
+		httpx.Success(c, 200, "Trending picks loaded", h.offlineTrendingResponse(dests, events, isID), nil)
 		return
 	}
 
 	destContext := destinationsContextJSON(dests)
 	eventContext := eventsContextJSON(events)
 
+	langInstruction := "Respond in Indonesian (Bahasa Indonesia). All badge, headline, and reason fields must be in Bahasa Indonesia."
+	if !isID {
+		langInstruction = "Respond in English. All badge, headline, and reason fields must be in English."
+	}
+
 	systemInstruction := fmt.Sprintf(`You are an AI tourism curator for Yogyakarta, Indonesia.
 Your task is to select exactly 5 trending picks for tourists TODAY. The picks can be a mix of destinations and upcoming events.
 Prioritize variety: mix adventure, culture, nature, and events. Make the selection feel fresh and curated.
+%s
 
 DESTINATION CATALOG:
 %s
@@ -137,8 +145,8 @@ Respond ONLY with valid JSON matching this schema exactly:
     {
       "type": "destination" or "event",
       "id": "exact external_id or event id from the catalog",
-      "badge": "short badge label in Indonesian, e.g. Spesial Hari Ini / Trending / Hidden Gem / Akan Datang / Populer",
-      "headline": "punchy 3-6 word Indonesian or English label",
+      "badge": "short badge label",
+      "headline": "punchy 3-6 word label",
       "reason": "one sentence why this is trending today",
       "imageUrl": "image URL from the item if available, else empty string",
       "rating": number (destination rating, or 0 for events),
@@ -147,7 +155,7 @@ Respond ONLY with valid JSON matching this schema exactly:
     }
   ]
 }
-Return exactly 5 items. Mix at least 1 event if events are available.`, destContext, eventContext)
+Return exactly 5 items. Mix at least 1 event if events are available.`, langInstruction, destContext, eventContext)
 
 	result, err := h.AIService.Generate(ctx, ai.GenerateInput{
 		SystemPrompt: systemInstruction,
@@ -156,13 +164,13 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, destCont
 		MaxTokens:    1200,
 	})
 	if err != nil {
-		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events), nil)
+		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events, isID), nil)
 		return
 	}
 
 	var parsed AITrendingResponse
 	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events), nil)
+		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events, isID), nil)
 		return
 	}
 
@@ -213,6 +221,18 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, destCont
 	httpx.Success(c, 200, "Trending picks loaded", parsed, nil)
 }
 
+// resolveLocale reads Accept-Language header and returns "id" (default) or "en".
+func resolveLocale(c *gin.Context) string {
+	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		return "id"
+	}
+	if len(lang) >= 2 && (lang[:2] == "en" || lang[:2] == "EN") {
+		return "en"
+	}
+	return "id"
+}
+
 // destImageURL extracts the first image URL from a destination's Images JSON field.
 func destImageURL(d destination.Destination) string {
 	if len(d.Images) == 0 {
@@ -234,19 +254,23 @@ func destImageURL(d destination.Destination) string {
 // offlineTrendingResponse builds a curated fallback from the real DB — no AI required.
 // It prefers well-known destinations by external_id, then fills remaining slots from
 // whatever is in the DB so callers always receive up to 5 items.
-func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event) *AITrendingResponse {
+func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event, isID bool) *AITrendingResponse {
 	// Preferred picks with curated badges/headlines — matched by external_id.
-	preferred := []struct {
-		id    string
-		badge string
-		head  string
-		why   string
-	}{
-		{"merapi", "Spesial Hari Ini", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah"},
-		{"prambanan", "Trending", "Prambanan Temple", "Candi Hindu terbesar di Asia Tenggara"},
-		{"goajomblang", "Hidden Gem", "Celestial Beam Cave", "Fenomena cahaya surgawi yang langka"},
-		{"tamansari", "Warisan Budaya", "Taman Sari", "Istana air penuh misteri sultan"},
-		{"parangtritis", "Populer", "Pantai Parangtritis", "Sunset spektakuler di tepi samudra"},
+	type preferredPick struct {
+		id     string
+		badge  string
+		badgeEN string
+		head   string
+		headEN string
+		why    string
+		whyEN  string
+	}
+	preferred := []preferredPick{
+		{"merapi", "Spesial Hari Ini", "Today's Special", "Merapi Lava Tour", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah", "Best adventure on a sunny day"},
+		{"prambanan", "Trending", "Trending", "Prambanan Temple", "Prambanan Temple", "Candi Hindu terbesar di Asia Tenggara", "Largest Hindu temple in Southeast Asia"},
+		{"goajomblang", "Hidden Gem", "Hidden Gem", "Celestial Beam Cave", "Celestial Beam Cave", "Fenomena cahaya surgawi yang langka", "Rare heavenly light phenomenon"},
+		{"tamansari", "Warisan Budaya", "Heritage", "Taman Sari", "Taman Sari", "Istana air penuh misteri sultan", "Royal water castle full of mystery"},
+		{"parangtritis", "Populer", "Popular", "Pantai Parangtritis", "Parangtritis Beach", "Sunset spektakuler di tepi samudra", "Spectacular ocean sunset"},
 	}
 
 	destMap := make(map[string]destination.Destination, len(dests))
@@ -263,12 +287,16 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 		if !ok {
 			continue
 		}
+		badge, head, why := p.badge, p.head, p.why
+		if !isID {
+			badge, head, why = p.badgeEN, p.headEN, p.whyEN
+		}
 		items = append(items, AITrendingItem{
 			Type:     "destination",
 			ID:       p.id,
-			Badge:    p.badge,
-			Headline: p.head,
-			Reason:   p.why,
+			Badge:    badge,
+			Headline: head,
+			Reason:   why,
 			ImageURL: destImageURL(d),
 			Rating:   d.Rating,
 			Location: d.SubRegion,
@@ -281,7 +309,12 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 
 	// Phase 2: fill remaining slots from DB destinations (highest-rated first).
 	if len(items) < 5 {
-		badges := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya", "Ikon Dunia"}
+		badgesID := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya", "Ikon Dunia"}
+		badgesEN := []string{"Trending", "Popular", "Best Nature", "Heritage", "World Icon"}
+		badges := badgesEN
+		if isID {
+			badges = badgesID
+		}
 		bi := 0
 		for _, d := range dests {
 			if len(items) == 5 {
@@ -309,10 +342,14 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 	// Phase 3: swap the last destination slot for the nearest upcoming event if available.
 	if len(events) > 0 && len(items) > 0 {
 		ev := events[0]
+		evBadge := "Akan Datang"
+		if !isID {
+			evBadge = "Upcoming"
+		}
 		items[len(items)-1] = AITrendingItem{
 			Type:     "event",
 			ID:       ev.ExternalID,
-			Badge:    "Akan Datang",
+			Badge:    evBadge,
 			Headline: ev.Title,
 			Reason:   ev.Description,
 			ImageURL: ev.ImageURL,
@@ -745,6 +782,9 @@ func (h *Handler) MultiRecommend(c *gin.Context) {
 		now = "morning"
 	}
 
+	locale := resolveLocale(c)
+	isID := locale == "id"
+
 	dests, err := h.DestinationRepo.FindAll()
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
@@ -757,20 +797,27 @@ func (h *Handler) MultiRecommend(c *gin.Context) {
 	}
 
 	if !h.AIService.Enabled() {
-		httpx.Success(c, 200, "AI disabled, using offline picks", h.offlineMultiRecommend(now, dests), nil)
+		httpx.Success(c, 200, "AI disabled, using offline picks", h.offlineMultiRecommend(now, dests, isID), nil)
 		return
+	}
+
+	langInstruction := "Respond in Indonesian (Bahasa Indonesia)."
+	if !isID {
+		langInstruction = "Respond in English."
 	}
 
 	destContext := destinationsContextJSON(dests)
 	systemInstruction := fmt.Sprintf(`You are an AI tourism curator for Yogyakarta, Indonesia.
 Select EXACTLY 4 destinations from the catalog to display in an "AI Picks Just for You" section.
 Time of day: %s.
+%s
 
 Rules:
 - Pick destinations from DIFFERENT categories (e.g. nature, heritage, beach, adventure, hidden-gem, culinary)
 - Vary the crowd levels (Low / Medium / High)
 - Assign a short punchy badge per pick (e.g. "AI Pick Today", "Hidden Gem", "Sunset Spot", "Adventure Call")
 - Make picks feel fresh and curated for right now
+- headline and reason MUST be in the requested language
 
 DESTINATION CATALOG:
 %s
@@ -790,7 +837,7 @@ Respond ONLY with valid JSON:
     }
   ]
 }
-Return exactly 4 items.`, now, destContext)
+Return exactly 4 items.`, now, langInstruction, destContext)
 
 	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
 		SystemPrompt: systemInstruction,
@@ -799,13 +846,13 @@ Return exactly 4 items.`, now, destContext)
 		MaxTokens:    900,
 	})
 	if err != nil {
-		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests), nil)
+		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests, isID), nil)
 		return
 	}
 
 	var parsed AIMultiRecommendResponse
 	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil || len(parsed.Items) == 0 {
-		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests), nil)
+		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests, isID), nil)
 		return
 	}
 
@@ -826,36 +873,39 @@ Return exactly 4 items.`, now, destContext)
 }
 
 // offlineMultiRecommend returns curated fallback picks without calling the AI.
-func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.Destination) *AIMultiRecommendResponse {
+func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.Destination, isID bool) *AIMultiRecommendResponse {
 	type pick struct {
 		id    string
 		badge string
+		badgeEN string
 		head  string
+		headEN string
 		why   string
+		whyEN string
 	}
 
 	var ordered []pick
 	switch {
 	case containsAny(timeOfDay, "morning"):
 		ordered = []pick{
-			{"merapi", "AI Pick Today", "Merapi Sunrise Jeep Tour", "Best morning views of the active volcano"},
-			{"goajomblang", "Hidden Gem", "Celestial Beam Cave", "Rare heavenly light column at peak morning"},
-			{"prambanan", "Heritage Gem", "Prambanan Temple", "Golden morning light on ancient spires"},
-			{"kalibiru", "Nature Pick", "Kalibiru Forest", "Misty canopy walks at their best"},
+			{"merapi", "Pilihan AI Hari Ini", "AI Pick Today", "Merapi Sunrise Jeep Tour", "Merapi Sunrise Jeep Tour", "Pemandangan terbaik gunung berapi aktif di pagi hari", "Best morning views of the active volcano"},
+			{"goajomblang", "Hidden Gem", "Hidden Gem", "Goa Jomblang", "Goa Jomblang", "Kolom cahaya surga yang langka di pagi hari", "Rare heavenly light column at peak morning"},
+			{"prambanan", "Warisan Budaya", "Heritage Gem", "Candi Prambanan", "Prambanan Temple", "Cahaya emas pagi di puncak candi kuno", "Golden morning light on ancient spires"},
+			{"kalibiru", "Alam Terbaik", "Nature Pick", "Hutan Kalibiru", "Kalibiru Forest", "Jalan setapak berkabut di antara kanopi pohon", "Misty canopy walks at their best"},
 		}
 	case containsAny(timeOfDay, "afternoon"):
 		ordered = []pick{
-			{"prambanan", "AI Pick Today", "Prambanan Temple", "Warm afternoon glow on Hindu spires"},
-			{"tamansari", "Heritage Pick", "Taman Sari Castle", "Afternoon exploration of royal tunnels"},
-			{"ratuboko", "Sunset Prep", "Ratu Boko Palace", "Prime spot to wait for the golden hour"},
-			{"pindul", "Adventure Call", "Goa Pindul", "Refreshing cave tubing in afternoon coolness"},
+			{"prambanan", "Pilihan AI Hari Ini", "AI Pick Today", "Candi Prambanan", "Prambanan Temple", "Cahaya sore yang hangat di puncak candi Hindu", "Warm afternoon glow on Hindu spires"},
+			{"tamansari", "Warisan Budaya", "Heritage Pick", "Taman Sari", "Taman Sari Castle", "Jelajahi terowongan kerajaan di siang hari", "Afternoon exploration of royal tunnels"},
+			{"ratuboko", "Siap Sunset", "Sunset Prep", "Istana Ratu Boko", "Ratu Boko Palace", "Spot terbaik menunggu golden hour tiba", "Prime spot to wait for the golden hour"},
+			{"pindul", "Petualangan", "Adventure Call", "Goa Pindul", "Goa Pindul", "Cave tubing yang menyegarkan di sore hari", "Refreshing cave tubing in afternoon coolness"},
 		}
-	default: // evening / sunset / night
+	default:
 		ordered = []pick{
-			{"parangtritis", "Sunset Spot", "Parangtritis Beach", "Spectacular Indian Ocean sunset"},
-			{"tamansari", "AI Pick Today", "Taman Sari Castle", "Mystical evening atmosphere"},
-			{"malioboro", "Night Vibes", "Malioboro Street", "Vibrant evening street food and culture"},
-			{"tebingbreksi", "Hidden Gem", "Tebing Breksi", "Dramatic cliffs lit by the setting sun"},
+			{"parangtritis", "Spot Sunset", "Sunset Spot", "Pantai Parangtritis", "Parangtritis Beach", "Sunset spektakuler di atas Samudra Hindia", "Spectacular Indian Ocean sunset"},
+			{"tamansari", "Pilihan AI Hari Ini", "AI Pick Today", "Taman Sari", "Taman Sari Castle", "Suasana mistis di malam hari", "Mystical evening atmosphere"},
+			{"malioboro", "Malam Meriah", "Night Vibes", "Jalan Malioboro", "Malioboro Street", "Kuliner jalanan dan budaya di malam hari", "Vibrant evening street food and culture"},
+			{"tebingbreksi", "Hidden Gem", "Hidden Gem", "Tebing Breksi", "Tebing Breksi", "Tebing dramatis diterangi sinar matahari terbenam", "Dramatic cliffs lit by the setting sun"},
 		}
 	}
 
@@ -870,11 +920,19 @@ func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.De
 		if !ok {
 			continue
 		}
+		badge := p.badgeEN
+		head := p.headEN
+		why := p.whyEN
+		if isID {
+			badge = p.badge
+			head = p.head
+			why = p.why
+		}
 		items = append(items, AIMultiRecommendItem{
 			DestinationID: p.id,
-			Headline:      p.head,
-			Reason:        p.why,
-			Badge:         p.badge,
+			Headline:      head,
+			Reason:        why,
+			Badge:         badge,
 			Crowd:         "Low",
 			ImageURL:      destImageURL(d),
 			Rating:        d.Rating,
@@ -882,13 +940,14 @@ func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.De
 		})
 	}
 
-	// If preferred IDs weren't in DB, fill from first available destinations
+	// Fill remaining from DB if preferred IDs not found
 	if len(items) < 4 {
 		used := make(map[string]bool)
 		for _, item := range items {
 			used[item.DestinationID] = true
 		}
-		badges := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya"}
+		badgesID := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya"}
+		badgesEN := []string{"Trending", "Popular", "Best Nature", "Cultural Heritage"}
 		bi := 0
 		for _, d := range dests {
 			if len(items) >= 4 {
@@ -897,11 +956,16 @@ func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.De
 			if used[d.ExternalID] {
 				continue
 			}
+			badge := badgesEN[bi%len(badgesEN)]
+			reason := d.Tagline
+			if isID {
+				badge = badgesID[bi%len(badgesID)]
+			}
 			items = append(items, AIMultiRecommendItem{
 				DestinationID: d.ExternalID,
 				Headline:      d.Name,
-				Reason:        d.Tagline,
-				Badge:         badges[bi%len(badges)],
+				Reason:        reason,
+				Badge:         badge,
 				Crowd:         "Low",
 				ImageURL:      destImageURL(d),
 				Rating:        d.Rating,
