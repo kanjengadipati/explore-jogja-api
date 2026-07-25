@@ -1313,12 +1313,12 @@ func (h *Handler) NextStop(c *gin.Context) {
 
 		cat := strings.ToLower(d.Category)
 
-		// Apply time-based penalties for closed categories
+		// Apply time-based penalties for closed categories after 17:00 (5 PM)
 		if hour >= 17 && (strings.Contains(cat, "nature") || strings.Contains(cat, "alam") || strings.Contains(cat, "pantai") || strings.Contains(cat, "beach")) {
 			score -= 150.0
 		}
-		if hour >= 20 && (strings.Contains(cat, "cultural") || strings.Contains(cat, "budaya") || strings.Contains(cat, "heritage")) {
-			score -= 80.0
+		if hour >= 17 && (strings.Contains(cat, "cultural") || strings.Contains(cat, "budaya") || strings.Contains(cat, "heritage") || strings.Contains(cat, "candi") || strings.Contains(cat, "sejarah") || strings.Contains(cat, "museum")) {
+			score -= 150.0
 		}
 
 		candidates = append(candidates, scored{dest: d, score: score})
@@ -1341,16 +1341,16 @@ func (h *Handler) NextStop(c *gin.Context) {
 	timeWarning := ""
 
 	isNatureOrBeach := categoryFilter == "nature" || categoryFilter == "beach" || categoryFilter == "alam" || categoryFilter == "pantai"
-	isCultural := categoryFilter == "cultural" || categoryFilter == "budaya"
+	isCultural := categoryFilter == "cultural" || categoryFilter == "budaya" || categoryFilter == "heritage"
 
 	if hour >= 17 && isNatureOrBeach {
 		isTomorrow = true
 		scheduledFor = "Besok Pagi (07:00)"
 		timeWarning = "Destinasi pantai/alam umumnya tutup atau kurang aman setelah jam 17:00. Kami jadwalkan untuk besok pagi."
-	} else if hour >= 20 && isCultural {
+	} else if hour >= 17 && isCultural {
 		isTomorrow = true
 		scheduledFor = "Besok Siang (12:00)"
-		timeWarning = "Situs budaya/candi umumnya tutup di malam hari. Kami jadwalkan untuk besok."
+		timeWarning = "Situs budaya/candi/sejarah umumnya tutup setelah jam 17:00. Kami jadwalkan untuk besok."
 	}
 
 	httpx.Success(c, 200, "Next stop resolved", NextStopNode{
