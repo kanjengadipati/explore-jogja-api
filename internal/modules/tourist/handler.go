@@ -1206,23 +1206,32 @@ func (h *Handler) RouteTimeline(c *gin.Context) {
 
 // NextStopNode is the response for a single next-destination request.
 type NextStopNode struct {
-	ID         string  `json:"id"`
-	Title      string  `json:"title"`
-	Category   string  `json:"category"`
-	Image      string  `json:"image"`
-	Location   string  `json:"location"`
-	SubRegion  string  `json:"subRegion"`
-	Rating     float64 `json:"rating"`
-	DistanceKm float64 `json:"distanceKm"`
+	ID           string  `json:"id"`
+	Title        string  `json:"title"`
+	Category     string  `json:"category"`
+	Image        string  `json:"image"`
+	Location     string  `json:"location"`
+	SubRegion    string  `json:"subRegion"`
+	Rating       float64 `json:"rating"`
+	DistanceKm   float64 `json:"distanceKm"`
+	TimeWarning  string  `json:"timeWarning,omitempty"`
+	IsTomorrow   bool    `json:"isTomorrow"`
+	ScheduledFor string  `json:"scheduledFor,omitempty"`
 }
 
-// NextStop resolves a single next destination near the given ref coordinates, filtered by mood category.
-// GET /ai/next-stop?lat=...&lng=...&category=...&exclude=id1,id2,...
+// NextStop resolves a single next destination near the given ref coordinates, filtered by mood category and hour of day.
+// GET /ai/next-stop?lat=...&lng=...&category=...&exclude=id1,id2,...&hour=18
 func (h *Handler) NextStop(c *gin.Context) {
 	latStr := c.Query("lat")
 	lngStr := c.Query("lng")
 	categoryFilter := strings.ToLower(strings.TrimSpace(c.Query("category")))
 	excludeStr := c.Query("exclude")
+	hourStr := c.Query("hour")
+
+	hour := time.Now().Hour()
+	if hVal, err := strconv.Atoi(hourStr); err == nil && hVal >= 0 && hVal <= 23 {
+		hour = hVal
+	}
 
 	refLat := -7.7828
 	refLng := 110.3671
@@ -1262,9 +1271,18 @@ func (h *Handler) NextStop(c *gin.Context) {
 		dist := haversineKm(refLat, refLng, d.Latitude, d.Longitude)
 		score := (d.Rating * 2.5) - (dist * 1.2)
 
+		cat := strings.ToLower(d.Category)
+
+		// Apply time-based penalties for closed categories
+		if hour >= 17 && (strings.Contains(cat, "nature") || strings.Contains(cat, "alam") || strings.Contains(cat, "pantai") || strings.Contains(cat, "beach")) {
+			score -= 150.0
+		}
+		if hour >= 20 && (strings.Contains(cat, "cultural") || strings.Contains(cat, "budaya") || strings.Contains(cat, "heritage")) {
+			score -= 80.0
+		}
+
 		// Mood match bonus
 		if categoryFilter != "" && categoryFilter != "all" {
-			cat := strings.ToLower(d.Category)
 			if strings.Contains(cat, categoryFilter) || strings.Contains(categoryFilter, cat) {
 				score += 30.0
 			}
@@ -1284,14 +1302,34 @@ func (h *Handler) NextStop(c *gin.Context) {
 	chosen := candidates[0].dest
 	dist := haversineKm(refLat, refLng, chosen.Latitude, chosen.Longitude)
 
+	isTomorrow := false
+	scheduledFor := ""
+	timeWarning := ""
+
+	isNatureOrBeach := categoryFilter == "nature" || categoryFilter == "beach" || categoryFilter == "alam" || categoryFilter == "pantai"
+	isCultural := categoryFilter == "cultural" || categoryFilter == "budaya"
+
+	if hour >= 17 && isNatureOrBeach {
+		isTomorrow = true
+		scheduledFor = "Besok Pagi (07:00)"
+		timeWarning = "Destinasi alam/pantai umumnya tutup atau kurang aman setelah jam 17:00. Kami jadwalkan untuk besok pagi."
+	} else if hour >= 20 && isCultural {
+		isTomorrow = true
+		scheduledFor = "Besok Siang (12:00)"
+		timeWarning = "Situs budaya/candi umumnya tutup di malam hari. Kami jadwalkan untuk besok."
+	}
+
 	httpx.Success(c, 200, "Next stop resolved", NextStopNode{
-		ID:         chosen.ExternalID,
-		Title:      chosen.Name,
-		Category:   chosen.Category,
-		Image:      destImageURL(chosen),
-		Location:   chosen.SubRegion,
-		SubRegion:  chosen.SubRegion,
-		Rating:     chosen.Rating,
-		DistanceKm: dist,
+		ID:           chosen.ExternalID,
+		Title:        chosen.Name,
+		Category:     chosen.Category,
+		Image:        destImageURL(chosen),
+		Location:     chosen.SubRegion,
+		SubRegion:    chosen.SubRegion,
+		Rating:       chosen.Rating,
+		DistanceKm:   dist,
+		TimeWarning:  timeWarning,
+		IsTomorrow:   isTomorrow,
+		ScheduledFor: scheduledFor,
 	}, nil)
 }
