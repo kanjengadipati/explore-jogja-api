@@ -12,7 +12,7 @@ import (
 const (
 	injourneyBase = "https://injourneydestination.id"
 	// WordPress REST API endpoints
-	injourneyDestAPI = injourneyBase + "/wp-json/wp/v2/experience?per_page=100"
+	injourneyDestAPI  = injourneyBase + "/wp-json/wp/v2/experience?per_page=100"
 	injourneyEventAPI = injourneyBase + "/wp-json/wp/v2/event?per_page=100"
 )
 
@@ -98,6 +98,34 @@ func (s *injourneyScraper) fetchMedia(id int) string {
 	return media.SourceURL
 }
 
+// injourneyCategoryKeywords classifies an "experience" post into a real
+// destination category based on keywords in its title, instead of dumping
+// every post into a single generic "Cultural" bucket. Checked in order;
+// first match wins. Anything unmatched falls back to "heritage" since every
+// injourney experience is an add-on tied to a heritage site (Borobudur,
+// Prambanan, Ratu Boko).
+var injourneyCategoryKeywords = []struct {
+	category string
+	keywords []string
+}{
+	{"culinary", []string{"barbekyu", "bbq", "meals", "dhaharan", "racik", "picnic"}},
+	{"camping", []string{"camping"}},
+	{"adventure", []string{"cycling", "trekking", "outbound"}},
+	{"family", []string{"sinema", "cinema"}},
+}
+
+func classifyInjourneyCategory(title string) string {
+	lower := strings.ToLower(title)
+	for _, rule := range injourneyCategoryKeywords {
+		for _, kw := range rule.keywords {
+			if strings.Contains(lower, kw) {
+				return rule.category
+			}
+		}
+	}
+	return "heritage"
+}
+
 func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 	posts, err := s.fetchJSON(injourneyDestAPI)
 	if err != nil {
@@ -118,7 +146,7 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			ExternalID:  slugify(title),
 			Name:        title,
 			Tagline:     "",
-			Category:    "Cultural",
+			Category:    classifyInjourneyCategory(title),
 			Location:    "Yogyakarta",
 			SubRegion:   "Yogyakarta",
 			Images:      imgs(img),
@@ -148,15 +176,15 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 		desc := stripHTML(p.Excerpt.Rendered)
 
 		events = append(events, ScrapedEvent{
-			ExternalID:   slugify(title),
-			Title:        title,
-			Description:  desc,
-			Location:     "Yogyakarta",
-			ImageURL:     img,
-			Category:     "Event",
-			TicketPrice:  "Cek website resmi",
-			Organizer:    "InJourney Destination Management",
-			Source:       "injourney",
+			ExternalID:  slugify(title),
+			Title:       title,
+			Description: desc,
+			Location:    "Yogyakarta",
+			ImageURL:    img,
+			Category:    "Event",
+			TicketPrice: "Cek website resmi",
+			Organizer:   "InJourney Destination Management",
+			Source:      "injourney",
 		})
 	}
 

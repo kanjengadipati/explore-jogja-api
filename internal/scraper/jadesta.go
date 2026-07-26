@@ -51,6 +51,21 @@ func (s *jadestaScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 	return nil, nil
 }
 
+// diyRegencies is the allowlist of DI Yogyakarta regencies/city. Jadesta's
+// own search/province filter (?search=yogyakarta&prov=34) is not reliable
+// and can return villages from other provinces (e.g. Jambi, Sumatera Barat,
+// Sulawesi Selatan) whose listing simply happens to match the "yogyakarta"
+// search term. We only accept a listing once we've positively identified
+// its region as one of the five DIY regencies -- we never default an
+// unknown/ambiguous location to "Yogyakarta".
+var diyRegencies = map[string]bool{
+	"Yogyakarta":  true,
+	"Sleman":      true,
+	"Bantul":      true,
+	"Kulon Progo": true,
+	"Gunungkidul": true,
+}
+
 func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 	doc, err := s.fetchDoc(jadestaSearch)
 	if err != nil {
@@ -58,30 +73,39 @@ func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 	}
 
 	var dests []ScrapedDestination
+	var skipped int
 	doc.Find(".listing-item-content").Each(func(i int, sel *goquery.Selection) {
 		name := strings.TrimSpace(sel.Find("h3").First().Text())
 		if name == "" {
 			return
 		}
 
-		location := "Yogyakarta"
-		subRegion := "Yogyakarta"
 		spanText := strings.TrimSpace(sel.Find("span").First().Text())
-		if spanText != "" {
-			parts := strings.SplitN(spanText, ", ", 2)
-			if len(parts) == 2 {
-				location = strings.TrimSpace(parts[0])
-				subRegion = normalizeSubRegion(parts[len(parts)-1])
-			} else {
-				subRegion = normalizeSubRegion(spanText)
-			}
+		if spanText == "" {
+			skipped++
+			return
+		}
+
+		location := spanText
+		subRegion := ""
+		parts := strings.SplitN(spanText, ", ", 2)
+		if len(parts) == 2 {
+			location = strings.TrimSpace(parts[0])
+			subRegion = normalizeSubRegion(parts[len(parts)-1])
+		} else {
+			subRegion = normalizeSubRegion(spanText)
+		}
+
+		if !diyRegencies[subRegion] {
+			skipped++
+			return
 		}
 
 		dests = append(dests, ScrapedDestination{
 			ExternalID:  slugify(name),
 			Name:        name,
 			Tagline:     "",
-			Category:    "Desa Wisata",
+			Category:    "desa-wisata",
 			Location:    location,
 			SubRegion:   subRegion,
 			Images:      nil,
@@ -90,6 +114,10 @@ func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			Source:      "jadesta",
 		})
 	})
+
+	if skipped > 0 {
+		fmt.Printf("jadesta: skipped %d listing(s) outside DI Yogyakarta or with unverifiable location\n", skipped)
+	}
 
 	return dests, nil
 }
