@@ -1344,8 +1344,6 @@ func (h *Handler) NextStop(c *gin.Context) {
 		cat := strings.ToLower(d.Category)
 
 		// Apply time-based penalties for closed categories after 17:00 (5 PM)
-		// NOTE: This rule is duplicated in the frontend at RouteMapItinerary.tsx (mood chip styling).
-		// If you change the categories or cutoff time here, update the frontend too.
 		if hour >= 17 && (strings.Contains(cat, "nature") || strings.Contains(cat, "alam") || strings.Contains(cat, "pantai") || strings.Contains(cat, "beach")) {
 			score -= 150.0
 		}
