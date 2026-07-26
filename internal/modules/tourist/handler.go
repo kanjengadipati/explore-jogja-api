@@ -1344,6 +1344,8 @@ func (h *Handler) NextStop(c *gin.Context) {
 		cat := strings.ToLower(d.Category)
 
 		// Apply time-based penalties for closed categories after 17:00 (5 PM)
+		// NOTE: This rule is duplicated in the frontend at RouteMapItinerary.tsx (mood chip styling).
+		// If you change the categories or cutoff time here, update the frontend too.
 		if hour >= 17 && (strings.Contains(cat, "nature") || strings.Contains(cat, "alam") || strings.Contains(cat, "pantai") || strings.Contains(cat, "beach")) {
 			score -= 150.0
 		}
@@ -1370,8 +1372,11 @@ func (h *Handler) NextStop(c *gin.Context) {
 	scheduledFor := ""
 	timeWarning := ""
 
-	isNatureOrBeach := categoryFilter == "nature" || categoryFilter == "beach" || categoryFilter == "alam" || categoryFilter == "pantai"
-	isCultural := categoryFilter == "cultural" || categoryFilter == "budaya" || categoryFilter == "heritage"
+	// Use the chosen destination's actual category, not the request filter,
+	// because fallback may select a different category than what was requested.
+	chosenCat := strings.ToLower(chosen.Category)
+	isNatureOrBeach := strings.Contains(chosenCat, "nature") || strings.Contains(chosenCat, "alam") || strings.Contains(chosenCat, "pantai") || strings.Contains(chosenCat, "beach") || strings.Contains(chosenCat, "bukit")
+	isCultural := strings.Contains(chosenCat, "cultural") || strings.Contains(chosenCat, "budaya") || strings.Contains(chosenCat, "heritage") || strings.Contains(chosenCat, "candi") || strings.Contains(chosenCat, "sejarah") || strings.Contains(chosenCat, "museum")
 
 	if hour >= 17 && isNatureOrBeach {
 		isTomorrow = true
