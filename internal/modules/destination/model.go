@@ -89,6 +89,9 @@ type Destination struct {
 	VideoURL         string  `gorm:"column:video_url" json:"video_url"`
 
 	// English translations (_en columns)
+	SeoTitleEn        string  `gorm:"column:seo_title_en" json:"seo_title_en"`
+	SeoKeywordsEn     string  `gorm:"type:text;column:seo_keywords_en" json:"seo_keywords_en"`
+	SeoDescriptionEn  string  `gorm:"type:text;column:seo_description_en" json:"seo_description_en"`
 	NameEn             string  `gorm:"column:name_en" json:"name_en"`
 	TaglineEn          string  `gorm:"column:tagline_en" json:"tagline_en"`
 	DescriptionEn      string  `gorm:"type:text;column:description_en" json:"description_en"`
@@ -123,6 +126,15 @@ func (d *Destination) Localize(locale string) Destination {
 		}
 		if len(d.TravelTipsEn) > 0 {
 			out.TravelTips = d.TravelTipsEn
+		}
+		if d.SeoTitleEn != "" {
+			out.SeoTitle = d.SeoTitleEn
+		}
+		if d.SeoKeywordsEn != "" {
+			out.SeoKeywords = d.SeoKeywordsEn
+		}
+		if d.SeoDescriptionEn != "" {
+			out.SeoDescription = d.SeoDescriptionEn
 		}
 	}
 	return out

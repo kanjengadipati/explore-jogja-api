@@ -65,13 +65,16 @@ type UpdateDestinationRequest struct {
 	SeoDescription    *string   `json:"seo_description"`
 	OgImageUrl        *string   `json:"og_image_url"`
 	// English translations
-	NameEn        *string  `json:"name_en"`
-	TaglineEn     *string  `json:"tagline_en"`
-	DescriptionEn *string  `json:"description_en"`
-	StoryEn       *string  `json:"story_en"`
-	BestTimeEn    *string  `json:"best_time_en"`
-	FacilitiesEn  *JSONArr `json:"facilities_en"`
-	TravelTipsEn  *JSONArr `json:"travel_tips_en"`
+	NameEn          *string  `json:"name_en"`
+	TaglineEn       *string  `json:"tagline_en"`
+	DescriptionEn   *string  `json:"description_en"`
+	StoryEn         *string  `json:"story_en"`
+	BestTimeEn      *string  `json:"best_time_en"`
+	FacilitiesEn    *JSONArr `json:"facilities_en"`
+	TravelTipsEn    *JSONArr `json:"travel_tips_en"`
+	SeoTitleEn      *string  `json:"seo_title_en"`
+	SeoKeywordsEn   *string  `json:"seo_keywords_en"`
+	SeoDescriptionEn *string `json:"seo_description_en"`
 }
 
 func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Destination, error) {
@@ -170,6 +173,15 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 	}
 	if req.TravelTipsEn != nil {
 		dest.TravelTipsEn = *req.TravelTipsEn
+	}
+	if req.SeoTitleEn != nil {
+		dest.SeoTitleEn = *req.SeoTitleEn
+	}
+	if req.SeoKeywordsEn != nil {
+		dest.SeoKeywordsEn = *req.SeoKeywordsEn
+	}
+	if req.SeoDescriptionEn != nil {
+		dest.SeoDescriptionEn = *req.SeoDescriptionEn
 	}
 
 	if err := s.Repo.Update(dest); err != nil {
