@@ -207,8 +207,8 @@ func (s *Service) DeleteUser(id uint, callerRole string, callerID uint) error {
 		return err
 	}
 
-	if callerRole == "admin" && targetUser.Role != "user" {
-		return errors.New("admin can only delete standard users")
+	if callerRole == "admin" && targetUser.Role != "user" && targetUser.Role != "partner" {
+		return errors.New("admin can only delete standard users or partners")
 	}
 
 	if targetUser.Role == "superadmin" {
@@ -246,7 +246,7 @@ func (s *Service) runInTx(fn func(userRepo Repository, refreshRepo tokenModule.R
 
 func isAssignableRole(role string) bool {
 	switch role {
-	case "admin", "user":
+	case "admin", "user", "partner":
 		return true
 	default:
 		return false

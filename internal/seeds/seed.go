@@ -23,7 +23,7 @@ func mustHaveDB(db *gorm.DB) {
 func SeedRoles(db *gorm.DB) map[string]roleModule.Role {
 	mustHaveDB(db)
 
-	roleNames := []string{"superadmin", "admin", "user"}
+	roleNames := []string{"superadmin", "admin", "user", "partner"}
 	roleMap := make(map[string]roleModule.Role)
 
 	for _, name := range roleNames {
@@ -55,6 +55,17 @@ func SeedPermissions(db *gorm.DB) map[string]permissionModule.Permission {
 		"role.update_permissions",
 		"session.read",
 		"session.delete",
+		"partner.read_own",
+		"partner.create_own",
+		"partner.update_own",
+		"partner.delete_own",
+		"partner.read_all",
+		"partner.approve",
+		"partner.reject",
+		"partner.suspend",
+		"partner.manage_all",
+		"promotion.manage_own",
+		"review.reply_own",
 	}
 	permMap := make(map[string]permissionModule.Permission)
 
@@ -90,6 +101,17 @@ func SeedRolePermissions(db *gorm.DB) {
 			"role.update_permissions",
 			"session.read",
 			"session.delete",
+			"partner.read_own",
+			"partner.create_own",
+			"partner.update_own",
+			"partner.delete_own",
+			"partner.read_all",
+			"partner.approve",
+			"partner.reject",
+			"partner.suspend",
+			"partner.manage_all",
+			"promotion.manage_own",
+			"review.reply_own",
 		},
 		"admin": {
 			"dashboard.view",
@@ -105,10 +127,25 @@ func SeedRolePermissions(db *gorm.DB) {
 			"role.update_permissions",
 			"session.read",
 			"session.delete",
+			"partner.read_all",
+			"partner.approve",
+			"partner.reject",
+			"partner.suspend",
+			"partner.manage_all",
 		},
 		"user": {
 			"dashboard.view",
 			"session.read",
+		},
+		"partner": {
+			"dashboard.view",
+			"session.read",
+			"partner.read_own",
+			"partner.create_own",
+			"partner.update_own",
+			"partner.delete_own",
+			"promotion.manage_own",
+			"review.reply_own",
 		},
 	}
 

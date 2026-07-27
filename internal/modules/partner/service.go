@@ -1,6 +1,11 @@
 package partner
 
-import "errors"
+import (
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Service struct {
 	Repo Repository
@@ -10,8 +15,10 @@ func NewService(repo Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-func (s *Service) GetAll() ([]Partner, error) {
-	return s.Repo.FindAll()
+// --- Public (approved only) ---
+
+func (s *Service) GetAllApproved() ([]Partner, error) {
+	return s.Repo.FindAllApproved()
 }
 
 func (s *Service) GetByID(externalID string) (*Partner, error) {
@@ -20,6 +27,36 @@ func (s *Service) GetByID(externalID string) (*Partner, error) {
 
 func (s *Service) Search(query string) ([]Partner, error) {
 	return s.Repo.Search(query)
+}
+
+func (s *Service) GetSponsored(destinationID, category string) ([]Partner, error) {
+	return s.Repo.FindSponsored(destinationID, category)
+}
+
+func (s *Service) TrackImpression(externalID string) error {
+	return s.Repo.IncrementImpression(externalID)
+}
+
+func (s *Service) TrackClick(externalID string) error {
+	return s.Repo.IncrementClick(externalID)
+}
+
+// --- Admin (any status) ---
+
+func (s *Service) GetByIDAny(externalID string) (*Partner, error) {
+	return s.Repo.FindByIDAny(externalID)
+}
+
+func (s *Service) GetByStatus(status string) ([]Partner, error) {
+	return s.Repo.FindByStatus(status)
+}
+
+func (s *Service) Create(partner *Partner) error {
+	return s.Repo.Create(partner)
+}
+
+func (s *Service) Save(partner *Partner) error {
+	return s.Repo.Update(partner)
 }
 
 type UpdatePartnerRequest struct {
@@ -36,14 +73,20 @@ type UpdatePartnerRequest struct {
 	Website     *string  `json:"website"`
 	Latitude    *float64 `json:"latitude"`
 	Longitude   *float64 `json:"longitude"`
-}
 
-func (s *Service) Create(partner *Partner) error {
-	return s.Repo.Create(partner)
+	IsSponsored    *bool      `json:"is_sponsored"`
+	SponsorTier    *int       `json:"sponsor_tier"`
+	SponsorStartAt *time.Time `json:"sponsor_start_at"`
+	SponsorEndAt   *time.Time `json:"sponsor_end_at"`
+	TargetDestIDs  *JSONArr   `json:"target_dest_ids"`
+
+	SponsorPrice         *float64 `json:"sponsor_price"`
+	SponsorPriceCurrency *string  `json:"sponsor_price_currency"`
+	SponsorPaymentStatus *string  `json:"sponsor_payment_status"`
 }
 
 func (s *Service) Update(externalID string, req UpdatePartnerRequest) (*Partner, error) {
-	partner, err := s.Repo.FindByID(externalID)
+	partner, err := s.Repo.FindByIDAny(externalID)
 	if err != nil {
 		return nil, errors.New("partner not found")
 	}
@@ -87,6 +130,30 @@ func (s *Service) Update(externalID string, req UpdatePartnerRequest) (*Partner,
 	if req.Longitude != nil {
 		partner.Longitude = *req.Longitude
 	}
+	if req.IsSponsored != nil {
+		partner.IsSponsored = *req.IsSponsored
+	}
+	if req.SponsorTier != nil {
+		partner.SponsorTier = *req.SponsorTier
+	}
+	if req.SponsorStartAt != nil {
+		partner.SponsorStartAt = *req.SponsorStartAt
+	}
+	if req.SponsorEndAt != nil {
+		partner.SponsorEndAt = *req.SponsorEndAt
+	}
+	if req.TargetDestIDs != nil {
+		partner.TargetDestIDs = *req.TargetDestIDs
+	}
+	if req.SponsorPrice != nil {
+		partner.SponsorPrice = *req.SponsorPrice
+	}
+	if req.SponsorPriceCurrency != nil {
+		partner.SponsorPriceCurrency = *req.SponsorPriceCurrency
+	}
+	if req.SponsorPaymentStatus != nil {
+		partner.SponsorPaymentStatus = *req.SponsorPaymentStatus
+	}
 
 	if err := s.Repo.Update(partner); err != nil {
 		return nil, err
@@ -96,4 +163,109 @@ func (s *Service) Update(externalID string, req UpdatePartnerRequest) (*Partner,
 
 func (s *Service) Delete(externalID string) error {
 	return s.Repo.Delete(externalID)
+}
+
+// --- Self-service ---
+
+type ApplyPartnerRequest struct {
+	Name        string  `json:"name" binding:"required"`
+	Category    string  `json:"category" binding:"required"`
+	Description string  `json:"description"`
+	Location    string  `json:"location"`
+	Address     string  `json:"address"`
+	Image       string  `json:"image"`
+	Phone       string  `json:"phone"`
+	Website     string  `json:"website"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	Price       string  `json:"price"`
+}
+
+func (s *Service) Apply(req ApplyPartnerRequest, ownerUserID uint) (*Partner, error) {
+	now := time.Now()
+	partner := Partner{
+		ExternalID:  uuid.New().String(),
+		Name:        req.Name,
+		Category:    req.Category,
+		Description: req.Description,
+		Location:    req.Location,
+		Address:     req.Address,
+		Image:       req.Image,
+		Phone:       req.Phone,
+		Website:     req.Website,
+		Latitude:    req.Latitude,
+		Longitude:   req.Longitude,
+		Price:       req.Price,
+		OwnerUserID: &ownerUserID,
+		Status:      StatusPending,
+		SubmittedAt: &now,
+	}
+
+	if err := s.Repo.Create(&partner); err != nil {
+		return nil, err
+	}
+	return &partner, nil
+}
+
+func (s *Service) GetOwned(ownerUserID uint) ([]Partner, error) {
+	return s.Repo.FindByOwnerID(ownerUserID)
+}
+
+func (s *Service) GetOwnedByID(ownerUserID uint, externalID string) (*Partner, error) {
+	return s.Repo.FindByIDAndOwner(externalID, ownerUserID)
+}
+
+func (s *Service) UpdateOwned(ownerUserID uint, externalID string, req UpdatePartnerRequest) (*Partner, error) {
+	partner, err := s.Repo.FindByIDAndOwner(externalID, ownerUserID)
+	if err != nil {
+		return nil, errors.New("listing not found")
+	}
+
+	if req.Name != nil {
+		partner.Name = *req.Name
+	}
+	if req.Description != nil {
+		partner.Description = *req.Description
+	}
+	if req.Category != nil {
+		partner.Category = *req.Category
+	}
+	if req.Location != nil {
+		partner.Location = *req.Location
+	}
+	if req.Address != nil {
+		partner.Address = *req.Address
+	}
+	if req.Image != nil {
+		partner.Image = *req.Image
+	}
+	if req.Phone != nil {
+		partner.Phone = *req.Phone
+	}
+	if req.Website != nil {
+		partner.Website = *req.Website
+	}
+	if req.Latitude != nil {
+		partner.Latitude = *req.Latitude
+	}
+	if req.Longitude != nil {
+		partner.Longitude = *req.Longitude
+	}
+	if req.Price != nil {
+		partner.Price = *req.Price
+	}
+
+	// Approved listing reset to pending for re-review
+	if partner.Status == StatusApproved {
+		partner.Status = StatusPending
+	}
+
+	if err := s.Repo.Update(partner); err != nil {
+		return nil, err
+	}
+	return partner, nil
+}
+
+func (s *Service) DeleteOwned(ownerUserID uint, externalID string) error {
+	return s.Repo.DeleteByIDAndOwner(externalID, ownerUserID)
 }

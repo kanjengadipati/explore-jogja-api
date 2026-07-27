@@ -23,15 +23,16 @@ func (s *Service) Search(query string) ([]Promotion, error) {
 }
 
 type UpdatePromotionRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	Discount    *string `json:"discount"`
-	StartDate   *string `json:"start_date"`
-	EndDate     *string `json:"end_date"`
-	ImageURL    *string `json:"image_url"`
-	Category    *string `json:"category"`
-	Status      *string `json:"status"`
-	Code        *string `json:"code"`
+	Title       *string  `json:"title"`
+	Description *string  `json:"description"`
+	Discount    *string  `json:"discount"`
+	StartDate   *string  `json:"start_date"`
+	EndDate     *string  `json:"end_date"`
+	ImageURL    *string  `json:"image_url"`
+	Category    *string  `json:"category"`
+	Status      *string  `json:"status"`
+	Code        *string  `json:"code"`
+	PartnerID   **string `json:"partner_id"`
 }
 
 func (s *Service) Create(promotion *Promotion) error {
@@ -80,4 +81,12 @@ func (s *Service) Update(externalID string, req UpdatePromotionRequest) (*Promot
 
 func (s *Service) Delete(externalID string) error {
 	return s.Repo.Delete(externalID)
+}
+
+func (s *Service) GetByPartnerID(partnerExternalID string) ([]Promotion, error) {
+	return s.Repo.FindByPartnerID(partnerExternalID)
+}
+
+func (s *Service) GetByIDAndPartner(externalID string, partnerExternalID string) (*Promotion, error) {
+	return s.Repo.FindByIDAndPartner(externalID, partnerExternalID)
 }

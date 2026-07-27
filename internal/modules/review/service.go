@@ -85,3 +85,7 @@ func (s *Service) Update(externalID string, req UpdateReviewRequest) (*Review, e
 func (s *Service) Delete(externalID string) error {
 	return s.Repo.Delete(externalID)
 }
+
+func (s *Service) GetByPartnerIDAndDestination(partnerExternalID string, destinationID string) ([]Review, error) {
+	return s.Repo.FindByPartnerIDAndDestination(partnerExternalID, destinationID)
+}

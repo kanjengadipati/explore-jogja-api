@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type permissionChecker interface {
+type PermissionChecker interface {
 	HasPermission(roleName, permission string) (bool, error)
 }
 
@@ -46,7 +46,7 @@ func RequireRole(role string) gin.HandlerFunc {
 	}
 }
 
-func RequirePermission(checker permissionChecker, permission string) gin.HandlerFunc {
+func RequirePermission(checker PermissionChecker, permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleValue, exists := c.Get("role")
 		roleName, ok := roleValue.(string)
@@ -70,5 +70,42 @@ func RequirePermission(checker permissionChecker, permission string) gin.Handler
 		}
 
 		c.Next()
+	}
+}
+
+// RequireOwnerOrPermission passes if the authenticated user owns the resource
+// (owner_user_id matches) OR holds the specified admin permission.
+func RequireOwnerOrPermission(checker PermissionChecker, permission string, getOwnerID func(c *gin.Context) (uint, bool)) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userIDVal, exists := c.Get("user_id")
+		if !exists {
+			httpx.Error(c, http.StatusUnauthorized, "Unauthorized")
+			c.Abort()
+			return
+		}
+		userID, ok := userIDVal.(uint)
+		if !ok {
+			httpx.Error(c, http.StatusUnauthorized, "Unauthorized")
+			c.Abort()
+			return
+		}
+
+		if ownerID, found := getOwnerID(c); found && ownerID == userID {
+			c.Next()
+			return
+		}
+
+		roleValue, _ := c.Get("role")
+		roleName, _ := roleValue.(string)
+		if roleName != "" {
+			allowed, err := checker.HasPermission(roleName, permission)
+			if err == nil && allowed {
+				c.Next()
+				return
+			}
+		}
+
+		httpx.Error(c, http.StatusForbidden, "Forbidden")
+		c.Abort()
 	}
 }

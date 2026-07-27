@@ -4,35 +4,37 @@ import (
 	"log"
 	"log/slog"
 	"sync/atomic"
+
 	"pleco-api/internal/ai"
 	"pleco-api/internal/config"
 	"pleco-api/internal/erroroptimizer"
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/middleware"
+	"pleco-api/internal/modules/adcampaign"
+	"pleco-api/internal/modules/analytics"
+	"pleco-api/internal/modules/article"
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/auth"
-	"pleco-api/internal/modules/permission"
+	configmodule "pleco-api/internal/modules/config"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
-	configmodule "pleco-api/internal/modules/config"
 	"pleco-api/internal/modules/guide"
 	"pleco-api/internal/modules/hotel"
 	"pleco-api/internal/modules/imagereport"
-	"pleco-api/internal/modules/analytics"
 	"pleco-api/internal/modules/partner"
+	"pleco-api/internal/modules/permission"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/rental"
 	"pleco-api/internal/modules/restaurant"
 	"pleco-api/internal/modules/review"
 	"pleco-api/internal/modules/role"
+	"pleco-api/internal/modules/sitemap"
 	"pleco-api/internal/modules/souvenir"
 	"pleco-api/internal/modules/staging"
-	"pleco-api/internal/modules/article"
 	"pleco-api/internal/modules/story"
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/trips"
 	"pleco-api/internal/modules/user"
-	"pleco-api/internal/modules/sitemap"
 	"pleco-api/internal/scraper"
 	"pleco-api/internal/services"
 
@@ -42,9 +44,9 @@ import (
 )
 
 var (
-	scrapeAllRunning      atomic.Bool
-	scrapeDestRunning     atomic.Bool
-	scrapeEventsRunning   atomic.Bool
+	scrapeAllRunning    atomic.Bool
+	scrapeDestRunning   atomic.Bool
+	scrapeEventsRunning atomic.Bool
 )
 
 func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtService *services.JWTService, rateStore middleware.RateLimitStore) error {
@@ -97,8 +99,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	restaurantModule := restaurant.BuildModule(db)
 	restaurant.SetupRoutes(api, restaurantModule.Handler, jwtService)
 
-	partnerModule := partner.BuildModule(db)
-	partner.SetupRoutes(api, partnerModule.Handler, jwtService)
+	adCampaignModule := adcampaign.BuildModule(db)
+	adcampaign.SetupRoutes(api, adCampaignModule.Handler, jwtService)
 
 	guideModule := guide.BuildModule(db)
 	guide.SetupRoutes(api, guideModule.Handler, jwtService)
@@ -120,6 +122,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	promotionModule := promotion.BuildModule(db)
 	promotion.SetupRoutes(api, promotionModule.Handler, jwtService)
+
+	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service)
+	partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
 	tourist.SetupRoutes(api, touristModule.Handler)
