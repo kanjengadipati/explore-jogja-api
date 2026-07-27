@@ -43,44 +43,14 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeTrending)
 	}
 
-	// Hidden Gem: Rating >= 4.5 + review_count < 2500
-	if d.Rating >= 4.5 && d.ReviewCount < 2500 {
-		badges = append(badges, BadgeHiddenGem)
-	}
-
-	// Best for Healing: Category: nature + rating >= 4.3
-	if cat == "nature" && d.Rating >= 4.3 {
-		badges = append(badges, BadgeBestForHealing)
-	}
-
-	// Instagramable: Category: hidden-gem atau beach + rating >= 4.4
-	if (cat == "hidden-gem" || cat == "beach") && d.Rating >= 4.4 {
-		badges = append(badges, BadgeInstagramable)
-	}
-
-	// Sunset Spot: bestTime mengandung "sore" atau "sunset"
-	if strings.Contains(bestTime, "sore") || strings.Contains(bestTime, "sunset") {
-		badges = append(badges, BadgeSunsetSpot)
-	}
-
 	// Sunrise Spot: bestTime mengandung "sunrise" / "fajar" / "dawn"
 	if strings.Contains(bestTime, "sunrise") || strings.Contains(bestTime, "fajar") || strings.Contains(bestTime, "dawn") {
 		badges = append(badges, BadgeSunriseSpot)
 	}
 
-	// Cultural: Category: heritage
-	if cat == "heritage" {
-		badges = append(badges, BadgeCultural)
-	}
-
-	// Perfect Morning: Category: nature atau heritage + bestTime mengandung "pagi"
-	if (cat == "nature" || cat == "heritage") && strings.Contains(bestTime, "pagi") {
-		badges = append(badges, BadgePerfectMorning)
-	}
-
-	// Adventure: Category: adventure + rating >= 4.0
-	if cat == "adventure" && d.Rating >= 4.0 {
-		badges = append(badges, BadgeAdventure)
+	// Sunset Spot: bestTime mengandung "sore" atau "sunset", tapi hanya untuk nature/beach
+	if (cat == "nature" || cat == "beach") && (strings.Contains(bestTime, "sore") || strings.Contains(bestTime, "sunset")) {
+		badges = append(badges, BadgeSunsetSpot)
 	}
 
 	// Camping Spot: bestTime mengandung "camping"
@@ -88,14 +58,19 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeCampingSpot)
 	}
 
-	// Budget Friendly: ticket_price kosong / gratis / free
-	if ticketPrice == "" || strings.Contains(ticketPrice, "gratis") || strings.Contains(ticketPrice, "free") {
-		badges = append(badges, BadgeBudgetFriendly)
-	}
-
 	// Waterfall: name mengandung "air terjun" / "curug" / "waterfall"
 	if strings.Contains(name, "air terjun") || strings.Contains(name, "curug") || strings.Contains(name, "waterfall") {
 		badges = append(badges, BadgeWaterfall)
+	}
+
+	// Instagramable: Category hidden-gem atau beach + rating >= 4.4
+	if (cat == "hidden-gem" || cat == "beach") && d.Rating >= 4.4 {
+		badges = append(badges, BadgeInstagramable)
+	}
+
+	// Perfect Morning: Category nature atau heritage + bestTime mengandung "pagi"
+	if (cat == "nature" || cat == "heritage") && strings.Contains(bestTime, "pagi") {
+		badges = append(badges, BadgePerfectMorning)
 	}
 
 	// Night Spot: bestTime mengandung "malam" / "night" / "stargaz"
@@ -106,6 +81,31 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 	// Photographer Pick: travelTips mengandung "foto" / "photo" / "fotografi"
 	if strings.Contains(tips, "foto") || strings.Contains(tips, "photo") || strings.Contains(tips, "fotografi") {
 		badges = append(badges, BadgePhotographerPick)
+	}
+
+	// Best for Healing: Category nature + rating >= 4.3
+	if cat == "nature" && d.Rating >= 4.3 {
+		badges = append(badges, BadgeBestForHealing)
+	}
+
+	// Cultural: Category heritage
+	if cat == "heritage" {
+		badges = append(badges, BadgeCultural)
+	}
+
+	// Adventure: Category adventure + rating >= 4.0
+	if cat == "adventure" && d.Rating >= 4.0 {
+		badges = append(badges, BadgeAdventure)
+	}
+
+	// Hidden Gem: Rating >= 4.5 + review_count < 2500 (after category-specific badges)
+	if d.Rating >= 4.5 && d.ReviewCount < 2500 {
+		badges = append(badges, BadgeHiddenGem)
+	}
+
+	// Budget Friendly: ticket_price gratis / free
+	if strings.Contains(ticketPrice, "gratis") || strings.Contains(ticketPrice, "free") {
+		badges = append(badges, BadgeBudgetFriendly)
 	}
 
 	return badges
@@ -122,21 +122,22 @@ func travelTipsString(tips JSONArr) string {
 }
 
 // badgePriority defines display priority order (highest first).
+// Category-specific badges (Cultural, Adventure, etc.) are not in this list
+// because they are always the primary badge for their category and don't need
+// to compete with content-based badges for the "primary" slot.
 var badgePriority = []BadgeType{
 	BadgeTrending,
-	BadgeHiddenGem,
-	BadgeBestForHealing,
-	BadgeInstagramable,
 	BadgeSunsetSpot,
 	BadgeSunriseSpot,
-	BadgeCultural,
-	BadgePerfectMorning,
-	BadgeAdventure,
 	BadgeCampingSpot,
-	BadgeBudgetFriendly,
 	BadgeWaterfall,
+	BadgeInstagramable,
+	BadgePerfectMorning,
 	BadgeNightSpot,
 	BadgePhotographerPick,
+	BadgeBestForHealing,
+	BadgeHiddenGem,
+	BadgeBudgetFriendly,
 }
 
 // PrimaryBadge returns the single highest-priority badge for card overlay display.
