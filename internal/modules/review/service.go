@@ -89,3 +89,7 @@ func (s *Service) Delete(externalID string) error {
 func (s *Service) GetByPartnerIDAndDestination(partnerExternalID string, destinationID string) ([]Review, error) {
 	return s.Repo.FindByPartnerIDAndDestination(partnerExternalID, destinationID)
 }
+
+func (s *Service) GetByPartnerID(partnerExternalID string) ([]Review, error) {
+	return s.Repo.FindByPartnerID(partnerExternalID)
+}

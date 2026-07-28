@@ -3,6 +3,8 @@ package adcampaign
 import (
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -108,4 +110,65 @@ func (s *Service) TrackImpression(externalID string) error {
 
 func (s *Service) TrackClick(externalID string) error {
 	return s.Repo.IncrementClick(externalID)
+}
+
+func (s *Service) GetAllHouseAds() ([]HouseAd, error) {
+	return s.Repo.FindAllHouseAds()
+}
+
+func (s *Service) GetEnabledHouseAd(placement string) (*HouseAd, error) {
+	return s.Repo.FindEnabledHouseAdByPlacement(placement)
+}
+
+type UpdateHouseAdRequest struct {
+	Placement *string `json:"placement"`
+	Headline  *string `json:"headline"`
+	Subline   *string `json:"subline"`
+	CTALabel  *string `json:"cta_label"`
+	ImageURL  *string `json:"image_url"`
+	TargetURL *string `json:"target_url"`
+	IsEnabled *bool   `json:"is_enabled"`
+}
+
+func (s *Service) CreateHouseAd(houseAd *HouseAd) error {
+	if houseAd.ExternalID == "" {
+		houseAd.ExternalID = uuid.New().String()
+	}
+	return s.Repo.CreateHouseAd(houseAd)
+}
+
+func (s *Service) UpdateHouseAd(externalID string, req UpdateHouseAdRequest) (*HouseAd, error) {
+	houseAd, err := s.Repo.FindHouseAdByID(externalID)
+	if err != nil {
+		return nil, errors.New("house ad not found")
+	}
+	if req.Placement != nil {
+		houseAd.Placement = *req.Placement
+	}
+	if req.Headline != nil {
+		houseAd.Headline = *req.Headline
+	}
+	if req.Subline != nil {
+		houseAd.Subline = *req.Subline
+	}
+	if req.CTALabel != nil {
+		houseAd.CTALabel = *req.CTALabel
+	}
+	if req.ImageURL != nil {
+		houseAd.ImageURL = *req.ImageURL
+	}
+	if req.TargetURL != nil {
+		houseAd.TargetURL = *req.TargetURL
+	}
+	if req.IsEnabled != nil {
+		houseAd.IsEnabled = *req.IsEnabled
+	}
+	if err := s.Repo.UpdateHouseAd(houseAd); err != nil {
+		return nil, err
+	}
+	return houseAd, nil
+}
+
+func (s *Service) DeleteHouseAd(externalID string) error {
+	return s.Repo.DeleteHouseAd(externalID)
 }

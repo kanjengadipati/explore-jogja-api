@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	FindAll() ([]Partner, error)
 	FindAllApproved() ([]Partner, error)
+	FindAllAny() ([]Partner, error)
 	FindByID(externalID string) (*Partner, error)
 	FindByIDAny(externalID string) (*Partner, error)
 	FindByIDAndOwner(externalID string, ownerUserID uint) (*Partner, error)
@@ -45,6 +46,12 @@ func (r *GormRepository) FindAll() ([]Partner, error) {
 func (r *GormRepository) FindAllApproved() ([]Partner, error) {
 	var partners []Partner
 	err := r.db.Where("status = ?", StatusApproved).Order("id ASC").Find(&partners).Error
+	return partners, err
+}
+
+func (r *GormRepository) FindAllAny() ([]Partner, error) {
+	var partners []Partner
+	err := r.db.Order("id ASC").Find(&partners).Error
 	return partners, err
 }
 

@@ -16,6 +16,12 @@ type Repository interface {
 	Delete(externalID string) error
 	IncrementImpression(externalID string) error
 	IncrementClick(externalID string) error
+	FindAllHouseAds() ([]HouseAd, error)
+	FindEnabledHouseAdByPlacement(placement string) (*HouseAd, error)
+	FindHouseAdByID(externalID string) (*HouseAd, error)
+	CreateHouseAd(houseAd *HouseAd) error
+	UpdateHouseAd(houseAd *HouseAd) error
+	DeleteHouseAd(externalID string) error
 }
 
 type GormRepository struct {
@@ -48,6 +54,7 @@ func (r *GormRepository) FindActiveCandidates(placement, category string) ([]AdC
 	zero := time.Time{}
 	q := r.db.Where("placement = ?", placement).
 		Where("is_active = ?", true).
+		Where("payment_status = ?", "paid").
 		Where("(start_at IS NULL OR start_at = ? OR start_at <= ?)", zero, now).
 		Where("(end_at IS NULL OR end_at = ? OR end_at >= ?)", zero, now)
 
@@ -82,6 +89,42 @@ func (r *GormRepository) IncrementClick(externalID string) error {
 	return r.db.Model(&AdCampaign{}).
 		Where("external_id = ?", externalID).
 		UpdateColumn("clicks", gorm.Expr("clicks + 1")).Error
+}
+
+func (r *GormRepository) FindAllHouseAds() ([]HouseAd, error) {
+	var houseAds []HouseAd
+	err := r.db.Order("placement ASC").Find(&houseAds).Error
+	return houseAds, err
+}
+
+func (r *GormRepository) FindEnabledHouseAdByPlacement(placement string) (*HouseAd, error) {
+	var houseAd HouseAd
+	err := r.db.Where("placement = ? AND is_enabled = ?", placement, true).First(&houseAd).Error
+	if err != nil {
+		return nil, err
+	}
+	return &houseAd, nil
+}
+
+func (r *GormRepository) FindHouseAdByID(externalID string) (*HouseAd, error) {
+	var houseAd HouseAd
+	err := r.db.Where("external_id = ?", externalID).First(&houseAd).Error
+	if err != nil {
+		return nil, err
+	}
+	return &houseAd, nil
+}
+
+func (r *GormRepository) CreateHouseAd(houseAd *HouseAd) error {
+	return r.db.Create(houseAd).Error
+}
+
+func (r *GormRepository) UpdateHouseAd(houseAd *HouseAd) error {
+	return r.db.Save(houseAd).Error
+}
+
+func (r *GormRepository) DeleteHouseAd(externalID string) error {
+	return r.db.Where("external_id = ?", externalID).Delete(&HouseAd{}).Error
 }
 
 func WeightedPick(candidates []AdCampaign) *AdCampaign {

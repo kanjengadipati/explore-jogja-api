@@ -40,7 +40,7 @@ func (s *Service) Create(promotion *Promotion) error {
 }
 
 func (s *Service) Update(externalID string, req UpdatePromotionRequest) (*Promotion, error) {
-	promotion, err := s.Repo.FindByID(externalID)
+	promotion, err := s.Repo.FindByIDAny(externalID)
 	if err != nil {
 		return nil, errors.New("promotion not found")
 	}

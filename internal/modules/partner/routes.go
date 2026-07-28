@@ -51,6 +51,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	authAdmin.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))
 
 	adminPartners := authAdmin.Group("/admin/partners")
+	adminPartners.GET("", middleware.RequirePermission(permSvc, "partner.read_all"), handler.AdminGetAll)
 	adminPartners.GET("/pending", middleware.RequirePermission(permSvc, "partner.approve"), handler.AdminGetPending)
 	adminPartners.GET("/:id", middleware.RequirePermission(permSvc, "partner.read_all"), handler.AdminGetByID)
 	adminPartners.POST("/:id/approve", middleware.RequirePermission(permSvc, "partner.approve"), handler.AdminApprove)

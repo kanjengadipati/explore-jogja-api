@@ -66,12 +66,60 @@ type Partner struct {
 	SponsorPriceCurrency string  `gorm:"default:IDR" json:"sponsor_price_currency"`
 	SponsorPaymentStatus string  `gorm:"default:pending" json:"sponsor_payment_status"`
 
-	OwnerUserID    *uint       `gorm:"index" json:"owner_user_id"`
-	Status         string      `gorm:"size:20;not null;default:approved;index" json:"status"`
+	OwnerUserID     *uint      `gorm:"index" json:"owner_user_id"`
+	Status          string     `gorm:"size:20;not null;default:approved;index" json:"status"`
 	RejectionReason string     `gorm:"type:text" json:"rejection_reason"`
-	SubmittedAt    *time.Time  `json:"submitted_at"`
-	ReviewedAt     *time.Time  `json:"reviewed_at"`
-	ReviewedBy     *uint       `json:"reviewed_by"`
+	SubmittedAt     *time.Time `json:"submitted_at"`
+	ReviewedAt      *time.Time `json:"reviewed_at"`
+	ReviewedBy      *uint      `json:"reviewed_by"`
+}
+
+type PublicPartnerResponse struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Category    string  `json:"category"`
+	Location    string  `json:"location"`
+	Address     string  `json:"address"`
+	Image       string  `json:"image"`
+	Rating      float64 `json:"rating"`
+	Price       string  `json:"price"`
+	Distance    string  `json:"distance"`
+	Phone       string  `json:"phone"`
+	Website     string  `json:"website"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	IsSponsored bool    `json:"is_sponsored"`
+	SponsorTier int     `json:"sponsor_tier"`
+}
+
+func ToPublicPartnerResponse(partner Partner) PublicPartnerResponse {
+	return PublicPartnerResponse{
+		ID:          partner.ExternalID,
+		Name:        partner.Name,
+		Description: partner.Description,
+		Category:    partner.Category,
+		Location:    partner.Location,
+		Address:     partner.Address,
+		Image:       partner.Image,
+		Rating:      partner.Rating,
+		Price:       partner.Price,
+		Distance:    partner.Distance,
+		Phone:       partner.Phone,
+		Website:     partner.Website,
+		Latitude:    partner.Latitude,
+		Longitude:   partner.Longitude,
+		IsSponsored: partner.IsSponsored,
+		SponsorTier: partner.SponsorTier,
+	}
+}
+
+func ToPublicPartnerResponses(partners []Partner) []PublicPartnerResponse {
+	responses := make([]PublicPartnerResponse, 0, len(partners))
+	for _, partner := range partners {
+		responses = append(responses, ToPublicPartnerResponse(partner))
+	}
+	return responses
 }
 
 func (p *Partner) IsSponsorshipActive(now time.Time) bool {

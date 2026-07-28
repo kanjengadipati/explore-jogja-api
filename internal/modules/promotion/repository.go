@@ -7,6 +7,7 @@ import (
 type Repository interface {
 	FindAll() ([]Promotion, error)
 	FindByID(externalID string) (*Promotion, error)
+	FindByIDAny(externalID string) (*Promotion, error)
 	Search(query string) ([]Promotion, error)
 	Create(promotion *Promotion) error
 	Update(promotion *Promotion) error
@@ -39,6 +40,15 @@ func (r *GormRepository) FindByID(externalID string) (*Promotion, error) {
 		"external_id = ? AND (partner_id IS NULL OR partner_id IN (SELECT external_id FROM partners WHERE status = 'approved'))",
 		externalID,
 	).First(&promotion).Error
+	if err != nil {
+		return nil, err
+	}
+	return &promotion, nil
+}
+
+func (r *GormRepository) FindByIDAny(externalID string) (*Promotion, error) {
+	var promotion Promotion
+	err := r.db.Where("external_id = ?", externalID).First(&promotion).Error
 	if err != nil {
 		return nil, err
 	}

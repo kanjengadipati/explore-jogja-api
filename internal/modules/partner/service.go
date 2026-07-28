@@ -47,6 +47,10 @@ func (s *Service) GetByIDAny(externalID string) (*Partner, error) {
 	return s.Repo.FindByIDAny(externalID)
 }
 
+func (s *Service) GetAllAny() ([]Partner, error) {
+	return s.Repo.FindAllAny()
+}
+
 func (s *Service) GetByStatus(status string) ([]Partner, error) {
 	return s.Repo.FindByStatus(status)
 }

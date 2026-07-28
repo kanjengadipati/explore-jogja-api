@@ -43,7 +43,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 		httpx.HandleError(c, err)
 		return
 	}
-	httpx.Success(c, 200, "Partners fetched", partners, nil)
+	httpx.Success(c, 200, "Partners fetched", ToPublicPartnerResponses(partners), nil)
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
@@ -53,7 +53,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Partner not found")
 		return
 	}
-	httpx.Success(c, 200, "Partner fetched", partner, nil)
+	httpx.Success(c, 200, "Partner fetched", ToPublicPartnerResponse(*partner), nil)
 }
 
 func (h *Handler) Search(c *gin.Context) {
@@ -67,7 +67,7 @@ func (h *Handler) Search(c *gin.Context) {
 		httpx.HandleError(c, err)
 		return
 	}
-	httpx.Success(c, 200, "Search results", partners, nil)
+	httpx.Success(c, 200, "Search results", ToPublicPartnerResponses(partners), nil)
 }
 
 func (h *Handler) GetSponsored(c *gin.Context) {
@@ -79,7 +79,7 @@ func (h *Handler) GetSponsored(c *gin.Context) {
 		httpx.HandleError(c, err)
 		return
 	}
-	httpx.Success(c, 200, "Sponsored partners fetched", partners, nil)
+	httpx.Success(c, 200, "Sponsored partners fetched", ToPublicPartnerResponses(partners), nil)
 }
 
 func (h *Handler) TrackImpression(c *gin.Context) {
@@ -95,6 +95,15 @@ func (h *Handler) TrackClick(c *gin.Context) {
 }
 
 // --- Admin manage-all ---
+
+func (h *Handler) AdminGetAll(c *gin.Context) {
+	partners, err := h.Service.GetAllAny()
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Partners fetched", partners, nil)
+}
 
 func (h *Handler) AdminCreate(c *gin.Context) {
 	var partner Partner
@@ -388,13 +397,7 @@ func (h *Handler) ListMyReviews(c *gin.Context) {
 		return
 	}
 
-	destinationID := c.Query("destination_id")
-	if destinationID == "" {
-		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Query parameter 'destination_id' is required")
-		return
-	}
-
-	reviews, err := h.ReviewService.GetByPartnerIDAndDestination(partner.ExternalID, destinationID)
+	reviews, err := h.ReviewService.GetByPartnerID(partner.ExternalID)
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -414,6 +417,10 @@ func (h *Handler) ReplyToReview(c *gin.Context) {
 		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Review not found")
 		return
 	}
+	if reviewObj.PartnerID == nil || *reviewObj.PartnerID != partner.ExternalID {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Review not found")
+		return
+	}
 
 	var body struct {
 		Reply string `json:"reply" binding:"required"`
@@ -425,7 +432,6 @@ func (h *Handler) ReplyToReview(c *gin.Context) {
 
 	adminUserID, _ := httpx.GetUserIDFromContext(c)
 	now := time.Now()
-	reviewObj.PartnerID = &partner.ExternalID
 	reviewObj.Reply = body.Reply
 	reviewObj.RepliedAt = &now
 	reviewObj.RepliedBy = &adminUserID

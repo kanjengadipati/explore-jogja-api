@@ -19,7 +19,8 @@ INSERT INTO permissions (name) VALUES
     ('partner.suspend'),
     ('partner.manage_all'),
     ('promotion.manage_own'),
-    ('review.reply_own')
+    ('review.reply_own'),
+    ('ads.manage')
 ON CONFLICT (name) DO NOTHING;
 
 -- 3. Role → permission mappings
@@ -47,7 +48,7 @@ WHERE r.name = 'superadmin'
   AND p.name IN (
       'partner.read_own', 'partner.create_own', 'partner.update_own', 'partner.delete_own',
       'partner.read_all', 'partner.approve', 'partner.reject', 'partner.suspend',
-      'partner.manage_all', 'promotion.manage_own', 'review.reply_own'
+      'partner.manage_all', 'promotion.manage_own', 'review.reply_own', 'ads.manage'
   )
   AND NOT EXISTS (
       SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission = p.name AND rp.deleted_at IS NULL
@@ -60,7 +61,7 @@ FROM roles r, permissions p
 WHERE r.name = 'admin'
   AND p.name IN (
       'partner.read_all', 'partner.approve', 'partner.reject',
-      'partner.suspend', 'partner.manage_all'
+      'partner.suspend', 'partner.manage_all', 'ads.manage'
   )
   AND NOT EXISTS (
       SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission = p.name AND rp.deleted_at IS NULL

@@ -17,6 +17,10 @@ func SeedPartners(db *gorm.DB) {
 	updated := 0
 
 	for _, p := range partners {
+		if p.Status == "" {
+			p.Status = partner.StatusApproved
+		}
+
 		var existing partner.Partner
 		err := db.Where("external_id = ?", p.ExternalID).First(&existing).Error
 		if err != nil {

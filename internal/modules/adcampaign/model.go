@@ -37,8 +37,23 @@ type AdCampaign struct {
 	PaymentStatus string  `gorm:"default:pending" json:"payment_status"`
 }
 
+type HouseAd struct {
+	gorm.Model
+	ExternalID string `gorm:"uniqueIndex;not null" json:"id"`
+	Placement  string `gorm:"uniqueIndex;not null" json:"placement"`
+	Headline   string `gorm:"not null" json:"headline"`
+	Subline    string `gorm:"type:text" json:"subline"`
+	CTALabel   string `gorm:"not null" json:"cta_label"`
+	ImageURL   string `json:"image_url"`
+	TargetURL  string `gorm:"not null" json:"target_url"`
+	IsEnabled  bool   `gorm:"index" json:"is_enabled"`
+}
+
 func (a *AdCampaign) IsLive(now time.Time) bool {
 	if !a.IsActive {
+		return false
+	}
+	if a.PaymentStatus != "paid" {
 		return false
 	}
 	if !a.StartAt.IsZero() && now.Before(a.StartAt) {

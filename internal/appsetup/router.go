@@ -100,7 +100,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	restaurant.SetupRoutes(api, restaurantModule.Handler, jwtService)
 
 	adCampaignModule := adcampaign.BuildModule(db)
-	adcampaign.SetupRoutes(api, adCampaignModule.Handler, jwtService)
+	adcampaign.SetupRoutes(api, adCampaignModule.Handler, jwtService, permissionModule.Service)
 
 	guideModule := guide.BuildModule(db)
 	guide.SetupRoutes(api, guideModule.Handler, jwtService)

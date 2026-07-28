@@ -13,6 +13,7 @@ type Repository interface {
 	Create(review *Review) error
 	Update(review *Review) error
 	Delete(externalID string) error
+	FindByPartnerID(partnerExternalID string) ([]Review, error)
 	FindByPartnerIDAndDestination(partnerExternalID string, destinationID string) ([]Review, error)
 }
 
@@ -90,9 +91,16 @@ func (r *GormRepository) Delete(externalID string) error {
 	return r.db.Where("external_id = ?", externalID).Delete(&Review{}).Error
 }
 
+func (r *GormRepository) FindByPartnerID(partnerExternalID string) ([]Review, error) {
+	var reviews []Review
+	err := r.db.Where("partner_id = ?", partnerExternalID).
+		Order("created_at DESC").Find(&reviews).Error
+	return reviews, err
+}
+
 func (r *GormRepository) FindByPartnerIDAndDestination(partnerExternalID string, destinationID string) ([]Review, error) {
 	var reviews []Review
-	err := r.db.Where("destination_id = ? AND (partner_id = ? OR partner_id IS NULL)", destinationID, partnerExternalID).
+	err := r.db.Where("destination_id = ? AND partner_id = ?", destinationID, partnerExternalID).
 		Order("created_at DESC").Find(&reviews).Error
 	return reviews, err
 }
