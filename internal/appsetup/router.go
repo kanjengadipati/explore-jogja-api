@@ -100,7 +100,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	restaurant.SetupRoutes(api, restaurantModule.Handler, jwtService)
 
 	adCampaignModule := adcampaign.BuildModule(db)
-	adcampaign.SetupRoutes(api, adCampaignModule.Handler, jwtService, permissionModule.Service)
+	adcampaign.SetupRoutes(api, adCampaignModule.Handler, jwtService, permissionModule.Service, rateStore)
 
 	guideModule := guide.BuildModule(db)
 	guide.SetupRoutes(api, guideModule.Handler, jwtService)
@@ -124,7 +124,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	promotion.SetupRoutes(api, promotionModule.Handler, jwtService)
 
 	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service, userModule.Service)
-	partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
+	partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc, rateStore)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
 	tourist.SetupRoutes(api, touristModule.Handler)

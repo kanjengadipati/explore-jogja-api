@@ -134,7 +134,7 @@ func (r *GormRepository) Delete(externalID string) error {
 func (r *GormRepository) FindSponsored(destinationID, category string) ([]Partner, error) {
 	now := time.Now()
 	zero := time.Time{}
-	q := r.db.Where("is_sponsored = ? AND status = ?", true, StatusApproved).
+	q := r.db.Where("is_sponsored = ? AND status = ? AND sponsor_payment_status = ?", true, StatusApproved, "paid").
 		Where("(sponsor_start_at IS NULL OR sponsor_start_at = ? OR sponsor_start_at <= ?)", zero, now).
 		Where("(sponsor_end_at IS NULL OR sponsor_end_at = ? OR sponsor_end_at >= ?)", zero, now)
 

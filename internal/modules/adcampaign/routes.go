@@ -1,18 +1,25 @@
 package adcampaign
 
 import (
+	"time"
+
 	"pleco-api/internal/middleware"
 	"pleco-api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService, permSvc middleware.PermissionChecker) {
+func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService, permSvc middleware.PermissionChecker, rateStore middleware.RateLimitStore) {
 	ads := api.Group("/ads")
 	ads.GET("/banners", handler.GetBanner)
 	ads.GET("/house", handler.GetHouseAd)
-	ads.POST("/campaigns/:id/track/impression", handler.TrackImpression)
-	ads.POST("/campaigns/:id/track/click", handler.TrackClick)
+
+	if rateStore == nil {
+		rateStore = middleware.NewInMemoryRateLimitStore()
+	}
+	trackLimiter := middleware.NewRateLimiterWithStore(30, time.Minute, rateStore)
+	ads.POST("/campaigns/:id/track/impression", trackLimiter.Middleware(), handler.TrackImpression)
+	ads.POST("/campaigns/:id/track/click", trackLimiter.Middleware(), handler.TrackClick)
 
 	protected := ads.Group("")
 	protected.Use(middleware.AuthMiddleware(jwtService))

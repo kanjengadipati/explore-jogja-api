@@ -128,6 +128,9 @@ func (p *Partner) IsSponsorshipActive(now time.Time) bool {
 	if !p.IsSponsored {
 		return false
 	}
+	if p.SponsorPaymentStatus != "paid" {
+		return false
+	}
 	if !p.SponsorStartAt.IsZero() && now.Before(p.SponsorStartAt) {
 		return false
 	}

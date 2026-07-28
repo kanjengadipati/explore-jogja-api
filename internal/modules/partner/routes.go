@@ -1,13 +1,15 @@
 package partner
 
 import (
+	"time"
+
 	"pleco-api/internal/middleware"
 	"pleco-api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService, permSvc middleware.PermissionChecker, tokenVersionSrc middleware.AccessTokenVersionSource) {
+func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService, permSvc middleware.PermissionChecker, tokenVersionSrc middleware.AccessTokenVersionSource, rateStore middleware.RateLimitStore) {
 	partners := api.Group("/partners")
 
 	// Public routes
@@ -15,8 +17,13 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	partners.GET("/search", handler.Search)
 	partners.GET("/sponsored", handler.GetSponsored)
 	partners.GET("/:id", handler.GetByID)
-	partners.POST("/:id/track/impression", handler.TrackImpression)
-	partners.POST("/:id/track/click", handler.TrackClick)
+
+	if rateStore == nil {
+		rateStore = middleware.NewInMemoryRateLimitStore()
+	}
+	trackLimiter := middleware.NewRateLimiterWithStore(30, time.Minute, rateStore)
+	partners.POST("/:id/track/impression", trackLimiter.Middleware(), handler.TrackImpression)
+	partners.POST("/:id/track/click", trackLimiter.Middleware(), handler.TrackClick)
 
 	// Self-service partner (auth required, no role gate — anyone logged in can apply)
 	self := partners.Group("")
