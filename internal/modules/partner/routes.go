@@ -31,6 +31,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	self.POST("/apply", handler.Apply)
 	self.GET("/me", handler.GetMyListings)
 	self.GET("/me/:id", middleware.RequirePermission(permSvc, "partner.read_own"), handler.GetMyListing)
+	self.GET("/me/:id/stats", middleware.RequirePermission(permSvc, "partner.read_own"), handler.GetDailyStats)
 	self.PUT("/me/:id", middleware.RequirePermission(permSvc, "partner.update_own"), handler.UpdateMyListing)
 	self.DELETE("/me/:id", middleware.RequirePermission(permSvc, "partner.delete_own"), handler.DeleteMyListing)
 

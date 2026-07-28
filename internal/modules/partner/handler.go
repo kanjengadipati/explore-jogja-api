@@ -221,6 +221,33 @@ func (h *Handler) UpdateMyListing(c *gin.Context) {
 	httpx.Success(c, 200, "Listing updated", updated, nil)
 }
 
+func (h *Handler) GetDailyStats(c *gin.Context) {
+	partner, ok := h.ownerLookup(c)
+	if !ok {
+		return
+	}
+
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	startDate := time.Now().AddDate(0, 0, -30)
+	endDate := time.Now()
+
+	if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+		startDate = t
+	}
+	if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+		endDate = t
+	}
+
+	stats, err := h.Service.GetDailyStats(partner.ExternalID, startDate, endDate)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Daily stats fetched", stats, nil)
+}
+
 func (h *Handler) DeleteMyListing(c *gin.Context) {
 	userID, _ := httpx.GetUserIDFromContext(c)
 	externalID := c.Param("id")

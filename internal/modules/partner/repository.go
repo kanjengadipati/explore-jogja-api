@@ -24,6 +24,8 @@ type Repository interface {
 	FindSponsored(destinationID, category string) ([]Partner, error)
 	IncrementImpression(externalID string) error
 	IncrementClick(externalID string) error
+	IncrementDailyStats(externalID string, isClick bool) error
+	FindDailyStats(externalID string, startDate, endDate time.Time) ([]PartnerDailyStats, error)
 }
 
 type GormRepository struct {
@@ -194,4 +196,25 @@ func (r *GormRepository) IncrementClick(externalID string) error {
 	return r.db.Model(&Partner{}).
 		Where("external_id = ?", externalID).
 		UpdateColumn("click_count", gorm.Expr("click_count + 1")).Error
+}
+
+func (r *GormRepository) IncrementDailyStats(externalID string, isClick bool) error {
+	date := time.Now().Format("2006-01-02")
+	column := "impressions"
+	if isClick {
+		column = "clicks"
+	}
+	return r.db.Exec(`
+		INSERT INTO partner_daily_stats (partner_external_id, date, `+column+`)
+		VALUES (?, ?, 1)
+		ON CONFLICT (partner_external_id, date)
+		DO UPDATE SET `+column+` = partner_daily_stats.`+column+` + 1
+	`, externalID, date).Error
+}
+
+func (r *GormRepository) FindDailyStats(externalID string, startDate, endDate time.Time) ([]PartnerDailyStats, error) {
+	var stats []PartnerDailyStats
+	err := r.db.Where("partner_external_id = ? AND date >= ? AND date <= ?", externalID, startDate, endDate).
+		Order("date ASC").Find(&stats).Error
+	return stats, err
 }

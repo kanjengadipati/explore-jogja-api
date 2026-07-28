@@ -46,11 +46,17 @@ func (s *Service) GetSponsored(destinationID, category string) ([]Partner, error
 }
 
 func (s *Service) TrackImpression(externalID string) error {
+	_ = s.Repo.IncrementDailyStats(externalID, false)
 	return s.Repo.IncrementImpression(externalID)
 }
 
 func (s *Service) TrackClick(externalID string) error {
+	_ = s.Repo.IncrementDailyStats(externalID, true)
 	return s.Repo.IncrementClick(externalID)
+}
+
+func (s *Service) GetDailyStats(externalID string, startDate, endDate time.Time) ([]PartnerDailyStats, error) {
+	return s.Repo.FindDailyStats(externalID, startDate, endDate)
 }
 
 // --- Admin (any status) ---
