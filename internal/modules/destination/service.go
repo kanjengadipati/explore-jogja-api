@@ -13,8 +13,8 @@ func NewService(repo Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-func (s *Service) GetAll() ([]Destination, error) {
-	return s.Repo.FindAll()
+func (s *Service) GetAll(status string) ([]Destination, error) {
+	return s.Repo.FindAll(status)
 }
 
 func (s *Service) GetByID(externalID string) (*Destination, error) {
@@ -64,6 +64,7 @@ type UpdateDestinationRequest struct {
 	SeoKeywords       *string   `json:"seo_keywords"`
 	SeoDescription    *string   `json:"seo_description"`
 	OgImageUrl        *string   `json:"og_image_url"`
+	Status            *string   `json:"status"`
 	// English translations
 	NameEn          *string  `json:"name_en"`
 	TaglineEn       *string  `json:"tagline_en"`
@@ -152,6 +153,9 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 	}
 	if req.OgImageUrl != nil {
 		dest.OgImageUrl = *req.OgImageUrl
+	}
+	if req.Status != nil {
+		dest.Status = *req.Status
 	}
 	if req.NameEn != nil {
 		dest.NameEn = *req.NameEn

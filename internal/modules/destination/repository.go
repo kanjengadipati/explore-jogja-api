@@ -5,7 +5,7 @@ import (
 )
 
 type Repository interface {
-	FindAll() ([]Destination, error)
+	FindAll(status string) ([]Destination, error)
 	FindByID(externalID string) (*Destination, error)
 	FindBySlug(slug string) (*Destination, error)
 	FindByCategory(category string) ([]Destination, error)
@@ -28,9 +28,13 @@ func NewRepository(db *gorm.DB) Repository {
 	return &GormRepository{db: db}
 }
 
-func (r *GormRepository) FindAll() ([]Destination, error) {
+func (r *GormRepository) FindAll(status string) ([]Destination, error) {
 	var dests []Destination
-	err := r.db.Order("id ASC").Find(&dests).Error
+	q := r.db.Order("id ASC")
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	err := q.Find(&dests).Error
 	return dests, err
 }
 
@@ -63,19 +67,19 @@ func (r *GormRepository) FindByCategory(category string) ([]Destination, error) 
 	var err error
 	switch category {
 	case "hidden-gem":
-		err = r.db.Where("rating >= ? AND review_count < ?", 4.5, 2500).Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND rating >= ? AND review_count < ?", "published", 4.5, 2500).Order("rating DESC").Find(&dests).Error
 	case "sunset":
-		err = r.db.Where("LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?", "%sore%", "%sunset%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?)", "published", "%sore%", "%sunset%").Order("rating DESC").Find(&dests).Error
 	case "sunrise":
-		err = r.db.Where("LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?", "%sunrise%", "%fajar%", "%dawn%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?)", "published", "%sunrise%", "%fajar%", "%dawn%").Order("rating DESC").Find(&dests).Error
 	case "camping":
-		err = r.db.Where("LOWER(category) = ? OR LOWER(best_time) LIKE ?", "camping", "%camping%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(category) = ? OR LOWER(best_time) LIKE ?)", "published", "camping", "%camping%").Order("rating DESC").Find(&dests).Error
 	case "weekend":
-		err = r.db.Where("rating >= ? AND review_count >= ?", 4.3, 100).Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND rating >= ? AND review_count >= ?", "published", 4.3, 100).Order("rating DESC").Find(&dests).Error
 	case "temple", "candi":
-		err = r.db.Where("LOWER(category) = ? OR LOWER(category) = ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(tagline) LIKE ? OR LOWER(tagline) LIKE ?", "temple", "candi", "%candi%", "%temple%", "%candi%", "%temple%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(category) = ? OR LOWER(category) = ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(tagline) LIKE ? OR LOWER(tagline) LIKE ?)", "published", "temple", "candi", "%candi%", "%temple%", "%candi%", "%temple%").Order("rating DESC").Find(&dests).Error
 	default:
-		err = r.db.Where("category = ?", category).Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND category = ?", "published", category).Order("rating DESC").Find(&dests).Error
 	}
 	return dests, err
 }
@@ -90,7 +94,7 @@ func (r *GormRepository) Search(query string) ([]Destination, error) {
 			Or("location ILIKE ?", like).
 			Or("category ILIKE ?", like).
 			Or("sub_region ILIKE ?", like),
-	).Order("rating DESC").Find(&dests).Error
+	).Where("status = ?", "published").Order("rating DESC").Find(&dests).Error
 	return dests, err
 }
 

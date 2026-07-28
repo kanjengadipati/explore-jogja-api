@@ -87,6 +87,7 @@ type Destination struct {
 	SeoDescription   string  `gorm:"type:text" json:"seo_description"`
 	OgImageUrl       string  `json:"og_image_url"`
 	VideoURL         string  `gorm:"column:video_url" json:"video_url"`
+	Status           string  `gorm:"index;default:'published'" json:"status"`
 
 	// English translations (_en columns)
 	SeoTitleEn        string  `gorm:"column:seo_title_en" json:"seo_title_en"`

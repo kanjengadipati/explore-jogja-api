@@ -52,6 +52,15 @@ func (h *Handler) GetAll(c *gin.Context) {
 	locale := resolveLocale(c)
 	cacheKey := cache.KeyDestinationsAllPrefix + locale
 
+	// Parse status filter — admin can pass ?status=all to get everything
+	status := c.Query("status")
+	if status == "all" {
+		status = ""
+	}
+	if status != "" {
+		cacheKey += ":" + status
+	}
+
 	// Parse pagination — default limit 15, max 100
 	pag := httpx.ParsePagination(c)
 	if c.Query("limit") == "" {
@@ -67,7 +76,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 	if !cacheHit {
 		trendingIDs := h.loadTrendingIDs()
-		dests, err := h.Service.GetAll()
+		dests, err := h.Service.GetAll(status)
 		if err != nil {
 			httpx.HandleError(c, err)
 			return
