@@ -4,6 +4,7 @@ import (
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/middleware"
 	"pleco-api/internal/modules/audit"
+	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/review"
 	"strings"
@@ -18,10 +19,11 @@ type Handler struct {
 	ReviewService *review.Service
 	PermissionSvc middleware.PermissionChecker
 	AuditSvc      *audit.Service
+	NotifSvc      *notification.Service
 }
 
-func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service) *Handler {
-	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc}
+func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service) *Handler {
+	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc, NotifSvc: notifSvc}
 }
 
 // --- ownerLookup verifies the :id param belongs to the authenticated user ---
@@ -340,6 +342,15 @@ func (h *Handler) reviewDecision(id, status, reason string, adminUserID uint, c 
 		IPAddress:   c.ClientIP(),
 		UserAgent:   c.GetHeader("User-Agent"),
 	})
+
+	if partner.OwnerUserID != nil {
+		title := "Status Aplikasi Mitra"
+		content := "Status aplikasi mitra Anda '" + partner.Name + "' telah diubah menjadi: " + status
+		if reason != "" {
+			content += ". Alasan: " + reason
+		}
+		_ = h.NotifSvc.Notify(*partner.OwnerUserID, title, content, "application")
+	}
 
 	httpx.Success(c, 200, "Partner status updated", partner, nil)
 }

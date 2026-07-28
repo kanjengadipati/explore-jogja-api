@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/user"
 
 	"github.com/google/uuid"
@@ -12,10 +13,11 @@ import (
 type Service struct {
 	Repo    Repository
 	UserSvc *user.Service
+	NotifSvc *notification.Service
 }
 
-func NewService(repo Repository, userSvc *user.Service) *Service {
-	return &Service{Repo: repo, UserSvc: userSvc}
+func NewService(repo Repository, userSvc *user.Service, notifSvc *notification.Service) *Service {
+	return &Service{Repo: repo, UserSvc: userSvc, NotifSvc: notifSvc}
 }
 
 // --- Public (approved only) ---
