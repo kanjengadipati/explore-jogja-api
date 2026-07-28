@@ -107,7 +107,7 @@ func (h *Handler) Trending(c *gin.Context) {
 		}
 	}
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
@@ -377,7 +377,7 @@ func (h *Handler) Query(c *gin.Context) {
 		return
 	}
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
@@ -444,7 +444,7 @@ func (h *Handler) ImageSearch(c *gin.Context) {
 		return
 	}
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
@@ -502,7 +502,7 @@ func (h *Handler) Recommend(c *gin.Context) {
 		return
 	}
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
@@ -790,7 +790,7 @@ func (h *Handler) MultiRecommend(c *gin.Context) {
 	locale := resolveLocale(c)
 	isID := locale == "id"
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
@@ -1076,7 +1076,7 @@ func (h *Handler) RouteTimeline(c *gin.Context) {
 		startPeriod = 3 // Malam (07.30 PM) - 16:00 (4 PM+) onwards
 	}
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil || len(dests) == 0 {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
@@ -1303,7 +1303,7 @@ func (h *Handler) NextStop(c *gin.Context) {
 		}
 	}
 
-	dests, err := h.DestinationRepo.FindAll()
+	dests, err := h.DestinationRepo.FindAll("")
 	if err != nil || len(dests) == 0 {
 		httpx.ErrorWithCode(c, 500, "SERVER_INTERNAL_ERROR", "Failed to load destinations")
 		return
