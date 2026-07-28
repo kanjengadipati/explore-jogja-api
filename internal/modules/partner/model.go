@@ -91,6 +91,7 @@ type PublicPartnerResponse struct {
 	Longitude   float64 `json:"longitude"`
 	IsSponsored bool    `json:"is_sponsored"`
 	SponsorTier int     `json:"sponsor_tier"`
+	Status      string  `json:"status"`
 }
 
 func ToPublicPartnerResponse(partner Partner) PublicPartnerResponse {
@@ -111,6 +112,7 @@ func ToPublicPartnerResponse(partner Partner) PublicPartnerResponse {
 		Longitude:   partner.Longitude,
 		IsSponsored: partner.IsSponsored,
 		SponsorTier: partner.SponsorTier,
+		Status:      partner.Status,
 	}
 }
 

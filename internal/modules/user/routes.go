@@ -13,6 +13,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected.Use(middleware.AuthMiddleware(jwtService))
 	protected.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))
 
+	protected.GET("/profile", handler.GetProfile)
 	protected.PATCH("/profile", handler.UpdateProfile)
 	protected.PATCH("/change-password", handler.ChangePassword)
 

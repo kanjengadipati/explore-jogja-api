@@ -138,6 +138,23 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	httpx.Success(c, 200, "User updated", ToUserResponse(*user), nil)
 }
 
+func (h *Handler) GetProfile(c *gin.Context) {
+	userIDValue, exists := c.Get("user_id")
+	userID, ok := userIDValue.(uint)
+	if !exists || !ok {
+		httpx.ErrorWithCode(c, 401, httpx.ErrCodeInternalError, "Unauthorized")
+		return
+	}
+
+	user, err := h.UserService.GetUserByID(userID)
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, httpx.ErrCodeInternalError, "User not found")
+		return
+	}
+
+	httpx.Success(c, 200, "Profile fetched", ToUserResponse(*user), nil)
+}
+
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	userIDValue, exists := c.Get("user_id")
 	userID, ok := userIDValue.(uint)
