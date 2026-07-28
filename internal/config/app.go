@@ -178,7 +178,7 @@ func (c *AppConfig) Validate() error {
 
 	switch c.Email.Provider {
 	case "", "disabled":
-	case "sendgrid", "resend":
+	case "sendgrid", "resend", "mailersend":
 		if c.Email.APIKey == "" {
 			problems = append(problems, "EMAIL_API_KEY is required when EMAIL_PROVIDER is "+c.Email.Provider)
 		}
@@ -201,7 +201,7 @@ func (c *AppConfig) Validate() error {
 			problems = append(problems, "EMAIL_SMTP_MODE must be one of: starttls, tls, plain")
 		}
 	default:
-		problems = append(problems, "EMAIL_PROVIDER must be one of: disabled, sendgrid, resend, smtp")
+		problems = append(problems, "EMAIL_PROVIDER must be one of: disabled, sendgrid, resend, mailersend, smtp")
 	}
 
 	if c.Email.Provider != "" && c.Email.Provider != "disabled" && c.Email.TimeoutSeconds < 1 {

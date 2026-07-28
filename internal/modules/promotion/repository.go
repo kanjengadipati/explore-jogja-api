@@ -8,6 +8,7 @@ type Repository interface {
 	FindAll() ([]Promotion, error)
 	FindByID(externalID string) (*Promotion, error)
 	FindByIDAny(externalID string) (*Promotion, error)
+	FindByStatus(status string) ([]Promotion, error)
 	Search(query string) ([]Promotion, error)
 	Create(promotion *Promotion) error
 	Update(promotion *Promotion) error
@@ -29,7 +30,7 @@ func NewRepository(db *gorm.DB) Repository {
 func (r *GormRepository) FindAll() ([]Promotion, error) {
 	var promotions []Promotion
 	err := r.db.Where(
-		"partner_id IS NULL OR partner_id IN (SELECT external_id FROM partners WHERE status = 'approved')",
+		"status = 'approved' AND (partner_id IS NULL OR partner_id IN (SELECT external_id FROM partners WHERE status = 'approved'))",
 	).Order("id ASC").Find(&promotions).Error
 	return promotions, err
 }
@@ -94,4 +95,10 @@ func (r *GormRepository) FindByIDAndPartner(externalID string, partnerExternalID
 		return nil, err
 	}
 	return &promotion, nil
+}
+
+func (r *GormRepository) FindByStatus(status string) ([]Promotion, error) {
+	var promotions []Promotion
+	err := r.db.Where("status = ?", status).Order("id ASC").Find(&promotions).Error
+	return promotions, err
 }

@@ -25,6 +25,7 @@ type EmailService interface {
 	SendPasswordReset(toEmail, token string) error
 	SendOTP(toEmail, code string, expiresIn time.Duration) error
 	SendMagicLink(toEmail, token string) error
+	SendPaymentConfirmation(toEmail, subjectName string, amount float64, currency string) error
 }
 
 type emailService struct {
@@ -125,6 +126,18 @@ func (s *emailService) SendMagicLink(toEmail, token string) error {
 	return s.sendEmail(toEmail, "Your Pleco Sign-In Link", plainText, htmlContent)
 }
 
+func (s *emailService) SendPaymentConfirmation(toEmail, subjectName string, amount float64, currency string) error {
+	subject := "Pembayaran Diterima - " + subjectName
+	plainText := fmt.Sprintf("Pembayaran Anda sejumlah %.2f %s untuk %s telah diterima.\n\nTerima kasih.", amount, currency, subjectName)
+	htmlContent := fmt.Sprintf(`
+		<strong>Pembayaran Diterima</strong><br>
+		<p>Pembayaran Anda sejumlah <strong>%.2f %s</strong> untuk <strong>%s</strong> telah diterima.</p>
+		<p>Terima kasih.</p>
+	`, amount, currency, subjectName)
+
+	return s.sendEmail(toEmail, subject, plainText, htmlContent)
+}
+
 func (s *emailService) sendEmail(toEmail, subject, plainText, htmlContent string) error {
 	switch s.provider {
 	case "", "disabled":
@@ -133,11 +146,50 @@ func (s *emailService) sendEmail(toEmail, subject, plainText, htmlContent string
 		return s.sendWithSendGrid(toEmail, subject, plainText, htmlContent)
 	case "resend":
 		return s.sendWithResend(toEmail, subject, plainText, htmlContent)
+	case "mailersend":
+		return s.sendWithMailersend(toEmail, subject, plainText, htmlContent)
 	case "smtp":
 		return s.sendWithSMTP(toEmail, subject, plainText, htmlContent)
 	default:
 		return fmt.Errorf("unsupported email provider: %s", s.provider)
 	}
+}
+
+func (s *emailService) sendWithMailersend(toEmail, subject, plainText, htmlContent string) error {
+	payload := map[string]interface{}{
+		"from":    map[string]string{"email": s.from, "name": s.fromName},
+		"to":      []map[string]string{{"email": toEmail}},
+		"subject": subject,
+		"text":    plainText,
+		"html":    htmlContent,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	endpoint := firstNonEmpty(s.apiBaseURL, "https://api.mailersend.com/v1") + "/email"
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-MailerSend-Retry", "true")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		responseBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("mailersend email failed: status=%d, body=%s", resp.StatusCode, string(responseBody))
+	}
+
+	return nil
 }
 
 func (s *emailService) sendWithSendGrid(toEmail, subject, plainText, htmlContent string) error {

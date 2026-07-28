@@ -1,6 +1,7 @@
 package partner
 
 import (
+	"math/rand"
 	"time"
 
 	"gorm.io/gorm"
@@ -148,6 +149,39 @@ func (r *GormRepository) FindSponsored(destinationID, category string) ([]Partne
 	var partners []Partner
 	err := q.Order("sponsor_tier ASC, rating DESC").Find(&partners).Error
 	return partners, err
+}
+
+// WeightedPickPartner performs a fair weighted random selection from sponsored partners.
+// Weight is derived from sponsor_tier: tier 1 gets weight 3, tier 2 gets weight 2, tier 3+ gets weight 1.
+// This mirrors the WeightedPick() fairness logic used in adcampaign (§3.5).
+func WeightedPickPartner(candidates []Partner) *Partner {
+	if len(candidates) == 0 {
+		return nil
+	}
+	total := 0
+	for _, p := range candidates {
+		total += tierWeight(p.SponsorTier)
+	}
+	r := rand.Intn(total)
+	for i := range candidates {
+		w := tierWeight(candidates[i].SponsorTier)
+		if r < w {
+			return &candidates[i]
+		}
+		r -= w
+	}
+	return &candidates[len(candidates)-1]
+}
+
+func tierWeight(tier int) int {
+	switch tier {
+	case 1:
+		return 3
+	case 2:
+		return 2
+	default:
+		return 1
+	}
 }
 
 func (r *GormRepository) IncrementImpression(externalID string) error {

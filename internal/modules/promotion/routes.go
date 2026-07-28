@@ -18,4 +18,11 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected.POST("", handler.Create)
 	protected.PUT("/:id", handler.Update)
 	protected.DELETE("/:id", handler.Delete)
+
+	// Admin approval endpoints for partner-submitted promotions (§3.3)
+	authAdmin := api.Group("/auth/admin/promotions")
+	authAdmin.Use(middleware.AuthMiddleware(jwtService))
+	authAdmin.GET("/pending", handler.AdminGetPending)
+	authAdmin.POST("/:id/approve", handler.AdminApprove)
+	authAdmin.POST("/:id/reject", handler.AdminReject)
 }

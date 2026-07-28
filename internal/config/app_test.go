@@ -76,7 +76,7 @@ func TestAppConfigValidateRejectsUnsupportedEmailProvider(t *testing.T) {
 		t.Fatal("expected validation error, got nil")
 	}
 
-	assertContains(t, err.Error(), "EMAIL_PROVIDER must be one of: disabled, sendgrid, resend, smtp")
+	assertContains(t, err.Error(), "EMAIL_PROVIDER must be one of: disabled, sendgrid, resend, mailersend, smtp")
 }
 
 func TestAppConfigValidateRequiresFonnteToken(t *testing.T) {

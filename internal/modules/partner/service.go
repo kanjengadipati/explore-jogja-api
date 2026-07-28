@@ -33,7 +33,16 @@ func (s *Service) Search(query string) ([]Partner, error) {
 }
 
 func (s *Service) GetSponsored(destinationID, category string) ([]Partner, error) {
-	return s.Repo.FindSponsored(destinationID, category)
+	candidates, err := s.Repo.FindSponsored(destinationID, category)
+	if err != nil {
+		return nil, err
+	}
+	// Fair weighted random selection by sponsor_tier (§3.5)
+	picked := WeightedPickPartner(candidates)
+	if picked == nil {
+		return []Partner{}, nil
+	}
+	return []Partner{*picked}, nil
 }
 
 func (s *Service) TrackImpression(externalID string) error {

@@ -3,6 +3,7 @@ package partner
 import (
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/middleware"
+	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/review"
 	"strings"
@@ -16,10 +17,11 @@ type Handler struct {
 	PromoService  *promotion.Service
 	ReviewService *review.Service
 	PermissionSvc middleware.PermissionChecker
+	AuditSvc      *audit.Service
 }
 
-func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service) *Handler {
-	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc}
+func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service) *Handler {
+	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc}
 }
 
 // --- ownerLookup verifies the :id param belongs to the authenticated user ---
@@ -299,6 +301,16 @@ func (h *Handler) reviewDecision(id, status, reason string, adminUserID uint, c 
 		return
 	}
 
+	h.AuditSvc.SafeRecord(audit.RecordInput{
+		ActorUserID: &adminUserID,
+		Action:      "partner." + status,
+		Resource:    "partner",
+		Status:      "success",
+		Description: "Partner " + partner.ExternalID + " (" + partner.Name + ") " + status + ". Reason: " + reason,
+		IPAddress:   c.ClientIP(),
+		UserAgent:   c.GetHeader("User-Agent"),
+	})
+
 	httpx.Success(c, 200, "Partner status updated", partner, nil)
 }
 
@@ -331,12 +343,14 @@ func (h *Handler) CreateMyPromotion(c *gin.Context) {
 	}
 	partnerID := partner.ExternalID
 	promo.PartnerID = &partnerID
+	// Default to pending — admin must approve before it goes public (§3.3)
+	promo.Status = "pending"
 
 	if err := h.PromoService.Create(&promo); err != nil {
 		httpx.HandleError(c, err)
 		return
 	}
-	httpx.Success(c, 201, "Promotion created", promo, nil)
+	httpx.Success(c, 201, "Promotion submitted for review", promo, nil)
 }
 
 func (h *Handler) UpdateMyPromotion(c *gin.Context) {

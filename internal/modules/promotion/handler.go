@@ -85,3 +85,36 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 	httpx.Success(c, 200, "Promotion deleted", nil, nil)
 }
+
+// --- Admin promotion approval ---
+
+func (h *Handler) AdminApprove(c *gin.Context) {
+	id := c.Param("id")
+	approved := "approved"
+	promo, err := h.Service.Update(id, UpdatePromotionRequest{Status: &approved})
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Promotion approved", promo, nil)
+}
+
+func (h *Handler) AdminReject(c *gin.Context) {
+	id := c.Param("id")
+	rejected := "rejected"
+	promo, err := h.Service.Update(id, UpdatePromotionRequest{Status: &rejected})
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Promotion rejected", promo, nil)
+}
+
+func (h *Handler) AdminGetPending(c *gin.Context) {
+	promotions, err := h.Service.GetByStatus("pending")
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Pending promotions fetched", promotions, nil)
+}

@@ -90,3 +90,7 @@ func (s *Service) GetByPartnerID(partnerExternalID string) ([]Promotion, error) 
 func (s *Service) GetByIDAndPartner(externalID string, partnerExternalID string) (*Promotion, error) {
 	return s.Repo.FindByIDAndPartner(externalID, partnerExternalID)
 }
+
+func (s *Service) GetByStatus(status string) ([]Promotion, error) {
+	return s.Repo.FindByStatus(status)
+}
