@@ -87,9 +87,9 @@ func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
 }
 
 // loadTrendingIDs reads the AI-selected trending IDs from Redis
-func loadTrendingIDs(cacheStore cache.Store) map[string]bool {
+func loadTrendingIDs(cacheStore cache.Store, locale string) map[string]bool {
 	var ids []string
-	ok, err := cacheStore.GetJSON(context.Background(), cache.KeyAITrendingIDs, &ids)
+	ok, err := cacheStore.GetJSON(context.Background(), cache.KeyAITrendingIDs(locale), &ids)
 	if err != nil || !ok || len(ids) == 0 {
 		return map[string]bool{}
 	}

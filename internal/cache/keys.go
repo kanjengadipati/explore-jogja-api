@@ -4,18 +4,20 @@ import "time"
 
 // Well-known Redis key constants used across modules.
 
+// KeyAITrendingResponse returns a locale-scoped cache key for the full AI
+// trending response payload ([]AITrendingItem).
+func KeyAITrendingResponse(locale string) string {
+	return "ai:trending:response:" + locale
+}
+
+// KeyAITrendingIDs returns a locale-scoped cache key for the destination
+// external-IDs elected as trending. Written alongside KeyAITrendingResponse
+// and read by the destination/event badge logic.
+func KeyAITrendingIDs(locale string) string {
+	return "ai:trending:destination_ids:" + locale
+}
+
 const (
-	// KeyAITrendingResponse caches the full AI trending response payload
-	// ([]AITrendingItem) returned to the client. The tourist/handler checks
-	// this before calling the AI provider, saving token costs.
-	KeyAITrendingResponse = "ai:trending:response"
-
-	// KeyAITrendingIDs caches only the destination external-IDs that the AI
-	// elected as trending. Written alongside KeyAITrendingResponse and read by
-	// the destination/handler badge logic so every destination list/detail call
-	// can mark the trending badge without an extra AI round-trip.
-	KeyAITrendingIDs = "ai:trending:destination_ids"
-
 	// TTLAITrending is how long both trending cache keys stay valid.
 	// 7 days = cache resets once a week automatically.
 	TTLAITrending = 7 * 24 * time.Hour

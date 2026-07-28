@@ -81,6 +81,7 @@ type AITrendingItem struct {
 	Type      string `json:"type"`      // "destination" or "event"
 	ID        string `json:"id"`        // external_id of the item
 	Badge     string `json:"badge"`     // e.g. "Spesial Hari Ini", "Trending", "Akan Datang"
+	BadgeType string `json:"badgeType"` // enum: trending, hidden_gem, event, today_only, popular, new, photographers_pick
 	Headline  string `json:"headline"`  // short punchy label
 	Reason    string `json:"reason"`    // one-sentence reason
 	ImageURL  string `json:"imageUrl"`  // thumbnail image
@@ -99,9 +100,10 @@ func (h *Handler) Trending(c *gin.Context) {
 	isID := locale == "id"
 
 	// ── Cache hit: return stored response without calling AI ─────────────────
+	cacheKey := cache.KeyAITrendingResponse(locale)
 	if h.Cache != nil {
 		var cached AITrendingResponse
-		if ok, err := h.Cache.GetJSON(ctx, cache.KeyAITrendingResponse, &cached); err == nil && ok {
+		if ok, err := h.Cache.GetJSON(ctx, cacheKey, &cached); err == nil && ok {
 			httpx.Success(c, 200, "Trending picks loaded (cached)", cached, nil)
 			return
 		}
@@ -150,7 +152,8 @@ Respond ONLY with valid JSON matching this schema exactly:
     {
       "type": "destination" or "event",
       "id": "exact external_id or event id from the catalog",
-      "badge": "short badge label",
+      "badge": "short badge label in the requested language",
+      "badgeType": "one of: trending, hidden_gem, event, today_only, popular, new, photographers_pick",
       "headline": "punchy 3-6 word label",
       "reason": "one sentence why this is trending today",
       "imageUrl": "image URL from the item if available, else empty string",
@@ -160,6 +163,14 @@ Respond ONLY with valid JSON matching this schema exactly:
     }
   ]
 }
+badgeType rules:
+- "trending" for popular fast-rising picks
+- "hidden_gem" for underrated spots
+- "event" for upcoming events
+- "today_only" for limited-time experiences
+- "popular" for all-time favorites
+- "new" for newly opened/launched
+- "photographers_pick" for most photogenic
 Return exactly 5 items. Mix at least 1 event if events are available.`, langInstruction, destContext, eventContext)
 
 	result, err := h.AIService.Generate(ctx, ai.GenerateInput{
@@ -211,7 +222,7 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, langInst
 	// ── Save to Redis cache (weekly TTL) ─────────────────────────────────────
 	if h.Cache != nil {
 		// 1. Full response — used by this endpoint on subsequent calls
-		_ = h.Cache.SetJSON(ctx, cache.KeyAITrendingResponse, parsed, cache.TTLAITrending)
+		_ = h.Cache.SetJSON(ctx, cacheKey, parsed, cache.TTLAITrending)
 
 		// 2. Just the destination IDs — used by badge logic in destination handler
 		var trendingDestIDs []string
@@ -220,7 +231,7 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, langInst
 				trendingDestIDs = append(trendingDestIDs, item.ID)
 			}
 		}
-		_ = h.Cache.SetJSON(ctx, cache.KeyAITrendingIDs, trendingDestIDs, cache.TTLAITrending)
+		_ = h.Cache.SetJSON(ctx, cache.KeyAITrendingIDs(locale), trendingDestIDs, cache.TTLAITrending)
 	}
 
 	httpx.Success(c, 200, "Trending picks loaded", parsed, nil)
@@ -262,20 +273,21 @@ func destImageURL(d destination.Destination) string {
 func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event, isID bool) *AITrendingResponse {
 	// Preferred picks with curated badges/headlines — matched by external_id.
 	type preferredPick struct {
-		id     string
-		badge  string
-		badgeEN string
-		head   string
-		headEN string
-		why    string
-		whyEN  string
+		id       string
+		badge    string
+		badgeEN  string
+		badgeType string
+		head     string
+		headEN   string
+		why      string
+		whyEN    string
 	}
 	preferred := []preferredPick{
-		{"merapi", "Spesial Hari Ini", "Today's Special", "Merapi Lava Tour", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah", "Best adventure on a sunny day"},
-		{"prambanan", "Trending", "Trending", "Prambanan Temple", "Prambanan Temple", "Candi Hindu terbesar di Asia Tenggara", "Largest Hindu temple in Southeast Asia"},
-		{"goajomblang", "Hidden Gem", "Hidden Gem", "Celestial Beam Cave", "Celestial Beam Cave", "Fenomena cahaya surgawi yang langka", "Rare heavenly light phenomenon"},
-		{"tamansari", "Warisan Budaya", "Heritage", "Taman Sari", "Taman Sari", "Istana air penuh misteri sultan", "Royal water castle full of mystery"},
-		{"parangtritis", "Populer", "Popular", "Pantai Parangtritis", "Parangtritis Beach", "Sunset spektakuler di tepi samudra", "Spectacular ocean sunset"},
+		{"merapi", "Spesial Hari Ini", "Today's Special", "today_only", "Merapi Lava Tour", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah", "Best adventure on a sunny day"},
+		{"prambanan", "Trending", "Trending", "trending", "Prambanan Temple", "Prambanan Temple", "Candi Hindu terbesar di Asia Tenggara", "Largest Hindu temple in Southeast Asia"},
+		{"goajomblang", "Hidden Gem", "Hidden Gem", "hidden_gem", "Celestial Beam Cave", "Celestial Beam Cave", "Fenomena cahaya surgawi yang langka", "Rare heavenly light phenomenon"},
+		{"tamansari", "Warisan Budaya", "Heritage", "popular", "Taman Sari", "Taman Sari", "Istana air penuh misteri sultan", "Royal water castle full of mystery"},
+		{"parangtritis", "Populer", "Popular", "popular", "Pantai Parangtritis", "Parangtritis Beach", "Sunset spektakuler di tepi samudra", "Spectacular ocean sunset"},
 	}
 
 	destMap := make(map[string]destination.Destination, len(dests))
@@ -297,14 +309,15 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 			badge, head, why = p.badgeEN, p.headEN, p.whyEN
 		}
 		items = append(items, AITrendingItem{
-			Type:     "destination",
-			ID:       p.id,
-			Badge:    badge,
-			Headline: head,
-			Reason:   why,
-			ImageURL: destImageURL(d),
-			Rating:   d.Rating,
-			Location: d.SubRegion,
+			Type:      "destination",
+			ID:        p.id,
+			Badge:     badge,
+			BadgeType: p.badgeType,
+			Headline:  head,
+			Reason:    why,
+			ImageURL:  destImageURL(d),
+			Rating:    d.Rating,
+			Location:  d.SubRegion,
 		})
 		usedIDs[p.id] = true
 		if len(items) == 5 {
@@ -316,6 +329,7 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 	if len(items) < 5 {
 		badgesID := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya", "Ikon Dunia"}
 		badgesEN := []string{"Trending", "Popular", "Best Nature", "Heritage", "World Icon"}
+		badgeTypes := []string{"trending", "popular", "hidden_gem", "popular", "trending"}
 		badges := badgesEN
 		if isID {
 			badges = badgesID
@@ -329,16 +343,18 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 				continue
 			}
 			badge := badges[bi%len(badges)]
+			badgeType := badgeTypes[bi%len(badgeTypes)]
 			bi++
 			items = append(items, AITrendingItem{
-				Type:     "destination",
-				ID:       d.ExternalID,
-				Badge:    badge,
-				Headline: d.Name,
-				Reason:   d.Tagline,
-				ImageURL: destImageURL(d),
-				Rating:   d.Rating,
-				Location: d.SubRegion,
+				Type:      "destination",
+				ID:        d.ExternalID,
+				Badge:     badge,
+				BadgeType: badgeType,
+				Headline:  d.Name,
+				Reason:    d.Tagline,
+				ImageURL:  destImageURL(d),
+				Rating:    d.Rating,
+				Location:  d.SubRegion,
 			})
 			usedIDs[d.ExternalID] = true
 		}
@@ -352,13 +368,14 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 			evBadge = "Upcoming"
 		}
 		items[len(items)-1] = AITrendingItem{
-			Type:     "event",
-			ID:       ev.ExternalID,
-			Badge:    evBadge,
-			Headline: ev.Title,
-			Reason:   ev.Description,
-			ImageURL: ev.ImageURL,
-			Location: ev.Location,
+			Type:      "event",
+			ID:        ev.ExternalID,
+			Badge:     evBadge,
+			BadgeType: "event",
+			Headline:  ev.Title,
+			Reason:    ev.Description,
+			ImageURL:  ev.ImageURL,
+			Location:  ev.Location,
 		}
 	}
 

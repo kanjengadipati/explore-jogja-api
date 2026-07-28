@@ -2,6 +2,7 @@ package event
 
 import (
 	"sort"
+	"strings"
 
 	"pleco-api/internal/cache"
 	"pleco-api/internal/httpx"
@@ -21,7 +22,20 @@ func NewHandler(service *Service, cacheStore cache.Store) *Handler {
 	}
 }
 
+// resolveLocale reads Accept-Language header and returns "id" (default) or "en".
+func resolveLocale(c *gin.Context) string {
+	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		return "id"
+	}
+	if strings.HasPrefix(strings.ToLower(lang), "en") {
+		return "en"
+	}
+	return "id"
+}
+
 func (h *Handler) GetAll(c *gin.Context) {
+	locale := resolveLocale(c)
 	cacheKey := cache.KeyEventsAll
 
 	pag := httpx.ParsePagination(c)
@@ -36,7 +50,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 	}
 
 	if !cacheHit {
-		trendingIDs := loadTrendingIDs(h.Cache)
+		trendingIDs := loadTrendingIDs(h.Cache, locale)
 		events, err := h.Service.GetAll()
 		if err != nil {
 			httpx.HandleError(c, err)
@@ -96,6 +110,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 func (h *Handler) GetByID(c *gin.Context) {
 	id := c.Param("id")
+	locale := resolveLocale(c)
 	cacheKey := cache.KeyEventsIDPrefix + id
 
 	var cachedResponse EventResponse
@@ -104,7 +119,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 		return
 	}
 
-	trendingIDs := loadTrendingIDs(h.Cache)
+	trendingIDs := loadTrendingIDs(h.Cache, locale)
 	event, err := h.Service.GetByID(id)
 	if err != nil {
 		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Event not found")
@@ -118,13 +133,14 @@ func (h *Handler) GetByID(c *gin.Context) {
 }
 
 func (h *Handler) Search(c *gin.Context) {
+	locale := resolveLocale(c)
 	query := c.Query("q")
 	if query == "" {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Query parameter 'q' is required")
 		return
 	}
 
-	trendingIDs := loadTrendingIDs(h.Cache)
+	trendingIDs := loadTrendingIDs(h.Cache, locale)
 	events, err := h.Service.Search(query)
 	if err != nil {
 		httpx.HandleError(c, err)

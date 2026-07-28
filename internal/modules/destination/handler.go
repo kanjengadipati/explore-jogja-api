@@ -35,9 +35,9 @@ func resolveLocale(c *gin.Context) string {
 
 // loadTrendingIDs reads the AI-selected trending destination IDs from Redis.
 // Returns an empty map (never nil) when the key is missing or Redis is unavailable.
-func (h *Handler) loadTrendingIDs() map[string]bool {
+func (h *Handler) loadTrendingIDs(locale string) map[string]bool {
 	var ids []string
-	ok, err := h.Cache.GetJSON(context.Background(), cache.KeyAITrendingIDs, &ids)
+	ok, err := h.Cache.GetJSON(context.Background(), cache.KeyAITrendingIDs(locale), &ids)
 	if err != nil || !ok || len(ids) == 0 {
 		return map[string]bool{}
 	}
@@ -75,7 +75,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 	}
 
 	if !cacheHit {
-		trendingIDs := h.loadTrendingIDs()
+		trendingIDs := h.loadTrendingIDs(locale)
 		dests, err := h.Service.GetAll(status)
 		if err != nil {
 			httpx.HandleError(c, err)
@@ -136,7 +136,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 		return
 	}
 
-	trendingIDs := h.loadTrendingIDs()
+	trendingIDs := h.loadTrendingIDs(locale)
 	dest, err := h.Service.GetByID(id)
 	if err != nil {
 		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Destination not found")
@@ -160,7 +160,7 @@ func (h *Handler) GetByCategory(c *gin.Context) {
 		return
 	}
 
-	trendingIDs := h.loadTrendingIDs()
+	trendingIDs := h.loadTrendingIDs(locale)
 	dests, err := h.Service.GetByCategory(category)
 	if err != nil {
 		httpx.HandleError(c, err)
@@ -179,7 +179,7 @@ func (h *Handler) GetByCategory(c *gin.Context) {
 
 func (h *Handler) Search(c *gin.Context) {
 	locale := resolveLocale(c)
-	trendingIDs := h.loadTrendingIDs()
+	trendingIDs := h.loadTrendingIDs(locale)
 	query := c.Query("q")
 	if query == "" {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Query parameter 'q' is required")
