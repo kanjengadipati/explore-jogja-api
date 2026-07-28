@@ -18,22 +18,22 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	partners.POST("/:id/track/impression", handler.TrackImpression)
 	partners.POST("/:id/track/click", handler.TrackClick)
 
-	// Self-service partner (auth + partner.* permissions)
+	// Self-service partner (auth required, no role gate — anyone logged in can apply)
 	self := partners.Group("")
 	self.Use(middleware.AuthMiddleware(jwtService))
-	self.POST("/apply", middleware.RequirePermission(permSvc, "partner.create_own"), handler.Apply)
-	self.GET("/me", middleware.RequirePermission(permSvc, "partner.read_own"), handler.GetMyListings)
+	self.POST("/apply", handler.Apply)
+	self.GET("/me", handler.GetMyListings)
 	self.GET("/me/:id", middleware.RequirePermission(permSvc, "partner.read_own"), handler.GetMyListing)
 	self.PUT("/me/:id", middleware.RequirePermission(permSvc, "partner.update_own"), handler.UpdateMyListing)
 	self.DELETE("/me/:id", middleware.RequirePermission(permSvc, "partner.delete_own"), handler.DeleteMyListing)
 
-	// Partner promotions
+	// Partner promotions (require partner role)
 	self.GET("/me/:id/promotions", middleware.RequirePermission(permSvc, "partner.read_own"), handler.ListMyPromotions)
 	self.POST("/me/:id/promotions", middleware.RequirePermission(permSvc, "promotion.manage_own"), handler.CreateMyPromotion)
 	self.PUT("/me/:id/promotions/:pid", middleware.RequirePermission(permSvc, "promotion.manage_own"), handler.UpdateMyPromotion)
 	self.DELETE("/me/:id/promotions/:pid", middleware.RequirePermission(permSvc, "promotion.manage_own"), handler.DeleteMyPromotion)
 
-	// Partner reviews
+	// Partner reviews (require partner role)
 	self.GET("/me/:id/reviews", middleware.RequirePermission(permSvc, "partner.read_own"), handler.ListMyReviews)
 	self.POST("/me/:id/reviews/:rid/reply", middleware.RequirePermission(permSvc, "review.reply_own"), handler.ReplyToReview)
 
