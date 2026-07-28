@@ -108,13 +108,16 @@ func (h *Handler) AdminGetAll(c *gin.Context) {
 }
 
 func (h *Handler) AdminCreate(c *gin.Context) {
-	var partner Partner
-	if err := c.ShouldBindJSON(&partner); err != nil {
+	var req AdminCreatePartnerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
-	partner.Status = StatusApproved
-	if err := h.Service.Create(&partner); err != nil {
+	if req.Status == "" {
+		req.Status = StatusApproved
+	}
+	partner, err := h.Service.AdminCreate(req)
+	if err != nil {
 		httpx.HandleError(c, err)
 		return
 	}

@@ -71,6 +71,47 @@ func (s *Service) Create(partner *Partner) error {
 	return s.Repo.Create(partner)
 }
 
+type AdminCreatePartnerRequest struct {
+	Name        string  `json:"name" binding:"required"`
+	Category    string  `json:"category" binding:"required"`
+	Description string  `json:"description"`
+	Location    string  `json:"location"`
+	Address     string  `json:"address"`
+	Image       string  `json:"image"`
+	Phone       string  `json:"phone"`
+	Website     string  `json:"website"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	Price       string  `json:"price"`
+	OwnerUserID *uint   `json:"owner_user_id"`
+	Status      string  `json:"status"`
+}
+
+func (s *Service) AdminCreate(req AdminCreatePartnerRequest) (*Partner, error) {
+	partner := Partner{
+		ExternalID:   uuid.New().String(),
+		Name:         req.Name,
+		Category:     req.Category,
+		Description:  req.Description,
+		Location:     req.Location,
+		Address:      req.Address,
+		Image:        req.Image,
+		Phone:        req.Phone,
+		Website:      req.Website,
+		Latitude:     req.Latitude,
+		Longitude:    req.Longitude,
+		Price:        req.Price,
+		OwnerUserID:  req.OwnerUserID,
+		Status:       req.Status,
+	}
+
+	if err := s.Repo.Create(&partner); err != nil {
+		return nil, err
+	}
+	return &partner, nil
+}
+
+
 func (s *Service) Save(partner *Partner) error {
 	return s.Repo.Update(partner)
 }
