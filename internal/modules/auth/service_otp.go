@@ -83,7 +83,7 @@ func (s *authService) StartPasswordless(ctx context.Context, channel, target, de
 						baseURL = s.Cfg.Email.AppBaseURL
 					}
 					if baseURL == "" {
-						baseURL = "http://localhost:3000"
+						baseURL = "http://localhost:3001"
 					}
 					baseURL = strings.TrimRight(baseURL, "/")
 					magicLinkURL := fmt.Sprintf("%s/login?magic_token=%s", baseURL, token)

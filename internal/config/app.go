@@ -89,7 +89,7 @@ type AppConfig struct {
 
 func LoadAppConfig() AppConfig {
 	return AppConfig{
-		Port:                     GetEnv("PORT", "8080"),
+		Port:                     GetEnv("PORT", "8081"),
 		DatabaseDriver:           GetEnv("DB_DRIVER", ""),
 		DatabaseURL:              GetEnv("DATABASE_URL", ""),
 		RedisURL:                 GetEnv("REDIS_URL", ""),
@@ -116,7 +116,7 @@ func LoadAppConfig() AppConfig {
 			SMTPUsername:   GetEnv("EMAIL_SMTP_USERNAME", ""),
 			SMTPPassword:   GetEnv("EMAIL_SMTP_PASSWORD", ""),
 			SMTPMode:       strings.ToLower(GetEnv("EMAIL_SMTP_MODE", "starttls")),
-			AppBaseURL:     firstNonEmptyEnv("APP_BASE_URL", "RENDER_EXTERNAL_URL", "http://localhost:8080"),
+			AppBaseURL:     firstNonEmptyEnv("APP_BASE_URL", "RENDER_EXTERNAL_URL", "http://localhost:8081"),
 			FrontendURL:    GetEnv("FRONTEND_URL", ""),
 		},
 		WhatsApp: WhatsAppConfig{
@@ -369,8 +369,8 @@ func firstNonEmptyEnv(keys ...string) string {
 
 func corsAllowedOrigins() []string {
 	defaults := []string{
-		"http://localhost:3000",
-		"http://127.0.0.1:3000",
+		"http://localhost:3001",
+		"http://127.0.0.1:3001",
 	}
 
 	if frontendURL := strings.TrimSpace(GetEnv("FRONTEND_URL", "")); frontendURL != "" {
