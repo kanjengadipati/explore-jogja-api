@@ -4,15 +4,18 @@ import (
 	"errors"
 	"time"
 
+	"pleco-api/internal/modules/user"
+
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	Repo Repository
+	Repo    Repository
+	UserSvc *user.Service
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{Repo: repo}
+func NewService(repo Repository, userSvc *user.Service) *Service {
+	return &Service{Repo: repo, UserSvc: userSvc}
 }
 
 // --- Public (approved only) ---
@@ -208,6 +211,13 @@ func (s *Service) Apply(req ApplyPartnerRequest, ownerUserID uint) (*Partner, er
 	if err := s.Repo.Create(&partner); err != nil {
 		return nil, err
 	}
+
+	// Upgrade caller's role to "partner" so they can access self-service endpoints.
+	// Idempotent — no-op if already promoted.
+	if s.UserSvc != nil {
+		_ = s.UserSvc.PromoteToPartnerRole(ownerUserID)
+	}
+
 	return &partner, nil
 }
 

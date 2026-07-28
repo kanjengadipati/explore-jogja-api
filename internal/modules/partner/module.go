@@ -4,6 +4,7 @@ import (
 	"pleco-api/internal/middleware"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/review"
+	"pleco-api/internal/modules/user"
 
 	"gorm.io/gorm"
 )
@@ -14,9 +15,9 @@ type Module struct {
 	Handler    *Handler
 }
 
-func BuildModule(db *gorm.DB, permSvc middleware.PermissionChecker, promoSvc *promotion.Service, reviewSvc *review.Service) *Module {
+func BuildModule(db *gorm.DB, permSvc middleware.PermissionChecker, promoSvc *promotion.Service, reviewSvc *review.Service, userSvc *user.Service) *Module {
 	repository := NewRepository(db)
-	service := NewService(repository)
+	service := NewService(repository, userSvc)
 	handler := NewHandler(service, promoSvc, reviewSvc)
 
 	handler.PermissionSvc = permSvc

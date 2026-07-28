@@ -197,6 +197,29 @@ func ptrTime(t time.Time) *time.Time {
 	return &t
 }
 
+// PromoteToPartnerRole upgrades a user's role string to "partner" and
+// bumps their access token version so old tokens are invalidated.
+// The caller (partner.Service.Apply) is responsible for running this
+// inside the same transaction that creates the partner listing.
+func (s *Service) PromoteToPartnerRole(userID uint) error {
+	user, err := s.UserRepo.FindByID(userID)
+	if err != nil {
+		return err
+	}
+	if user.Role == "partner" {
+		return nil // already promoted
+	}
+
+	user.Role = "partner"
+	user.AccessTokenVersion++
+
+	if err := s.UserRepo.Update(user); err != nil {
+		return err
+	}
+	s.invalidateUserCache(user.ID)
+	return nil
+}
+
 func (s *Service) DeleteUser(id uint, callerRole string, callerID uint) error {
 	if id == callerID {
 		return errors.New("cannot delete yourself")
