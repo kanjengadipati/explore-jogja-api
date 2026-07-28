@@ -65,6 +65,12 @@ type OTPRateLimitConfig struct {
 	TargetWindowSeconds   int
 }
 
+type MidtransConfig struct {
+	ServerKey    string
+	ClientKey    string
+	IsProduction bool
+}
+
 type AppConfig struct {
 	Port                     string
 	DatabaseDriver           string
@@ -85,6 +91,7 @@ type AppConfig struct {
 	Social                   SocialConfig
 	AI                       AIConfig
 	OTPRateLimit             OTPRateLimitConfig
+	Midtrans                 MidtransConfig
 }
 
 func LoadAppConfig() AppConfig {
@@ -148,6 +155,11 @@ func LoadAppConfig() AppConfig {
 			TargetCooldownSeconds: envInt("OTP_TARGET_COOLDOWN_SECONDS", 60),
 			TargetRequests:        envInt("OTP_TARGET_RATE_LIMIT_REQUESTS", 5),
 			TargetWindowSeconds:   envInt("OTP_TARGET_RATE_LIMIT_WINDOW_SECONDS", 3600),
+		},
+		Midtrans: MidtransConfig{
+			ServerKey:    GetEnv("MIDTRANS_SERVER_KEY", ""),
+			ClientKey:    GetEnv("MIDTRANS_CLIENT_KEY", ""),
+			IsProduction: envBool("MIDTRANS_IS_PRODUCTION"),
 		},
 	}
 }

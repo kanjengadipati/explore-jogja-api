@@ -22,6 +22,7 @@ import (
 	"pleco-api/internal/modules/hotel"
 	"pleco-api/internal/modules/imagereport"
 	"pleco-api/internal/modules/partner"
+	"pleco-api/internal/modules/payment"
 	"pleco-api/internal/modules/permission"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/rental"
@@ -37,6 +38,7 @@ import (
 	"pleco-api/internal/modules/user"
 	"pleco-api/internal/scraper"
 	"pleco-api/internal/services"
+	midtransprovider "pleco-api/internal/providers/payment/midtrans"
 
 	"gorm.io/gorm"
 
@@ -125,6 +127,13 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service, userModule.Service, auditModule.Service)
 	partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc, rateStore)
+
+	// Payment module — builds after partner and adcampaign so their services are available
+	webhooks := router.Group("/webhooks")
+	midtransClient := midtransprovider.New(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey, cfg.Midtrans.IsProduction)
+	emailSvc := services.NewEmailService(cfg.Email)
+	paymentModule := payment.BuildModule(db, midtransClient, partnerModule.Service, adCampaignModule.Service, auditModule.Service, emailSvc)
+	payment.SetupRoutes(api, webhooks, paymentModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
 	tourist.SetupRoutes(api, touristModule.Handler)
