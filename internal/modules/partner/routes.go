@@ -28,12 +28,11 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	// Self-service partner (auth required, no role gate — anyone logged in can apply)
 	self := partners.Group("")
 	self.Use(middleware.AuthMiddleware(jwtService))
-	self.POST("/apply", handler.Apply)
 	self.GET("/me", handler.GetMyListings)
 	self.GET("/me/:id", middleware.RequirePermission(permSvc, "partner.read_own"), handler.GetMyListing)
-	self.GET("/me/:id/stats", middleware.RequirePermission(permSvc, "partner.read_own"), handler.GetDailyStats)
 	self.PUT("/me/:id", middleware.RequirePermission(permSvc, "partner.update_own"), handler.UpdateMyListing)
 	self.DELETE("/me/:id", middleware.RequirePermission(permSvc, "partner.delete_own"), handler.DeleteMyListing)
+	self.POST("/me/:id/submit-for-review", middleware.RequirePermission(permSvc, "partner.update_own"), handler.SubmitForReview)
 
 	// Partner promotions (require partner role)
 	self.GET("/me/:id/promotions", middleware.RequirePermission(permSvc, "partner.read_own"), handler.ListMyPromotions)

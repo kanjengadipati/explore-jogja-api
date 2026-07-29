@@ -11,6 +11,7 @@ import (
 type JSONArr = utils.JSONArr
 
 const (
+	StatusDraft   = "draft"
 	StatusPending   = "pending"
 	StatusApproved  = "approved"
 	StatusRejected  = "rejected"

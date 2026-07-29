@@ -23,6 +23,7 @@ import (
 	"pleco-api/internal/modules/imagereport"
 	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/partner"
+	"pleco-api/internal/modules/partnerapplication"
 	"pleco-api/internal/modules/payment"
 	"pleco-api/internal/modules/permission"
 	"pleco-api/internal/modules/promotion"
@@ -131,6 +132,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)
 	partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc, rateStore)
+
+	partnerApplicationModule := partnerapplication.BuildModule(db, partnerModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)
+	partnerapplication.SetupRoutes(api, partnerApplicationModule.Handler, jwtService, permissionModule.Service)
 
 	// Payment module — builds after partner and adcampaign so their services are available
 	webhooks := router.Group("/webhooks")

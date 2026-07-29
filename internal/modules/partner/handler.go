@@ -154,23 +154,6 @@ func (h *Handler) AdminDelete(c *gin.Context) {
 
 // --- Self-service partner ---
 
-func (h *Handler) Apply(c *gin.Context) {
-	userID, _ := httpx.GetUserIDFromContext(c)
-
-	var req ApplyPartnerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
-		return
-	}
-
-	partner, err := h.Service.Apply(req, userID)
-	if err != nil {
-		httpx.HandleError(c, err)
-		return
-	}
-	httpx.Success(c, 201, "Partner application submitted", partner, nil)
-}
-
 func (h *Handler) GetMyListings(c *gin.Context) {
 	userID, _ := httpx.GetUserIDFromContext(c)
 	partners, err := h.Service.GetOwned(userID)
@@ -248,6 +231,17 @@ func (h *Handler) GetDailyStats(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "Daily stats fetched", stats, nil)
+}
+
+func (h *Handler) SubmitForReview(c *gin.Context) {
+	userID, _ := httpx.GetUserIDFromContext(c)
+	id := c.Param("id")
+	partner, err := h.Service.SubmitForReview(userID, id)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Listing submitted for review", partner, nil)
 }
 
 func (h *Handler) DeleteMyListing(c *gin.Context) {

@@ -2,6 +2,7 @@ package partner
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"pleco-api/internal/modules/notification"
@@ -11,8 +12,8 @@ import (
 )
 
 type Service struct {
-	Repo    Repository
-	UserSvc *user.Service
+	Repo     Repository
+	UserSvc  *user.Service
 	NotifSvc *notification.Service
 }
 
@@ -230,54 +231,30 @@ func (s *Service) Delete(externalID string) error {
 	return s.Repo.Delete(externalID)
 }
 
-// --- Self-service ---
-
-type ApplyPartnerRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Category    string  `json:"category" binding:"required"`
-	Description string  `json:"description"`
-	Location    string  `json:"location"`
-	Address     string  `json:"address"`
-	Image       string  `json:"image"`
-	Phone       string  `json:"phone"`
-	Website     string  `json:"website"`
-	Latitude    float64 `json:"latitude"`
-	Longitude   float64 `json:"longitude"`
-	Price       string  `json:"price"`
-}
-
-func (s *Service) Apply(req ApplyPartnerRequest, ownerUserID uint) (*Partner, error) {
-	now := time.Now()
-	partner := Partner{
-		ExternalID:  uuid.New().String(),
-		Name:        req.Name,
-		Category:    req.Category,
-		Description: req.Description,
-		Location:    req.Location,
-		Address:     req.Address,
-		Image:       req.Image,
-		Phone:       req.Phone,
-		Website:     req.Website,
-		Latitude:    req.Latitude,
-		Longitude:   req.Longitude,
-		Price:       req.Price,
-		OwnerUserID: &ownerUserID,
-		Status:      StatusPending,
-		SubmittedAt: &now,
+func (s *Service) SubmitForReview(ownerUserID uint, externalID string) (*Partner, error) {
+	partner, err := s.Repo.FindByIDAndOwner(externalID, ownerUserID)
+	if err != nil {
+		return nil, errors.New("listing not found")
+	}
+	if partner.Status != StatusDraft {
+		return nil, errors.New("listing already submitted for review")
 	}
 
-	if err := s.Repo.Create(&partner); err != nil {
+	if strings.TrimSpace(partner.Description) == "" || strings.TrimSpace(partner.Address) == "" {
+		return nil, errors.New("lengkapi deskripsi dan alamat sebelum submit")
+	}
+
+	now := time.Now()
+	partner.Status = StatusPending
+	partner.SubmittedAt = &now
+
+	if err := s.Repo.Update(partner); err != nil {
 		return nil, err
 	}
-
-	// Upgrade caller's role to "partner" so they can access self-service endpoints.
-	// Idempotent — no-op if already promoted.
-	if s.UserSvc != nil {
-		_ = s.UserSvc.PromoteToPartnerRole(ownerUserID)
-	}
-
-	return &partner, nil
+	return partner, nil
 }
+
+// --- Self-service ---
 
 func (s *Service) GetOwned(ownerUserID uint) ([]Partner, error) {
 	return s.Repo.FindByOwnerID(ownerUserID)
