@@ -211,7 +211,9 @@ func (s *Service) PromoteToPartnerRole(userID uint) error {
 	}
 
 	user.Role = "partner"
-	user.AccessTokenVersion++
+	// Do NOT bump AccessTokenVersion here — partner promotion is an upgrade,
+	// not a security event. Existing refresh tokens stay valid so the user
+	// can get a new access token (with the 'partner' role) via a normal refresh.
 
 	if err := s.UserRepo.Update(user); err != nil {
 		return err
