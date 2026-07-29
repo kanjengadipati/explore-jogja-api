@@ -21,6 +21,7 @@ type PartnerApplication struct {
 	Category     string `gorm:"not null" json:"category"`
 	Location     string `json:"location"`
 	Phone        string `json:"phone"`
+	Email        string `json:"email"`
 
 	Status          string `gorm:"default:pending;index" json:"status"`
 	RejectionReason string `gorm:"type:text" json:"rejection_reason"`

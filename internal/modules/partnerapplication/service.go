@@ -29,6 +29,7 @@ type ApplyRequest struct {
 	Category     string `json:"category" binding:"required"`
 	Location     string `json:"location"`
 	Phone        string `json:"phone"`
+	Email        string `json:"email"`
 }
 
 func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplication, error) {
@@ -40,6 +41,7 @@ func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplica
 		Category:        req.Category,
 		Location:        req.Location,
 		Phone:           req.Phone,
+		Email:           req.Email,
 		Status:          StatusPending,
 		SubmittedAt:     &now,
 	}
