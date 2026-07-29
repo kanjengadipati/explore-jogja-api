@@ -10,8 +10,8 @@ import (
 func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService, permSvc middleware.PermissionChecker) {
 	self := api.Group("/partner-applications")
 	self.Use(middleware.AuthMiddleware(jwtService))
-	self.POST("/apply", middleware.RequirePermission(permSvc, "partner_application.apply"), handler.Apply)
-	self.GET("/me", middleware.RequirePermission(permSvc, "partner_application.apply"), handler.GetMine)
+	self.POST("/apply", handler.Apply)
+	self.GET("/me", handler.GetMine)
 
 	admin := api.Group("/admin/partner-applications")
 	admin.Use(middleware.AuthMiddleware(jwtService))

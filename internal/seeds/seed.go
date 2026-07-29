@@ -160,6 +160,7 @@ func SeedRolePermissions(db *gorm.DB) {
 			"partner.delete_own",
 			"promotion.manage_own",
 			"review.reply_own",
+			"partner_application.apply",
 		},
 	}
 
