@@ -1,0 +1,2 @@
+ALTER TABLE users DROP COLUMN IF EXISTS avatar_url;
+ALTER TABLE users DROP COLUMN IF EXISTS cover_image_url;

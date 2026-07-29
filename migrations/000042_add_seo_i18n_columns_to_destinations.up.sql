@@ -1,0 +1,3 @@
+ALTER TABLE destinations ADD COLUMN IF NOT EXISTS seo_title_en VARCHAR(255) DEFAULT '';
+ALTER TABLE destinations ADD COLUMN IF NOT EXISTS seo_keywords_en TEXT DEFAULT '';
+ALTER TABLE destinations ADD COLUMN IF NOT EXISTS seo_description_en TEXT DEFAULT '';
