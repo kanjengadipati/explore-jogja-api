@@ -2,8 +2,6 @@ package services
 
 import (
 	"errors"
-	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
@@ -16,22 +14,6 @@ var ErrWeakPassword = errors.New("password must be at least 8 characters and inc
 
 func ValidatePasswordStrength(password string) error {
 	if utf8.RuneCountInString(password) < MinimumPasswordLength {
-		return ErrWeakPassword
-	}
-	var hasUpper, hasLower, hasNumber, hasSymbol bool
-	for _, char := range password {
-		switch {
-		case unicode.IsUpper(char):
-			hasUpper = true
-		case unicode.IsLower(char):
-			hasLower = true
-		case unicode.IsNumber(char):
-			hasNumber = true
-		case unicode.IsPunct(char), unicode.IsSymbol(char):
-			hasSymbol = true
-		}
-	}
-	if !hasUpper || !hasLower || !hasNumber || !hasSymbol || strings.Contains(password, " ") {
 		return ErrWeakPassword
 	}
 	return nil
