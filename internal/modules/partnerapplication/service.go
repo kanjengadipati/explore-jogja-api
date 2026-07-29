@@ -10,6 +10,7 @@ import (
 	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/partner"
 	"pleco-api/internal/modules/user"
+	"pleco-api/internal/utils"
 )
 
 type Service struct {
@@ -35,9 +36,12 @@ type ApplyRequest struct {
 
 func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplication, error) {
 	now := time.Now()
-	locations := req.Locations
-	if len(locations) == 0 && req.Location != "" {
-		locations = []string{req.Location}
+	locArr := make(utils.JSONArr, len(req.Locations))
+	for i, l := range req.Locations {
+		locArr[i] = l
+	}
+	if len(locArr) == 0 && req.Location != "" {
+		locArr = utils.JSONArr{req.Location}
 	}
 	app := PartnerApplication{
 		ExternalID:      uuid.New().String(),
@@ -45,7 +49,7 @@ func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplica
 		BusinessName:    req.BusinessName,
 		Category:        req.Category,
 		Location:        req.Location,
-		Locations:       locations,
+		Locations:       locArr,
 		Phone:           req.Phone,
 		Email:           req.Email,
 		Status:          StatusPending,
