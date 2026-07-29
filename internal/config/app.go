@@ -66,6 +66,7 @@ type OTPRateLimitConfig struct {
 }
 
 type MidtransConfig struct {
+	MerchantID   string
 	ServerKey    string
 	ClientKey    string
 	IsProduction bool
@@ -157,6 +158,7 @@ func LoadAppConfig() AppConfig {
 			TargetWindowSeconds:   envInt("OTP_TARGET_RATE_LIMIT_WINDOW_SECONDS", 3600),
 		},
 		Midtrans: MidtransConfig{
+			MerchantID:   GetEnv("MIDTRANS_MERCHANT_ID", ""),
 			ServerKey:    GetEnv("MIDTRANS_SERVER_KEY", ""),
 			ClientKey:    GetEnv("MIDTRANS_CLIENT_KEY", ""),
 			IsProduction: envBool("MIDTRANS_IS_PRODUCTION"),
