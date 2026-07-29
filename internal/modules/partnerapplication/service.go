@@ -52,12 +52,38 @@ func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplica
 		Locations:       locArr,
 		Phone:           req.Phone,
 		Email:           req.Email,
-		Status:          StatusPending,
+		Status:          StatusApproved,
 		SubmittedAt:     &now,
+		ReviewedAt:      &now,
 	}
 	if err := s.Repo.Create(&app); err != nil {
 		return nil, err
 	}
+
+	draft := &partner.Partner{
+		ExternalID:  uuid.New().String(),
+		Name:        req.BusinessName,
+		Category:    req.Category,
+		Location:    req.Location,
+		Phone:       req.Phone,
+		OwnerUserID: &applicantUserID,
+		Status:      partner.StatusDraft,
+	}
+	if err := s.PartnerSvc.Create(draft); err != nil {
+		return nil, err
+	}
+	app.ConvertedPartnerExternalID = &draft.ExternalID
+	_ = s.Repo.Update(&app)
+
+	if s.UserSvc != nil {
+		_ = s.UserSvc.PromoteToPartnerRole(applicantUserID)
+	}
+
+	if s.NotifSvc != nil {
+		_ = s.NotifSvc.Notify(applicantUserID, "Pendaftaran Mitra Berhasil",
+			"Aplikasi Anda untuk '"+req.BusinessName+"' telah diterima. Silakan lengkapi listing Anda.", "application")
+	}
+
 	return &app, nil
 }
 
