@@ -25,21 +25,27 @@ func NewService(repo Repository, partnerSvc *partner.Service, userSvc *user.Serv
 }
 
 type ApplyRequest struct {
-	BusinessName string `json:"business_name" binding:"required"`
-	Category     string `json:"category" binding:"required"`
-	Location     string `json:"location"`
-	Phone        string `json:"phone"`
-	Email        string `json:"email"`
+	BusinessName string   `json:"business_name" binding:"required"`
+	Category     string   `json:"category" binding:"required"`
+	Location     string   `json:"location"`
+	Locations    []string `json:"locations"`
+	Phone        string   `json:"phone"`
+	Email        string   `json:"email"`
 }
 
 func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplication, error) {
 	now := time.Now()
+	locations := req.Locations
+	if len(locations) == 0 && req.Location != "" {
+		locations = []string{req.Location}
+	}
 	app := PartnerApplication{
 		ExternalID:      uuid.New().String(),
 		ApplicantUserID: applicantUserID,
 		BusinessName:    req.BusinessName,
 		Category:        req.Category,
 		Location:        req.Location,
+		Locations:       locations,
 		Phone:           req.Phone,
 		Email:           req.Email,
 		Status:          StatusPending,
