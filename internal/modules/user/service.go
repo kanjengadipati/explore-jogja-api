@@ -207,7 +207,10 @@ func (s *Service) PromoteToPartnerRole(userID uint) error {
 		return err
 	}
 	if user.Role == "partner" {
-		return nil // already promoted
+		return nil
+	}
+	if user.Role == "admin" || user.Role == "superadmin" {
+		return errors.New("cannot downgrade elevated role to partner")
 	}
 
 	user.Role = "partner"

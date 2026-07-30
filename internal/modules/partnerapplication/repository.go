@@ -35,7 +35,7 @@ func (r *GormRepository) FindByStatus(status string) ([]PartnerApplication, erro
 
 func (r *GormRepository) FindByApplicant(userID uint) ([]PartnerApplication, error) {
 	var apps []PartnerApplication
-	err := r.db.Where("applicant_user_id = ?", userID).Order("id DESC").Find(&apps).Error
+	err := r.db.Where("applicant_user_id = ?", userID).Order("created_at DESC, id DESC").Find(&apps).Error
 	return apps, err
 }
 

@@ -3,6 +3,9 @@ package destination
 import (
 	"errors"
 	"strconv"
+	"strings"
+
+	"github.com/gosimple/slug"
 )
 
 type Service struct {
@@ -41,41 +44,155 @@ func (s *Service) Delete(externalID string) error {
 	return s.Repo.Delete(externalID)
 }
 
-type UpdateDestinationRequest struct {
-	Name              *string   `json:"name"`
-	Tagline           *string   `json:"tagline"`
-	Category          *string   `json:"category"`
-	Location          *string   `json:"location"`
-	SubRegion         *string   `json:"sub_region"`
-	Description       *string   `json:"description"`
-	Story             *string   `json:"story"`
-	TicketPrice       *string   `json:"ticket_price"`
-	OpeningHours      *string   `json:"opening_hours"`
-	BestTime          *string   `json:"best_time"`
-	Latitude          *string   `json:"latitude"`
-	Longitude         *string   `json:"longitude"`
-	Images            *JSONArr  `json:"images"`
-	Facilities        *JSONArr  `json:"facilities"`
-	TravelTips        *JSONArr  `json:"travel_tips"`
-	VideoUrl          *string   `json:"video_url"`
-	GoogleMapsURL     *string   `json:"google_maps_url"`
-	GoogleReviewCount *int      `json:"google_review_count"`
-	SeoTitle          *string   `json:"seo_title"`
-	SeoKeywords       *string   `json:"seo_keywords"`
-	SeoDescription    *string   `json:"seo_description"`
-	OgImageUrl        *string   `json:"og_image_url"`
-	Status            *string   `json:"status"`
+// CreateDestinationRequest is the payload accepted by POST /destinations.
+type CreateDestinationRequest struct {
+	Name           string  `json:"name"`
+	Tagline        string  `json:"tagline"`
+	Category       string  `json:"category"`
+	Location       string  `json:"location"`
+	SubRegion      string  `json:"sub_region"`
+	Description    string  `json:"description"`
+	Story          string  `json:"story"`
+	TicketPrice    string  `json:"ticket_price"`
+	OpeningHours   string  `json:"opening_hours"`
+	BestTime       string  `json:"best_time"`
+	Latitude       string  `json:"latitude"`
+	Longitude      string  `json:"longitude"`
+	Images         JSONArr `json:"images"`
+	Facilities     JSONArr `json:"facilities"`
+	TravelTips     JSONArr `json:"travel_tips"`
+	VideoUrl       string  `json:"video_url"`
+	GoogleMapsURL  string  `json:"google_maps_url"`
+	SeoTitle       string  `json:"seo_title"`
+	SeoKeywords    string  `json:"seo_keywords"`
+	SeoDescription string  `json:"seo_description"`
+	Status         string  `json:"status"`
 	// English translations
-	NameEn          *string  `json:"name_en"`
-	TaglineEn       *string  `json:"tagline_en"`
-	DescriptionEn   *string  `json:"description_en"`
-	StoryEn         *string  `json:"story_en"`
-	BestTimeEn      *string  `json:"best_time_en"`
-	FacilitiesEn    *JSONArr `json:"facilities_en"`
-	TravelTipsEn    *JSONArr `json:"travel_tips_en"`
-	SeoTitleEn      *string  `json:"seo_title_en"`
-	SeoKeywordsEn   *string  `json:"seo_keywords_en"`
-	SeoDescriptionEn *string `json:"seo_description_en"`
+	NameEn           string  `json:"name_en"`
+	TaglineEn        string  `json:"tagline_en"`
+	DescriptionEn    string  `json:"description_en"`
+	StoryEn          string  `json:"story_en"`
+	BestTimeEn       string  `json:"best_time_en"`
+	FacilitiesEn     JSONArr `json:"facilities_en"`
+	TravelTipsEn     JSONArr `json:"travel_tips_en"`
+	SeoTitleEn       string  `json:"seo_title_en"`
+	SeoKeywordsEn    string  `json:"seo_keywords_en"`
+	SeoDescriptionEn string  `json:"seo_description_en"`
+}
+
+// Create builds a Destination from the request, generates a slug-based
+// ExternalID when none is provided, and persists it.
+func (s *Service) Create(req CreateDestinationRequest) (*Destination, error) {
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+
+	externalID := slug.Make(name)
+
+	// Ensure the generated external_id is unique by appending a suffix if needed.
+	baseID := externalID
+	suffix := 1
+	for {
+		existing, err := s.Repo.FindByID(externalID)
+		if err != nil || existing == nil {
+			break
+		}
+		suffix++
+		externalID = baseID + "-" + strconv.Itoa(suffix)
+	}
+
+	dest := Destination{
+		ExternalID:       externalID,
+		Name:             name,
+		Tagline:          req.Tagline,
+		Category:         req.Category,
+		Location:         req.Location,
+		SubRegion:        req.SubRegion,
+		Description:      req.Description,
+		Story:            req.Story,
+		TicketPrice:      req.TicketPrice,
+		OpeningHours:     req.OpeningHours,
+		BestTime:         req.BestTime,
+		Images:           req.Images,
+		Facilities:       req.Facilities,
+		TravelTips:       req.TravelTips,
+		VideoURL:         req.VideoUrl,
+		GoogleMapsURL:    req.GoogleMapsURL,
+		SeoTitle:         req.SeoTitle,
+		SeoKeywords:      req.SeoKeywords,
+		SeoDescription:   req.SeoDescription,
+		NameEn:           req.NameEn,
+		TaglineEn:        req.TaglineEn,
+		DescriptionEn:    req.DescriptionEn,
+		StoryEn:          req.StoryEn,
+		BestTimeEn:       req.BestTimeEn,
+		FacilitiesEn:     req.FacilitiesEn,
+		TravelTipsEn:     req.TravelTipsEn,
+		SeoTitleEn:       req.SeoTitleEn,
+		SeoKeywordsEn:    req.SeoKeywordsEn,
+		SeoDescriptionEn: req.SeoDescriptionEn,
+	}
+
+	if req.Latitude != "" {
+		if v, err := strconv.ParseFloat(req.Latitude, 64); err == nil {
+			dest.Latitude = v
+		}
+	}
+	if req.Longitude != "" {
+		if v, err := strconv.ParseFloat(req.Longitude, 64); err == nil {
+			dest.Longitude = v
+		}
+	}
+
+	// Default status to "draft" when not provided.
+	status := strings.TrimSpace(req.Status)
+	if status == "" {
+		status = "draft"
+	}
+	dest.Status = status
+
+	if err := s.Repo.Create(&dest); err != nil {
+		return nil, err
+	}
+	return &dest, nil
+}
+
+type UpdateDestinationRequest struct {
+	Name              *string  `json:"name"`
+	Tagline           *string  `json:"tagline"`
+	Category          *string  `json:"category"`
+	Location          *string  `json:"location"`
+	SubRegion         *string  `json:"sub_region"`
+	Description       *string  `json:"description"`
+	Story             *string  `json:"story"`
+	TicketPrice       *string  `json:"ticket_price"`
+	OpeningHours      *string  `json:"opening_hours"`
+	BestTime          *string  `json:"best_time"`
+	Latitude          *string  `json:"latitude"`
+	Longitude         *string  `json:"longitude"`
+	Images            *JSONArr `json:"images"`
+	Facilities        *JSONArr `json:"facilities"`
+	TravelTips        *JSONArr `json:"travel_tips"`
+	VideoUrl          *string  `json:"video_url"`
+	GoogleMapsURL     *string  `json:"google_maps_url"`
+	GoogleReviewCount *int     `json:"google_review_count"`
+	SeoTitle          *string  `json:"seo_title"`
+	SeoKeywords       *string  `json:"seo_keywords"`
+	SeoDescription    *string  `json:"seo_description"`
+	OgImageUrl        *string  `json:"og_image_url"`
+	Status            *string  `json:"status"`
+	// English translations
+	NameEn           *string  `json:"name_en"`
+	TaglineEn        *string  `json:"tagline_en"`
+	DescriptionEn    *string  `json:"description_en"`
+	StoryEn          *string  `json:"story_en"`
+	BestTimeEn       *string  `json:"best_time_en"`
+	FacilitiesEn     *JSONArr `json:"facilities_en"`
+	TravelTipsEn     *JSONArr `json:"travel_tips_en"`
+	SeoTitleEn       *string  `json:"seo_title_en"`
+	SeoKeywordsEn    *string  `json:"seo_keywords_en"`
+	SeoDescriptionEn *string  `json:"seo_description_en"`
 }
 
 func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Destination, error) {

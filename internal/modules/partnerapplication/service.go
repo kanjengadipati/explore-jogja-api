@@ -35,6 +35,16 @@ type ApplyRequest struct {
 }
 
 func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplication, error) {
+	existing, err := s.Repo.FindByApplicant(applicantUserID)
+	if err != nil {
+		return nil, err
+	}
+	for _, app := range existing {
+		if app.Status != StatusRejected {
+			return nil, errors.New("you already have a pending or approved partner application")
+		}
+	}
+
 	now := time.Now()
 	locArr := make(utils.JSONArr, len(req.Locations))
 	for i, l := range req.Locations {
@@ -73,10 +83,14 @@ func (s *Service) Apply(req ApplyRequest, applicantUserID uint) (*PartnerApplica
 		return nil, err
 	}
 	app.ConvertedPartnerExternalID = &draft.ExternalID
-	_ = s.Repo.Update(&app)
+	if err := s.Repo.Update(&app); err != nil {
+		return nil, err
+	}
 
 	if s.UserSvc != nil {
-		_ = s.UserSvc.PromoteToPartnerRole(applicantUserID)
+		if err := s.UserSvc.PromoteToPartnerRole(applicantUserID); err != nil {
+			return nil, err
+		}
 	}
 
 	if s.NotifSvc != nil {
@@ -128,7 +142,9 @@ func (s *Service) Approve(externalID string, adminUserID uint) (*PartnerApplicat
 	}
 
 	if s.UserSvc != nil {
-		_ = s.UserSvc.PromoteToPartnerRole(app.ApplicantUserID)
+		if err := s.UserSvc.PromoteToPartnerRole(app.ApplicantUserID); err != nil {
+			return nil, err
+		}
 	}
 
 	s.AuditSvc.SafeRecord(audit.RecordInput{

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -760,10 +761,22 @@ type socialAccountResponse struct {
 	AvatarURL      string `json:"avatar_url"`
 }
 
+func getCookieDomain() string {
+	domain := os.Getenv("COOKIE_DOMAIN")
+	if domain == "" {
+		if os.Getenv("GIN_MODE") == "release" {
+			return ".jogjagem.com"
+		}
+		return ""
+	}
+	return domain
+}
+
 func setRefreshTokenCookie(c *gin.Context, refreshToken string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     refreshTokenCookieName,
 		Value:    refreshToken,
+		Domain:   getCookieDomain(),
 		Path:     "/",
 		MaxAge:   int((7 * 24 * time.Hour).Seconds()),
 		HttpOnly: true,
@@ -796,6 +809,7 @@ func setDeviceIDCookie(c *gin.Context, deviceID string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     deviceIDCookieName,
 		Value:    deviceID,
+		Domain:   getCookieDomain(),
 		Path:     "/",
 		MaxAge:   int((365 * 24 * time.Hour).Seconds()),
 		HttpOnly: true,
@@ -808,6 +822,7 @@ func clearRefreshTokenCookie(c *gin.Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     refreshTokenCookieName,
 		Value:    "",
+		Domain:   getCookieDomain(),
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,

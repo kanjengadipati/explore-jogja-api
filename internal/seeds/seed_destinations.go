@@ -547,5 +547,355 @@ func getDestinationSeedData() []destination.Destination {
 				{"q": "Can I camp overnight?", "a": "Yes. Designated camping areas are available."},
 			}),
 		},
+
+		// ==========================================
+		// 14. BOROBUDUR TEMPLE (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "borobudur",
+			Name:        "Borobudur Temple",
+			Tagline:     "The World's Largest Buddhist Temple at Dawn",
+			Category:    "heritage",
+			Location:    "Magelang, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1590211702270-5e64e0a2e04f?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1621869606578-1561708a7e09?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1592021369622-35e0f8d4491c?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.9,
+			ReviewCount: 12500,
+			Description: "Borobudur is the world's largest Buddhist temple, built in the 9th century during the Sailendra dynasty. The monument consists of nine stacked platforms — six square and three circular — topped by a central dome. Over 2,672 relief panels and 504 Buddha statues adorn the temple, making it one of the greatest Buddhist monuments on earth. A UNESCO World Heritage Site since 1991.",
+			Story:       "Borobudur lay hidden for centuries under volcanic ash and jungle growth after being abandoned in the 14th century. Sir Thomas Stamford Raffles rediscovered it in 1814 during the British occupation of Java. The Indonesian government and UNESCO led a massive restoration from 1975 to 1982, involving over 600 workers dismantling and reassembling the entire structure stone by stone.",
+			TicketPrice: "IDR 375,000 (Foreign) / IDR 50,000 (Domestic) / Sunrise package: IDR 450,000",
+			OpeningHours: "06:30 AM – 05:00 PM Daily (Sunrise: 04:30 AM – 06:00 AM)",
+			Facilities:  ja([]string{"Sunrise Viewing Platform", "Audio Guide Rental", "Buddhist Meditation Area", "Museum & Visitor Center", "Wheelchair Access", "Batik Workshops", "Souvenir Market", "Restaurants & Cafes", "Mosque & Prayer Room"}),
+			TravelTips:  ja([]string{"Book the sunrise package to see the misty dawn over stupas.", "Wear a sarong (provided at entrance) out of respect for the sacred site.", "Hire a certified guide — relief panels tell the story of Buddhism.", "Arrive by 06:00 AM to avoid midday heat and crowds."}),
+			BestTime:    "May to October (Dry Season) for sunrise; avoid weekends for fewer crowds",
+			Weather:     jm(map[string]string{"temp": "25°C", "condition": "Clear Dawn", "status": "Excellent conditions for sunrise at Borobudur."}),
+			Latitude:    -7.6079,
+			Longitude:   110.2038,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Sophia Laurent", "userAvatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150", "rating": 5, "date": "2026-06-10", "comment": "Watching the sunrise over the misty stupas of Borobudur was the most spiritual experience of my life."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "bb-p1", "name": "Manohara Hotel Borobudur", "category": "hotel", "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600", "rating": 4.6, "price": "IDR 800,000 / night", "distance": "0.5 km from temple", "description": "The only hotel within the Borobudur Archaeological Park — includes sunrise access.", "address": "Jl. Badrawarna, Borobudur, Magelang"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Can I climb to the top?", "a": "Yes. Visitors can climb to the top platform with a guide."},
+				{"q": "Is the sunrise package worth it?", "a": "Absolutely — watching dawn break over the stupas is unforgettable."},
+			}),
+		},
+
+		// ==========================================
+		// 15. MENDUT TEMPLE (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "mendut",
+			Name:        "Mendut Temple",
+			Tagline:     "Home of the Majestic 3-Meter Seated Buddha",
+			Category:    "heritage",
+			Location:    "Magelang, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1590211702270-5e64e0a2e04f?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1592021369622-35e0f8d4491c?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.7,
+			ReviewCount: 1200,
+			Description: "Candi Mendut is a 9th-century Mahayana Buddhist temple located 3 km east of Borobudur. It houses a magnificent 3-meter seated Buddha statue in the bhumisparsha mudra (earth-touching pose), flanked by statues of the Bodhisattvas Avalokitesvara and Vajrapani — among the finest stone carvings of their era.",
+			Story:       "Mendut is the oldest of the three temples that form the Borobudur archaeological axis — running east to west from Mendut to Pawon to Borobudur. This alignment symbolizes the journey from worldly desire (Mendut) to purification (Pawon) to enlightenment (Borobudur), and was used as the route for the annual Waisak procession.",
+			TicketPrice: "IDR 30,000 (Adult) / IDR 15,000 (Child)",
+			OpeningHours: "07:00 AM – 05:00 PM Daily",
+			Facilities:  ja([]string{"Buddha Statue Viewing Hall", "Meditation Area", "Small Museum", "Souvenir Stalls", "Parking Area", "Restrooms"}),
+			TravelTips:  ja([]string{"Combine with Borobudur and Pawon in one morning.", "Visit during Waisak (May full moon) to see the torchlight procession.", "The interior Buddha statue is best photographed in the morning light.", "Part of the Borobudur ticket package — save your receipt."}),
+			BestTime:    "May for Waisak festival; mornings year-round for best lighting",
+			Weather:     jm(map[string]string{"temp": "27°C", "condition": "Partly Cloudy", "status": "Good conditions for temple exploration."}),
+			Latitude:    -7.6049,
+			Longitude:   110.2306,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Budi Santoso", "userAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150", "rating": 5, "date": "2026-06-12", "comment": "The giant Buddha inside is awe-inspiring — better than the photos suggest."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "mt-p1", "name": "Mendut Heritage Homestay", "category": "hotel", "image": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=600", "rating": 4.5, "price": "IDR 350,000 / night", "distance": "1 km", "description": "Traditional Javanese homestay steps from Mendut Temple.", "address": "Ds. Mendut, Mungkid, Magelang"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Is Mendut included in the Borobudur ticket?", "a": "Yes, the Borobudur ticket package covers Mendut and Pawon."},
+				{"q": "How long do I need to visit?", "a": "30-45 minutes is enough to appreciate the temple."},
+			}),
+		},
+
+		// ==========================================
+		// 16. PAWON TEMPLE (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "pawon",
+			Name:        "Pawon Temple",
+			Tagline:     "The Jewel of the Borobudur Sacred Axis",
+			Category:    "heritage",
+			Location:    "Magelang, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1590211702270-5e64e0a2e04f?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1592021369622-35e0f8d4491c?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.6,
+			ReviewCount: 850,
+			Description: "Candi Pawon is an elegant 9th-century Buddhist temple perfectly positioned between Mendut and Borobudur on the sacred east-west axis. Though smaller than its neighbors, Pawon is renowned for its exquisite proportions and intricate Kala-Makara carvings. The temple likely served as a storehouse for sacred objects.",
+			Story:       "Pawon's name derives from the Javanese word 'pawon' (kitchen), perhaps referring to the food offerings once prepared here for the Waisak procession. The temple was rediscovered in 1896 and underwent restoration between 1903 and 1908. The reliefs on its walls depict kalpataru (tree of life) panels flanked by celestial beings.",
+			TicketPrice: "IDR 25,000 (Adult) / IDR 10,000 (Child)",
+			OpeningHours: "07:00 AM – 04:00 PM Daily",
+			Facilities:  ja([]string{"Temple Viewing Area", "Relief Panels", "Small Garden", "Parking Area", "Restrooms"}),
+			TravelTips:  ja([]string{"A quick stop — 15-20 minutes is enough.", "Best light for photos is late afternoon.", "The kalpataru reliefs on the outer walls are exceptionally well-preserved.", "Often missed by tourists — you'll have it almost to yourself."}),
+			BestTime:    "Afternoon for golden light; year-round",
+			Weather:     jm(map[string]string{"temp": "28°C", "condition": "Sunny", "status": "Nice weather for a short temple visit."}),
+			Latitude:    -7.6062,
+			Longitude:   110.2192,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Yuki Tanaka", "userAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150", "rating": 4.5, "date": "2026-06-10", "comment": "Small but perfectly proportioned. The carvings are incredibly detailed."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "pw-p1", "name": "Pawon Art Village", "category": "attraction", "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?q=80&w=600", "rating": 4.3, "price": "Free entry", "distance": "0.3 km", "description": "Local artisan village with batik and wood carving workshops.", "address": "Ds. Wanurejo, Borobudur, Magelang"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Do I need a separate ticket?", "a": "No. It's covered by the Borobudur ticket package."},
+				{"q": "Can I walk here from Borobudur?", "a": "Yes, it's a pleasant 2 km walk through rice paddies."},
+			}),
+		},
+
+		// ==========================================
+		// 17. PLAOSAN TEMPLE (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "plaosan",
+			Name:        "Plaosan Temple",
+			Tagline:     "The Twin Temple of Grace and Elegance",
+			Category:    "heritage",
+			Location:    "Klaten, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1578469550956-0e16b69c6a3d?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.7,
+			ReviewCount: 1100,
+			Description: "Candi Plaosan is a stunning 9th-century Buddhist temple complex located just 1 km east of Prambanan. Built during the reigns of Rakai Pikatan and Queen Pramodhawardhani of the Mataram Kingdom, the complex features twin main temples (Plaosan Lor and Plaosan Kidul), adorned with elegant reliefs and crowned with distinctive stupas.",
+			Story:       "Plaosan was built as a symbol of reconciliation between the Hindu Sanjaya and Buddhist Sailendra dynasties, whose union was sealed through the marriage of King Pikatan (Hindu) to Princess Pramodhawardhani (Buddhist). The temple's unique design blends both traditions, with Hindu-style door guardians protecting a Buddhist sanctuary.",
+			TicketPrice: "IDR 30,000 (Adult) / IDR 15,000 (Child)",
+			OpeningHours: "07:00 AM – 05:00 PM Daily",
+			Facilities:  ja([]string{"Twin Temple Complex", "Buddhist Stupa Garden", "Relief Panel Walkways", "Parking Area", "Food Stalls", "Restrooms"}),
+			TravelTips:  ja([]string{"Visit right after sunrise for golden light on the twin temples.", "Much quieter than Prambanan — you may have the place to yourself.", "The south temple (Plaosan Kidul) has the best-preserved reliefs.", "Combine with Prambanan and Sewu Temple in one trip."}),
+			BestTime:    "May to October (Dry Season); early morning for best light and fewer crowds",
+			Weather:     jm(map[string]string{"temp": "27°C", "condition": "Partly Cloudy", "status": "Good conditions for exploring the temple complex."}),
+			Latitude:    -7.7467,
+			Longitude:   110.5047,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Yuki Tanaka", "userAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150", "rating": 5, "date": "2026-06-18", "comment": "Less crowded than Prambanan but equally beautiful. The twin temples are stunning at sunrise."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "pl-p1", "name": "Plaosan Heritage Guide", "category": "guide", "image": "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?q=80&w=600", "rating": 4.7, "price": "IDR 100,000 / tour", "distance": "On-Site", "description": "Local guides offering deep insight into Plaosan's unique Hindu-Buddhist fusion.", "address": "Plaosan, Prambanan, Klaten"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Is Plaosan included in the Prambanan ticket?", "a": "No, it requires a separate ticket but is very affordable."},
+				{"q": "How much time do I need?", "a": "About 1 hour to fully explore both temples and the grounds."},
+			}),
+		},
+
+		// ==========================================
+		// 18. SEWU TEMPLE (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "sewu",
+			Name:        "Sewu Temple",
+			Tagline:     "The Grand Buddhist Monastery of Prambanan",
+			Category:    "heritage",
+			Location:    "Klaten, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1578469550956-0e16b69c6a3d?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1621869606578-1561708a7e09?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.7,
+			ReviewCount: 1800,
+			Description: "Candi Sewu is an 8th-century Mahayana Buddhist temple complex just 800 meters north of Prambanan. The second-largest Buddhist temple compound in Indonesia after Borobudur, Sewu features a central temple surrounded by 240 smaller perwara (guardian) temples arranged in a mandala pattern, showcasing the pinnacle of Sailendra architecture.",
+			Story:       "Sewu, meaning 'a thousand' in Javanese, refers to the countless guardian statues that once filled its 240 subsidiary temples. Built before Borobudur, Sewu was the largest Buddhist monastery complex in ancient Java. An inscription from 792 AD mentions King Indra of the Sailendra dynasty consecrating the temple to the bodhisattva Manjusri.",
+			TicketPrice: "IDR 30,000 (Adult) / IDR 15,000 (Child) — often covered by Prambanan combo ticket",
+			OpeningHours: "07:00 AM – 05:00 PM Daily",
+			Facilities:  ja([]string{"Main Temple (Central Shrine)", "240 Perwara Temples", "Buddha Statue Niches", "Stone Relief Corridors", "Parking Area", "Food Stalls", "Restrooms"}),
+			TravelTips:  ja([]string{"Buy the Prambanan combo ticket that includes Sewu — great value.", "Early morning (07:00 AM) for the best photos with no crowds.", "Walk from Prambanan — it's only 800 meters through a pleasant path.", "Climb the central temple stairs for a view of the entire mandala layout."}),
+			BestTime:    "May to October (Dry Season); morning for best lighting on the stone carvings",
+			Weather:     jm(map[string]string{"temp": "28°C", "condition": "Sunny", "status": "Perfect for exploring the vast temple complex."}),
+			Latitude:    -7.7439,
+			Longitude:   110.4967,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Sophia Laurent", "userAvatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150", "rating": 5, "date": "2026-06-15", "comment": "The mandala layout is breathtaking. I can't believe this gem is right next to Prambanan yet so quiet."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "sw-p1", "name": "Prambanan Heritage Hotel", "category": "hotel", "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600", "rating": 4.4, "price": "IDR 700,000 / night", "distance": "2 km", "description": "Heritage hotel with direct views of Prambanan and Sewu temples.", "address": "Jl. Raya Solo-Yogya, Prambanan, Klaten"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Is Sewu included in the Prambanan ticket?", "a": "Yes, if you buy the Prambanan + Sewu combo ticket."},
+				{"q": "How long to explore Sewu?", "a": "Plan for 1–1.5 hours to fully appreciate the complex."},
+			}),
+		},
+
+		// ==========================================
+		// 19. ROWO JOMBOR (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "rowojombor",
+			Name:        "Rowo Jombor",
+			Tagline:     "Floating Stalls and Lakeside Serenity",
+			Category:    "nature",
+			Location:    "Klaten, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.4,
+			ReviewCount: 1900,
+			Description: "Rowo Jombor is a scenic artificial lake in Klaten, famous for its unique floating warungs (food stalls) where visitors can enjoy fresh seafood and local specialties while seated on bamboo rafts floating on the water. Surrounded by lush green hills and rice paddies, it's a peaceful escape just 30 minutes from Yogyakarta.",
+			Story:       "Rowo Jombor was originally a low-lying area that naturally flooded over time. Local fishermen began selling snacks from their boats, which evolved into the floating market concept. The floating warungs became a popular attraction, with visitors arriving by paddle boat to eat, shop, and enjoy the relaxed atmosphere on the water.",
+			TicketPrice: "IDR 10,000 / person (parking additional)",
+			OpeningHours: "07:00 AM – 06:00 PM Daily",
+			Facilities:  ja([]string{"Floating Warungs (Food Stalls)", "Paddle Boat Rentals", "Lakeside Walking Path", "Children's Play Area", "Parking Area", "Restrooms", "Mosque"}),
+			TravelTips:  ja([]string{"Come hungry — the floating warungs serve excellent fresh fish, crabs, and fried tempeh.", "Rent a paddle boat to reach the floating stalls (IDR 30,000/hour).", "Late afternoon is the best time for cooler weather and sunset views.", "Weekdays are much quieter than weekends."}),
+			BestTime:    "Late afternoon (03:00–05:00 PM) for sunset; weekdays for fewer crowds",
+			Weather:     jm(map[string]string{"temp": "29°C", "condition": "Partly Cloudy", "status": "Good afternoon for boating and dining on the water."}),
+			Latitude:    -7.7170,
+			Longitude:   110.5830,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Budi Santoso", "userAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150", "rating": 4.5, "date": "2026-07-02", "comment": "Eating fresh grilled fish on a bamboo raft floating on the lake — such a unique experience!"},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "rj-p1", "name": "Rowo Jombor Floating Cafe", "category": "restaurant", "image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=600", "rating": 4.3, "price": "IDR 30,000 – 70,000 / person", "distance": "On-Site", "description": "Popular floating warung serving fresh lake fish and traditional Javanese dishes.", "address": "Rowo Jombor, Klaten"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Can I swim in the lake?", "a": "Swimming is not recommended as it's used for fishing and boating."},
+				{"q": "Are there vegetarian options at the floating warungs?", "a": "Yes, there are vegetarian options including fried tempeh and tahu."},
+			}),
+		},
+
+		// ==========================================
+		// 20. WADUK GAJAH MUNGKUR (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "gajahmungkur",
+			Name:        "Waduk Gajah Mungkur",
+			Tagline:     "The Great Reservoir of Wonogiri",
+			Category:    "nature",
+			Location:    "Wonogiri, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.5,
+			ReviewCount: 2400,
+			Description: "Waduk Gajah Mungkur (Gajah Mungkur Reservoir) is a massive reservoir spanning over 8,800 hectares in Wonogiri. Built in the 1970s, it serves as a vital irrigation source and hydropower facility while offering stunning water landscapes with scattered islands. Visitors enjoy boat tours, water sports, camping, and bird watching against a backdrop of rolling hills.",
+			Story:       "The reservoir was constructed between 1974 and 1981 as part of the Bengawan Solo river management project. The construction submerged several villages, and over 1,000 families were relocated. The name 'Gajah Mungkur' comes from a nearby hill that resembles a crouching elephant. Today, the reservoir has become a vital economic and tourism hub for Wonogiri.",
+			TicketPrice: "IDR 10,000 / person / IDR 50,000 – 200,000 for boat tours",
+			OpeningHours: "06:00 AM – 06:00 PM Daily",
+			Facilities:  ja([]string{"Reservoir Viewpoint", "Boat Tours (Motor & Paddle)", "Water Sports", "Camping Grounds", "Bird Watching Tower", "Lakeside Restaurants", "Parking Area", "Restrooms"}),
+			TravelTips:  ja([]string{"Take the sunset boat tour for breathtaking views over the reservoir islands.", "Visit during the dry season when the water level is stable.", "Bring binoculars for bird watching — over 60 species have been recorded.", "The floating restaurants serve excellent fresh-water fish."}),
+			BestTime:    "May to September (Dry Season) for boating; early morning for bird watching",
+			Weather:     jm(map[string]string{"temp": "28°C", "condition": "Clear", "status": "Perfect conditions for a boat tour on the reservoir."}),
+			Latitude:    -7.8970,
+			Longitude:   110.9270,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Yuki Tanaka", "userAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150", "rating": 4.5, "date": "2026-06-22", "comment": "The vast reservoir with green islands scattered across the water is a beautiful sight. The sunset cruise was fantastic."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "gm-p1", "name": "Gajah Mungkur Boating Club", "category": "rental", "image": "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=600", "rating": 4.4, "price": "IDR 100,000 – 200,000 / tour", "distance": "On-Site", "description": "Professional boat tours with experienced local captains.", "address": "Jalan Waduk Gajah Mungkur, Wonogiri"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Can I camp at the reservoir?", "a": "Yes, designated camping areas are available by the lakeshore."},
+				{"q": "Is it safe to swim?", "a": "Swimming is not recommended — it's a working reservoir."},
+			}),
+		},
+
+		// ==========================================
+		// 21. KERATON SURAKARTA (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "keratonsolo",
+			Name:        "Keraton Surakarta",
+			Tagline:     "The Royal Palace of Solo — Tradition Meets Modernity",
+			Category:    "heritage",
+			Location:    "Surakarta (Solo), Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1581456495146-65a71b2c8e52?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1566559631133-969041fc5583?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.6,
+			ReviewCount: 3500,
+			Description: "Keraton Surakarta Hadiningrat is the official palace of the Susuhunan (King) of Surakarta, built in 1744 by Pakubuwono II. The palace complex showcases exquisite Javanese royal architecture, sacred heirlooms, gamelan instruments, and remains the cultural heart of Solo. The palace museum holds one of the finest collections of Javanese art in existence.",
+			Story:       "The Keraton was built after the Mataram Kingdom split in 1755 (Giyanti Treaty), dividing the kingdom into Yogyakarta and Surakarta. The palace grounds include the main pendopo (audience hall), the royal meditation chamber, and the Sasana Sewaka hall. The palace still actively hosts traditional ceremonies and cultural performances.",
+			TicketPrice: "IDR 25,000 (Adult) / IDR 15,000 (Child) / Camera fee IDR 5,000",
+			OpeningHours: "08:30 AM – 03:30 PM Tuesday–Sunday (Closed Monday)",
+			Facilities:  ja([]string{"Royal Museum", "Gamelan Performance Hall", "Royal Carriage Collection", "Batik Museum", "Javanese Architecture Tour", "Gift Shop", "Clean Restrooms", "Parking Area"}),
+			TravelTips:  ja([]string{"Visit on Saturday morning for the best cultural performances at the palace.", "Hire a guide — the stories behind the artifacts are fascinating.", "Don't miss the museum's keris (ceremonial dagger) collection.", "Combine with a walk through the nearby Klewer Market for batik shopping."}),
+			BestTime:    "Tuesday to Sunday mornings for the full palace experience",
+			Weather:     jm(map[string]string{"temp": "30°C", "condition": "Sunny", "status": "Warm day — perfect for exploring the palace and Solo's heritage streets."}),
+			Latitude:    -7.5733,
+			Longitude:   110.8267,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Sophia Laurent", "userAvatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150", "rating": 5, "date": "2026-07-01", "comment": "The palace is a living museum. The gamelan performance gave me chills — such a rich cultural experience."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "ks-p1", "name": "The Royal Surakarta Heritage Hotel", "category": "hotel", "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600", "rating": 4.7, "price": "IDR 900,000 / night", "distance": "1.5 km", "description": "Luxury heritage hotel in the heart of Solo, walking distance from the Keraton.", "address": "Jl. Slamet Riyadi, Surakarta"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Is it still an active palace?", "a": "Yes, the Susuhunan and his family reside in parts of the complex."},
+				{"q": "What is the dress code?", "a": "Modest clothing is required. Sarongs are available at the entrance."},
+			}),
+		},
+
+		// ==========================================
+		// 22. BENTENG PENDEM (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "bentengpendem",
+			Name:        "Benteng Pendem",
+			Tagline:     "The Hidden Dutch Fortress on Turtle Bay",
+			Category:    "heritage",
+			Location:    "Cilacap, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1584892077118-6399f5a200e5?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1566559631133-969041fc5583?do=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.4,
+			ReviewCount: 900,
+			Description: "Benteng Pendem (The Sunken Fortress) is a Dutch colonial coastal fortress built between 1861 and 1879 on Teluk Penyu (Turtle Bay) in Cilacap. Designed to defend the strategic port from naval attacks, the fort is built low into the ground — hence its name — with thick coral-stone walls, underground tunnels, cannons, and a moat.",
+			Story:       "Built by the Dutch East Indies government during the Aceh War period, Benteng Pendem was part of a coastal defense network. The fort appears 'sunken' because it was built at sea level with only the roof visible from the ocean, making it a difficult target for enemy ships. After Indonesian independence, it was used as a military barracks and later opened as a heritage site.",
+			TicketPrice: "IDR 15,000 (Adult) / IDR 10,000 (Child)",
+			OpeningHours: "08:00 AM – 05:00 PM Daily",
+			Facilities:  ja([]string{"Underground Tunnels", "Historical Cannon Displays", "Dutch Barracks", "Coastal Viewing Platform", "Small Museum", "Parking Area", "Food Stalls", "Restrooms"}),
+			TravelTips:  ja([]string{"Wear a flashlight or use your phone — the underground tunnels are dark.", "Hire a guide at the entrance for the best historical context.", "Combine with a visit to Teluk Penyu beach right next door.", "The fort looks best in golden hour light (late afternoon)."}),
+			BestTime:    "May to October (Dry Season); late afternoon for good light",
+			Weather:     jm(map[string]string{"temp": "30°C", "condition": "Sunny with Sea Breeze", "status": "Good conditions for exploring the fort and nearby beach."}),
+			Latitude:    -7.7410,
+			Longitude:   109.0140,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Budi Santoso", "userAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150", "rating": 4.5, "date": "2026-07-15", "comment": "Exploring the underground tunnels and seeing the old Dutch cannons was fascinating. Great history lesson."},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "bp-p1", "name": "Cilacap Seaside Inn", "category": "hotel", "image": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=600", "rating": 4.2, "price": "IDR 350,000 / night", "distance": "2 km", "description": "Budget-friendly inn steps from Teluk Penyu beach.", "address": "Jl. Benteng Pendem, Cilacap"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "How long does the tour take?", "a": "About 1 hour for a full exploration of the fort and tunnels."},
+				{"q": "Are the tunnels safe?", "a": "Yes, they are well-maintained with some lighting. Watch your step."},
+			}),
+		},
+
+		// ==========================================
+		// 23. TELUK PENYU (Near Yogyakarta)
+		// ==========================================
+		{
+			ExternalID:  "telukpenyu",
+			Name:        "Teluk Penyu Beach",
+			Tagline:     "Turtle Bay — Where History Meets the Ocean",
+			Category:    "nature",
+			Location:    "Cilacap, Central Java",
+			SubRegion:   "Near Yogyakarta",
+			Images:      ja([]string{"https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80", "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80"}),
+			Rating:      4.4,
+			ReviewCount: 1700,
+			Description: "Teluk Penyu (Turtle Bay) is Cilacap's main beach, known for its golden sand, calm waters, and iconic views of Nusakambangan Island across the bay. The beach promenade is lined with food stalls, and the adjacent Benteng Pendem fortress adds a unique historical dimension to the coastal experience.",
+			Story:       "Named after the sea turtles that once nested abundantly on its shores, Teluk Penyu has been a strategic anchorage since the Dutch colonial era. The bay is sheltered by Nusakambangan Island, creating calm waters perfect for recreation. The beach underwent major revitalization in 2015, transforming it into a modern public space while preserving its natural charm.",
+			TicketPrice: "IDR 10,000 / person",
+			OpeningHours: "06:00 AM – 06:00 PM Daily",
+			Facilities:  ja([]string{"Golden Sand Beach", "Beach Promenade", "Children's Playground", "Food Stalls & Warungs", "Benteng Pendem Adjacent", "Parking Area", "Restrooms", "Musholla"}),
+			TravelTips:  ja([]string{"Visit late afternoon for sunset over Nusakambangan Island.", "Try the fresh seafood at the beachside warungs.", "Combine with Benteng Pendem for a full day of history and beach.", "The water is calm and safe for swimming."}),
+			BestTime:    "May to September (Dry Season); late afternoon for sunset",
+			Weather:     jm(map[string]string{"temp": "30°C", "condition": "Sunny with Sea Breeze", "status": "Beautiful beach weather — calm waters and sunny skies."}),
+			Latitude:    -7.7430,
+			Longitude:   109.0120,
+			Reviews: ja([]map[string]interface{}{
+				{"id": "r1", "userName": "Yuki Tanaka", "userAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150", "rating": 4.0, "date": "2026-06-25", "comment": "Clean beach with nice views of Nusakambangan. The seafood stalls are excellent!"},
+			}),
+			Partners: ja([]map[string]interface{}{
+				{"id": "tp-p1", "name": "Teluk Penyu Seafood Plaza", "category": "restaurant", "image": "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=600", "rating": 4.3, "price": "IDR 30,000 – 80,000 / person", "distance": "On-Site", "description": "Beachfront seafood market with fresh catch grilled to order.", "address": "Teluk Penyu Beach, Cilacap"},
+			}),
+			FAQs: ja([]map[string]interface{}{
+				{"q": "Is it safe to swim?", "a": "Yes, the bay is calm and protected by Nusakambangan Island."},
+				{"q": "Are turtles still visible?", "a": "Sightings are rare now, but the beach is named after them."},
+			}),
+		},
 	}
 }

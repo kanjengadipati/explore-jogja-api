@@ -176,7 +176,6 @@ func (h *Handler) GetByCategory(c *gin.Context) {
 	httpx.Success(c, 200, "Destinations fetched", responses, nil)
 }
 
-
 func (h *Handler) Search(c *gin.Context) {
 	locale := resolveLocale(c)
 	trendingIDs := h.loadTrendingIDs(locale)
@@ -196,6 +195,27 @@ func (h *Handler) Search(c *gin.Context) {
 		responses[i] = localized.ToResponse(trendingIDs)
 	}
 	httpx.Success(c, 200, "Search results", responses, nil)
+}
+
+func (h *Handler) Create(c *gin.Context) {
+	var req CreateDestinationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+
+	dest, err := h.Service.Create(req)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+
+	// Invalidate list & category caches so the new destination appears.
+	ctx := c.Request.Context()
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsAllPrefix)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsCategoryPrefix)
+
+	httpx.Success(c, 201, "Destination created", dest, nil)
 }
 
 func (h *Handler) Update(c *gin.Context) {

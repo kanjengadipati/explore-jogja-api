@@ -71,6 +71,38 @@ type JourneyStep struct {
 	Desc  string `json:"desc"`
 }
 
+type AIGenerateDestinationRequest struct {
+	DestinationName string `json:"destinationName" binding:"required"`
+	Category        string `json:"category"`
+	Region          string `json:"region"`
+}
+
+type AIGenerateDestinationResponse struct {
+	Name            string `json:"name"`
+	NameEn          string `json:"name_en"`
+	Category        string `json:"category"`
+	SubRegion       string `json:"sub_region"`
+	Tagline         string `json:"tagline"`
+	TaglineEn       string `json:"tagline_en"`
+	Location        string `json:"location"`
+	Description     string `json:"description"`
+	DescriptionEn   string `json:"description_en"`
+	Story           string `json:"story"`
+	StoryEn         string `json:"story_en"`
+	TicketPrice     string `json:"ticket_price"`
+	OpeningHours    string `json:"opening_hours"`
+	BestTime        string `json:"best_time"`
+	BestTimeEn      string `json:"best_time_en"`
+	Latitude        string `json:"latitude"`
+	Longitude       string `json:"longitude"`
+	SeoTitle        string `json:"seo_title"`
+	SeoTitleEn       string `json:"seo_title_en"`
+	SeoDescription   string `json:"seo_description"`
+	SeoDescriptionEn string `json:"seo_description_en"`
+	SeoKeywords      string `json:"seo_keywords"`
+	SeoKeywordsEn    string `json:"seo_keywords_en"`
+}
+
 type AIImageSearchRequest struct {
 	Image    string `json:"image" binding:"required"`
 	MimeType string `json:"mimeType" binding:"required"`
@@ -778,6 +810,122 @@ func (h *Handler) offlineJourneyResponse(destinationName string) *AIJourneyRespo
 				Desc:  "Wind down your adventure by exploring local handicraft stalls and capturing the beautiful golden hour glow.",
 			},
 		},
+	}
+}
+
+func (h *Handler) GenerateDestination(c *gin.Context) {
+	var req AIGenerateDestinationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.Success(c, 200, "AI disabled, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
+		return
+	}
+
+	systemInstruction := `You are an expert tourism content writer and researcher for Yogyakarta, Indonesia.
+Your task is to research the given destination on the internet and generate comprehensive, accurate, and editorial-quality content. You must determine the correct category and region yourself through web research — do not rely on any user-provided values.
+
+RESEARCH REQUIREMENTS:
+- Use web search to find accurate, up-to-date information about the destination
+- Verify ticket prices, opening hours, location, and coordinates
+- Determine the correct category from: Temple, Beach, Nature, Heritage, Cultural, Culinary, Shopping
+- Determine the correct administrative region. If the destination is inside DIY use: Sleman, Bantul, Yogyakarta, Gunungkidul, or Kulon Progo. If it's outside DIY (but still relevant to Yogya tourism, e.g. Borobudur in Magelang), use "Near Yogyakarta"
+
+CONTENT QUALITY:
+- Write compelling, editorial-quality promotional copy
+- The "story" field should read like a feature article — evocative, narrative-driven, and persuasive
+- The "tagline" must be a short, memorable phrase (5-8 words)
+- The "description" should be informative yet inviting (2-3 paragraphs)
+- Generate SEO-optimized titles, descriptions, and keywords for both Indonesian and English audiences
+
+Return ONLY valid JSON matching this schema:
+{
+  "name": "Corrected official destination name in Indonesian (use the name the user gave, only fix spelling if needed)",
+  "name_en": "English version of the destination name",
+  "category": "Factually correct category from: Temple, Beach, Nature, Heritage, Cultural, Culinary, Shopping",
+  "sub_region": "One of: Sleman, Bantul, Yogyakarta, Gunungkidul, Kulon Progo, or 'Near Yogyakarta' for non-DIY areas",
+  "tagline": "Short memorable promotional phrase in Indonesian (5-8 words)",
+  "tagline_en": "English version of the tagline",
+  "location": "Full street address or area description",
+  "description": "Informative description in Indonesian (2-3 paragraphs, editorial quality)",
+  "description_en": "English version of description",
+  "story": "Editorial/feature article in Indonesian about the destination — evocative, narrative-driven, persuasive",
+  "story_en": "English version of the editorial story",
+  "ticket_price": "Ticket price information with currency",
+  "opening_hours": "Opening hours",
+  "best_time": "Best time to visit in Indonesian",
+  "best_time_en": "Best time to visit in English",
+  "latitude": "Decimal latitude coordinate",
+  "longitude": "Decimal longitude coordinate",
+  "seo_title": "SEO title in Indonesian (max 60 chars)",
+  "seo_title_en": "SEO title in English (max 60 chars)",
+  "seo_description": "Meta description in Indonesian (max 160 chars)",
+  "seo_description_en": "Meta description in English (max 160 chars)",
+  "seo_keywords": "Comma-separated keywords in Indonesian",
+  "seo_keywords_en": "Comma-separated keywords in English"
+}`
+
+	userPrompt := fmt.Sprintf(
+		"Research and generate comprehensive destination content for '%s' in Yogyakarta, Indonesia. Determine the correct category and region through web research. Use web search to find accurate practical information and write editorial-quality promotional content.",
+		req.DestinationName,
+	)
+
+	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		SystemPrompt: systemInstruction,
+		UserPrompt:   userPrompt,
+		Temperature:  0.7,
+		MaxTokens:    2000,
+	})
+	if err != nil {
+		httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
+		return
+	}
+
+	var parsed AIGenerateDestinationResponse
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+		httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
+		return
+	}
+
+	httpx.Success(c, 200, "Destination content generated", parsed, nil)
+}
+
+func (h *Handler) offlineGenerateDestinationResponse(name, category, region string) *AIGenerateDestinationResponse {
+	cat := category
+	if cat == "" {
+		cat = "Cultural"
+	}
+	reg := region
+	if reg == "" {
+		reg = "Yogyakarta"
+	}
+	return &AIGenerateDestinationResponse{
+		Name:            name,
+		NameEn:          name,
+		Category:        cat,
+		SubRegion:       reg,
+		Tagline:         fmt.Sprintf("Discover the Beauty of %s", name),
+		TaglineEn:       fmt.Sprintf("Discover the Beauty of %s", name),
+		Location:        fmt.Sprintf("%s, Daerah Istimewa Yogyakarta", name),
+		Description:     fmt.Sprintf("%s adalah destinasi wisata %s yang menakjubkan di %s, Yogyakarta. Tempat ini menawarkan pengalaman yang tak terlupakan bagi setiap pengunjung dengan keindahan alam dan nilai budayanya yang kaya.", name, cat, reg),
+		DescriptionEn:   fmt.Sprintf("%s is a breathtaking %s destination in %s, Yogyakarta. This place offers an unforgettable experience for every visitor with its natural beauty and rich cultural value.", name, cat, reg),
+		Story:           fmt.Sprintf("Terletak di %s yang asri, %s menyimpan pesona yang memikat hati setiap pengunjung. Saat pertama kali melangkah, Anda akan disambut oleh suasana yang tenang dan pemandangan yang memanjakan mata. Tempat ini bukan sekadar destinasi wisata, melainkan sebuah perjalanan yang membawa Anda lebih dekat dengan kekayaan budaya dan alam Yogyakarta.", reg, name),
+		StoryEn:         fmt.Sprintf("Nestled in the scenic %s, %s captivates the heart of every visitor. As you step in, you are greeted by a tranquil atmosphere and breathtaking views. This is not just a tourism destination, but a journey that brings you closer to Yogyakarta's rich culture and nature.", reg, name),
+		TicketPrice:     "Rp 50,000 – Rp 100,000",
+		OpeningHours:    "08:00 – 17:00",
+		BestTime:        "Pagi hari atau sore menjelang matahari terbenam",
+		BestTimeEn:      "Early morning or late afternoon near sunset",
+		Latitude:        "-7.7956",
+		Longitude:       "110.3695",
+		SeoTitle:        fmt.Sprintf("%s - Wisata %s di %s | Jogjagem", name, cat, reg),
+		SeoTitleEn:      fmt.Sprintf("%s - %s Tourism in %s | Jogjagem", name, cat, reg),
+		SeoDescription:  fmt.Sprintf("Kunjungi %s, destinasi %s terbaik di %s. Nikmati pengalaman wisata yang tak terlupakan dengan harga tiket terjangkau.", name, cat, reg),
+		SeoDescriptionEn: fmt.Sprintf("Visit %s, the best %s destination in %s. Enjoy an unforgettable tourism experience with affordable ticket prices.", name, cat, reg),
+		SeoKeywords:     fmt.Sprintf("%s, %s, %s, Wisata Jogja, Destinasi Wisata", name, cat, reg),
+		SeoKeywordsEn:   fmt.Sprintf("%s, %s, %s, Jogja Tourism, Tourist Destination", name, cat, reg),
 	}
 }
 
