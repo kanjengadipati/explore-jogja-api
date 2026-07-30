@@ -78,29 +78,31 @@ type AIGenerateDestinationRequest struct {
 }
 
 type AIGenerateDestinationResponse struct {
-	Name            string `json:"name"`
-	NameEn          string `json:"name_en"`
-	Category        string `json:"category"`
-	SubRegion       string `json:"sub_region"`
-	Tagline         string `json:"tagline"`
-	TaglineEn       string `json:"tagline_en"`
-	Location        string `json:"location"`
-	Description     string `json:"description"`
-	DescriptionEn   string `json:"description_en"`
-	Story           string `json:"story"`
-	StoryEn         string `json:"story_en"`
-	TicketPrice     string `json:"ticket_price"`
-	OpeningHours    string `json:"opening_hours"`
-	BestTime        string `json:"best_time"`
-	BestTimeEn      string `json:"best_time_en"`
-	Latitude        string `json:"latitude"`
-	Longitude       string `json:"longitude"`
-	SeoTitle        string `json:"seo_title"`
-	SeoTitleEn       string `json:"seo_title_en"`
-	SeoDescription   string `json:"seo_description"`
+	Name            string  `json:"name"`
+	NameEn          string  `json:"name_en"`
+	Category        string  `json:"category"`
+	SubRegion       string  `json:"sub_region"`
+	Tagline         string  `json:"tagline"`
+	TaglineEn       string  `json:"tagline_en"`
+	Location        string  `json:"location"`
+	Description     string  `json:"description"`
+	DescriptionEn   string  `json:"description_en"`
+	Story           string  `json:"story"`
+	StoryEn         string  `json:"story_en"`
+	TicketPrice     string  `json:"ticket_price"`
+	OpeningHours    string  `json:"opening_hours"`
+	BestTime        string  `json:"best_time"`
+	BestTimeEn      string  `json:"best_time_en"`
+	Latitude        string  `json:"latitude"`
+	Longitude       string  `json:"longitude"`
+	Rating          float64 `json:"rating"`
+	ReviewCount     int     `json:"review_count"`
+	SeoTitle        string  `json:"seo_title"`
+	SeoTitleEn      string  `json:"seo_title_en"`
+	SeoDescription  string  `json:"seo_description"`
 	SeoDescriptionEn string `json:"seo_description_en"`
-	SeoKeywords      string `json:"seo_keywords"`
-	SeoKeywordsEn    string `json:"seo_keywords_en"`
+	SeoKeywords     string  `json:"seo_keywords"`
+	SeoKeywordsEn   string  `json:"seo_keywords_en"`
 }
 
 type AIImageSearchRequest struct {
@@ -860,6 +862,8 @@ Return ONLY valid JSON matching this schema:
   "best_time_en": "Best time to visit in English",
   "latitude": "Decimal latitude coordinate",
   "longitude": "Decimal longitude coordinate",
+  "rating": "Average rating from Google Reviews (1.0-5.0, based on real data)",
+  "review_count": "Total number of Google Reviews (based on real data)",
   "seo_title": "SEO title in Indonesian (max 60 chars)",
   "seo_title_en": "SEO title in English (max 60 chars)",
   "seo_description": "Meta description in Indonesian (max 160 chars)",
@@ -924,6 +928,8 @@ func (h *Handler) offlineGenerateDestinationResponse(name, category, region stri
 		SeoTitleEn:      fmt.Sprintf("%s - %s Tourism in %s | Jogjagem", name, cat, reg),
 		SeoDescription:  fmt.Sprintf("Kunjungi %s, destinasi %s terbaik di %s. Nikmati pengalaman wisata yang tak terlupakan dengan harga tiket terjangkau.", name, cat, reg),
 		SeoDescriptionEn: fmt.Sprintf("Visit %s, the best %s destination in %s. Enjoy an unforgettable tourism experience with affordable ticket prices.", name, cat, reg),
+		Rating:          4.5,
+		ReviewCount:     1000,
 		SeoKeywords:     fmt.Sprintf("%s, %s, %s, Wisata Jogja, Destinasi Wisata", name, cat, reg),
 		SeoKeywordsEn:   fmt.Sprintf("%s, %s, %s, Jogja Tourism, Tourist Destination", name, cat, reg),
 	}
