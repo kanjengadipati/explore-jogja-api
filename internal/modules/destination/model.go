@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -153,8 +154,10 @@ type UserDestination struct {
 // Badges contains all badges that apply to this destination.
 type DestinationResponse struct {
 	Destination
-	Badge  BadgeType   `json:"badge"`
-	Badges []BadgeType `json:"badges"`
+	Badge     BadgeType   `json:"badge"`
+	Badges    []BadgeType `json:"badges"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 // ToResponse converts a Destination to DestinationResponse by computing its badges.
@@ -170,5 +173,7 @@ func (d *Destination) ToResponse(trendingIDs map[string]bool) DestinationRespons
 		Destination: *d,
 		Badge:       primary,
 		Badges:      badges,
+		CreatedAt:   d.CreatedAt,
+		UpdatedAt:   d.UpdatedAt,
 	}
 }

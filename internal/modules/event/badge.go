@@ -2,6 +2,8 @@ package event
 
 import (
 	"context"
+	"time"
+
 	"pleco-api/internal/cache"
 )
 
@@ -27,6 +29,8 @@ type EventResponse struct {
 	VideoURL      string      `json:"video_url"`
 	Badge         string      `json:"badge"`
 	Badges        []string    `json:"badges"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
 func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
@@ -83,6 +87,8 @@ func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
 		VideoURL:      e.VideoURL,
 		Badge:         primaryBadge,
 		Badges:        badges,
+		CreatedAt:     e.CreatedAt,
+		UpdatedAt:     e.UpdatedAt,
 	}
 }
 
