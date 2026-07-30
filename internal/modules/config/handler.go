@@ -52,6 +52,7 @@ var subRegions = []SubRegion{
 	{ID: "bantul", Name: "Bantul", Description: "Dramatic southern beaches and pine forests"},
 	{ID: "kulonprogo", Name: "Kulon Progo", Description: "Breathtaking hills, waterfalls, and tea plantations"},
 	{ID: "gunungkidul", Name: "Gunungkidul", Description: "Rugged limestone cliffs, caves, and pristine white-sand beaches"},
+	{ID: "nearyogya", Name: "Near Yogyakarta", Description: "Popular destinations in Central Java outside DIY"},
 }
 
 var quotes = []Quote{
