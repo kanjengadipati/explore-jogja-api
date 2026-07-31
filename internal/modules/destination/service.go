@@ -16,6 +16,29 @@ func NewService(repo Repository) *Service {
 	return &Service{Repo: repo}
 }
 
+// flexibleNumber accepts a JSON number or a numeric string and normalizes it
+// to float64. An empty string or null leaves set=false so callers can treat it
+// as "no change" instead of overwriting the stored value.
+type flexibleNumber struct {
+	value float64
+	set   bool
+}
+
+func (f *flexibleNumber) UnmarshalJSON(b []byte) error {
+	raw := strings.TrimSpace(strings.Trim(string(b), `"`))
+	if raw == "" || raw == "null" {
+		f.set = false
+		return nil
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return err
+	}
+	f.value = v
+	f.set = true
+	return nil
+}
+
 func (s *Service) GetAll(status string) ([]Destination, error) {
 	return s.Repo.FindAll(status)
 }
@@ -46,27 +69,30 @@ func (s *Service) Delete(externalID string) error {
 
 // CreateDestinationRequest is the payload accepted by POST /destinations.
 type CreateDestinationRequest struct {
-	Name           string  `json:"name"`
-	Tagline        string  `json:"tagline"`
-	Category       string  `json:"category"`
-	Location       string  `json:"location"`
-	SubRegion      string  `json:"sub_region"`
-	Description    string  `json:"description"`
-	Story          string  `json:"story"`
-	TicketPrice    string  `json:"ticket_price"`
-	OpeningHours   string  `json:"opening_hours"`
-	BestTime       string  `json:"best_time"`
-	Latitude       string  `json:"latitude"`
-	Longitude      string  `json:"longitude"`
-	Images         JSONArr `json:"images"`
-	Facilities     JSONArr `json:"facilities"`
-	TravelTips     JSONArr `json:"travel_tips"`
-	VideoUrl       string  `json:"video_url"`
-	GoogleMapsURL  string  `json:"google_maps_url"`
-	SeoTitle       string  `json:"seo_title"`
-	SeoKeywords    string  `json:"seo_keywords"`
-	SeoDescription string  `json:"seo_description"`
-	Status         string  `json:"status"`
+	Name              string         `json:"name"`
+	Tagline           string         `json:"tagline"`
+	Category          string         `json:"category"`
+	Location          string         `json:"location"`
+	SubRegion         string         `json:"sub_region"`
+	Description       string         `json:"description"`
+	Story             string         `json:"story"`
+	TicketPrice       string         `json:"ticket_price"`
+	OpeningHours      string         `json:"opening_hours"`
+	BestTime          string         `json:"best_time"`
+	Latitude          string         `json:"latitude"`
+	Longitude         string         `json:"longitude"`
+	Images            JSONArr        `json:"images"`
+	Facilities        JSONArr        `json:"facilities"`
+	TravelTips        JSONArr        `json:"travel_tips"`
+	VideoUrl          string         `json:"video_url"`
+	GoogleMapsURL     string         `json:"google_maps_url"`
+	Rating            flexibleNumber `json:"rating"`
+	ReviewCount       flexibleNumber `json:"review_count"`
+	GoogleReviewCount flexibleNumber `json:"google_review_count"`
+	SeoTitle          string         `json:"seo_title"`
+	SeoKeywords       string         `json:"seo_keywords"`
+	SeoDescription    string         `json:"seo_description"`
+	Status            string         `json:"status"`
 	// English translations
 	NameEn           string  `json:"name_en"`
 	TaglineEn        string  `json:"tagline_en"`
@@ -152,6 +178,16 @@ func (s *Service) Create(req CreateDestinationRequest) (*Destination, error) {
 	}
 	dest.Status = status
 
+	if req.Rating.set {
+		dest.Rating = req.Rating.value
+	}
+	if req.ReviewCount.set {
+		dest.ReviewCount = int(req.ReviewCount.value)
+	}
+	if req.GoogleReviewCount.set {
+		dest.GoogleReviewCount = int(req.GoogleReviewCount.value)
+	}
+
 	if err := s.Repo.Create(&dest); err != nil {
 		return nil, err
 	}
@@ -159,29 +195,31 @@ func (s *Service) Create(req CreateDestinationRequest) (*Destination, error) {
 }
 
 type UpdateDestinationRequest struct {
-	Name              *string  `json:"name"`
-	Tagline           *string  `json:"tagline"`
-	Category          *string  `json:"category"`
-	Location          *string  `json:"location"`
-	SubRegion         *string  `json:"sub_region"`
-	Description       *string  `json:"description"`
-	Story             *string  `json:"story"`
-	TicketPrice       *string  `json:"ticket_price"`
-	OpeningHours      *string  `json:"opening_hours"`
-	BestTime          *string  `json:"best_time"`
-	Latitude          *string  `json:"latitude"`
-	Longitude         *string  `json:"longitude"`
-	Images            *JSONArr `json:"images"`
-	Facilities        *JSONArr `json:"facilities"`
-	TravelTips        *JSONArr `json:"travel_tips"`
-	VideoUrl          *string  `json:"video_url"`
-	GoogleMapsURL     *string  `json:"google_maps_url"`
-	GoogleReviewCount *int     `json:"google_review_count"`
-	SeoTitle          *string  `json:"seo_title"`
-	SeoKeywords       *string  `json:"seo_keywords"`
-	SeoDescription    *string  `json:"seo_description"`
-	OgImageUrl        *string  `json:"og_image_url"`
-	Status            *string  `json:"status"`
+	Name              *string         `json:"name"`
+	Tagline           *string         `json:"tagline"`
+	Category          *string         `json:"category"`
+	Location          *string         `json:"location"`
+	SubRegion         *string         `json:"sub_region"`
+	Description       *string         `json:"description"`
+	Story             *string         `json:"story"`
+	TicketPrice       *string         `json:"ticket_price"`
+	OpeningHours      *string         `json:"opening_hours"`
+	BestTime          *string         `json:"best_time"`
+	Latitude          *string         `json:"latitude"`
+	Longitude         *string         `json:"longitude"`
+	Images            *JSONArr        `json:"images"`
+	Facilities        *JSONArr        `json:"facilities"`
+	TravelTips        *JSONArr        `json:"travel_tips"`
+	VideoUrl          *string         `json:"video_url"`
+	GoogleMapsURL     *string         `json:"google_maps_url"`
+	Rating            *flexibleNumber `json:"rating"`
+	ReviewCount       *flexibleNumber `json:"review_count"`
+	GoogleReviewCount *flexibleNumber `json:"google_review_count"`
+	SeoTitle          *string         `json:"seo_title"`
+	SeoKeywords       *string         `json:"seo_keywords"`
+	SeoDescription    *string         `json:"seo_description"`
+	OgImageUrl        *string         `json:"og_image_url"`
+	Status            *string         `json:"status"`
 	// English translations
 	NameEn           *string  `json:"name_en"`
 	TaglineEn        *string  `json:"tagline_en"`
@@ -256,8 +294,14 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 	if req.GoogleMapsURL != nil {
 		dest.GoogleMapsURL = *req.GoogleMapsURL
 	}
-	if req.GoogleReviewCount != nil {
-		dest.GoogleReviewCount = *req.GoogleReviewCount
+	if req.Rating != nil && req.Rating.set {
+		dest.Rating = req.Rating.value
+	}
+	if req.ReviewCount != nil && req.ReviewCount.set {
+		dest.ReviewCount = int(req.ReviewCount.value)
+	}
+	if req.GoogleReviewCount != nil && req.GoogleReviewCount.set {
+		dest.GoogleReviewCount = int(req.GoogleReviewCount.value)
 	}
 	if req.SeoTitle != nil {
 		dest.SeoTitle = *req.SeoTitle
