@@ -234,24 +234,34 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, langInst
 		eventMap[e.ExternalID] = e
 	}
 
-	for i, item := range parsed.Items {
-		// Always replace imageUrl from local catalog — AI often hallucinates fake URLs
+	// Validate and enrich — drop items whose ID doesn't exist in the catalog
+	validated := make([]AITrendingItem, 0, len(parsed.Items))
+	for _, item := range parsed.Items {
 		if item.Type == "destination" {
 			if d, ok := destMap[item.ID]; ok {
-				parsed.Items[i].ImageURL = destImageURL(d)
+				item.ImageURL = destImageURL(d)
+				if item.Rating == 0 {
+					item.Rating = d.Rating
+				}
+				validated = append(validated, item)
 			}
-		} else if item.Type == "event" {
-			if ev, ok := eventMap[item.ID]; ok {
-				parsed.Items[i].ImageURL = ev.ImageURL
-			}
+			continue
 		}
-		// Enrich rating for destinations
-		if item.Type == "destination" && item.Rating == 0 {
-			if d, ok := destMap[item.ID]; ok {
-				parsed.Items[i].Rating = d.Rating
+		if item.Type == "event" {
+			if ev, ok := eventMap[item.ID]; ok {
+				item.ImageURL = ev.ImageURL
+				validated = append(validated, item)
 			}
+			continue
 		}
 	}
+
+	// If validation dropped too many, fall back to offline rather than a thin list
+	if len(validated) < 3 {
+		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events, isID), nil)
+		return
+	}
+	parsed.Items = validated
 
 	// ── Save to Redis cache (weekly TTL) ─────────────────────────────────────
 	if h.Cache != nil {
@@ -1032,18 +1042,26 @@ Return exactly 4 items.`, now, langInstruction, destContext)
 		return
 	}
 
-	// Always replace imageUrl from local catalog — AI often hallucinates fake URLs
-	for i, item := range parsed.Items {
+	// Validate and enrich — drop items whose ID doesn't exist in the catalog
+	validated := make([]AIMultiRecommendItem, 0, len(parsed.Items))
+	for _, item := range parsed.Items {
 		if d, ok := destMap[item.DestinationID]; ok {
-			parsed.Items[i].ImageURL = destImageURL(d)
+			item.ImageURL = destImageURL(d)
 			if item.Rating == 0 {
-				parsed.Items[i].Rating = d.Rating
+				item.Rating = d.Rating
 			}
 			if item.Location == "" {
-				parsed.Items[i].Location = d.SubRegion
+				item.Location = d.SubRegion
 			}
+			validated = append(validated, item)
 		}
 	}
+
+	if len(validated) < 2 {
+		httpx.Success(c, 200, "Picks loaded (offline)", h.offlineMultiRecommend(now, dests, isID), nil)
+		return
+	}
+	parsed.Items = validated
 
 	httpx.Success(c, 200, "AI picks loaded", parsed, nil)
 }
