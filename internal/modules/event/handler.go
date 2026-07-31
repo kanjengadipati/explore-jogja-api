@@ -92,6 +92,33 @@ func (h *Handler) GetAll(c *gin.Context) {
 		_ = h.Cache.SetJSON(c.Request.Context(), cacheKey, allResponses, cache.TTLEvents)
 	}
 
+	// Server-side filtering on the full sorted list so filter counts and
+	// pagination reflect the entire dataset, not just the loaded page.
+	category := strings.ToLower(strings.TrimSpace(c.Query("category")))
+	q := strings.ToLower(strings.TrimSpace(c.Query("q")))
+
+	if category != "" {
+		filtered := allResponses[:0]
+		for _, e := range allResponses {
+			if strings.ToLower(e.Category) == category {
+				filtered = append(filtered, e)
+			}
+		}
+		allResponses = filtered
+	}
+
+	if q != "" {
+		filtered := allResponses[:0]
+		for _, e := range allResponses {
+			if strings.Contains(strings.ToLower(e.Title), q) ||
+				strings.Contains(strings.ToLower(e.Description), q) ||
+				strings.Contains(strings.ToLower(e.Location), q) {
+				filtered = append(filtered, e)
+			}
+		}
+		allResponses = filtered
+	}
+
 	// Apply pagination on the full sorted list
 	total := int64(len(allResponses))
 	start := pag.Offset
