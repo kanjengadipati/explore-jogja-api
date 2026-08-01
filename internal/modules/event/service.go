@@ -42,6 +42,15 @@ type UpdateEventRequest struct {
 	Organizer     *string  `json:"organizer"`
 	DestinationID *string  `json:"destination_id"`
 	VideoURL      *string  `json:"video_url"`
+	TitleEn           *string `json:"title_en"`
+	DescriptionEn     *string `json:"description_en"`
+	SeoTitle          *string `json:"seo_title"`
+	SeoTitleEn        *string `json:"seo_title_en"`
+	SeoDescription    *string `json:"seo_description"`
+	SeoDescriptionEn  *string `json:"seo_description_en"`
+	SeoKeywords       *string `json:"seo_keywords"`
+	SeoKeywordsEn     *string `json:"seo_keywords_en"`
+	OgImageUrl        *string `json:"og_image_url"`
 }
 
 func (s *Service) Create(event *Event) error {
@@ -115,6 +124,33 @@ func (s *Service) Update(externalID string, req UpdateEventRequest) (*Event, err
 	}
 	if req.DestinationID != nil {
 		event.DestinationID = *req.DestinationID
+	}
+	if req.TitleEn != nil {
+		event.TitleEn = *req.TitleEn
+	}
+	if req.DescriptionEn != nil {
+		event.DescriptionEn = *req.DescriptionEn
+	}
+	if req.SeoTitle != nil {
+		event.SeoTitle = *req.SeoTitle
+	}
+	if req.SeoTitleEn != nil {
+		event.SeoTitleEn = *req.SeoTitleEn
+	}
+	if req.SeoDescription != nil {
+		event.SeoDescription = *req.SeoDescription
+	}
+	if req.SeoDescriptionEn != nil {
+		event.SeoDescriptionEn = *req.SeoDescriptionEn
+	}
+	if req.SeoKeywords != nil {
+		event.SeoKeywords = *req.SeoKeywords
+	}
+	if req.SeoKeywordsEn != nil {
+		event.SeoKeywordsEn = *req.SeoKeywordsEn
+	}
+	if req.OgImageUrl != nil {
+		event.OgImageUrl = *req.OgImageUrl
 	}
 
 	if err := s.Repo.Update(event); err != nil {

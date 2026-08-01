@@ -49,4 +49,13 @@ type Event struct {
 	Highlights    JSONArr `gorm:"type:jsonb" json:"highlights"`
 	DestinationID string  `json:"destination_id"`
 	VideoURL      string  `gorm:"column:video_url" json:"video_url"`
+	TitleEn           string  `json:"title_en"`
+	DescriptionEn     string  `gorm:"type:text" json:"description_en"`
+	SeoTitle          string  `json:"seo_title"`
+	SeoTitleEn        string  `json:"seo_title_en"`
+	SeoDescription    string  `gorm:"type:text" json:"seo_description"`
+	SeoDescriptionEn  string  `gorm:"type:text" json:"seo_description_en"`
+	SeoKeywords       string  `gorm:"type:text" json:"seo_keywords"`
+	SeoKeywordsEn     string  `gorm:"type:text" json:"seo_keywords_en"`
+	OgImageUrl        string  `json:"og_image_url"`
 }

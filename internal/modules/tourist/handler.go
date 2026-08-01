@@ -46,7 +46,7 @@ type AIQueryRequest struct {
 }
 
 type AIQueryResponse struct {
-	Reply               string   `json:"reply"`
+	Reply                 string   `json:"reply"`
 	MatchedDestinationIDs []string `json:"matchedDestinationIds"`
 }
 
@@ -78,31 +78,52 @@ type AIGenerateDestinationRequest struct {
 }
 
 type AIGenerateDestinationResponse struct {
-	Name            string  `json:"name"`
-	NameEn          string  `json:"name_en"`
-	Category        string  `json:"category"`
-	SubRegion       string  `json:"sub_region"`
-	Tagline         string  `json:"tagline"`
-	TaglineEn       string  `json:"tagline_en"`
-	Location        string  `json:"location"`
-	Description     string  `json:"description"`
-	DescriptionEn   string  `json:"description_en"`
-	Story           string  `json:"story"`
-	StoryEn         string  `json:"story_en"`
-	TicketPrice     string  `json:"ticket_price"`
-	OpeningHours    string  `json:"opening_hours"`
-	BestTime        string  `json:"best_time"`
-	BestTimeEn      string  `json:"best_time_en"`
-	Latitude        string  `json:"latitude"`
-	Longitude       string  `json:"longitude"`
-	Rating          float64 `json:"rating"`
-	ReviewCount     int     `json:"review_count"`
-	SeoTitle        string  `json:"seo_title"`
-	SeoTitleEn      string  `json:"seo_title_en"`
-	SeoDescription  string  `json:"seo_description"`
+	Name             string `json:"name"`
+	NameEn           string `json:"name_en"`
+	Category         string `json:"category"`
+	SubRegion        string `json:"sub_region"`
+	Tagline          string `json:"tagline"`
+	TaglineEn        string `json:"tagline_en"`
+	Location         string `json:"location"`
+	Description      string `json:"description"`
+	DescriptionEn    string `json:"description_en"`
+	Story            string `json:"story"`
+	StoryEn          string `json:"story_en"`
+	TicketPrice      string `json:"ticket_price"`
+	OpeningHours     string `json:"opening_hours"`
+	BestTime         string `json:"best_time"`
+	BestTimeEn       string `json:"best_time_en"`
+	Latitude         string `json:"latitude"`
+	Longitude        string `json:"longitude"`
+	Rating           string `json:"rating"`
+	ReviewCount      string `json:"review_count"`
+	SeoTitle         string `json:"seo_title"`
+	SeoTitleEn       string `json:"seo_title_en"`
+	SeoDescription   string `json:"seo_description"`
 	SeoDescriptionEn string `json:"seo_description_en"`
-	SeoKeywords     string  `json:"seo_keywords"`
-	SeoKeywordsEn   string  `json:"seo_keywords_en"`
+	SeoKeywords      string `json:"seo_keywords"`
+	SeoKeywordsEn    string `json:"seo_keywords_en"`
+}
+
+type AIGenerateEventRequest struct {
+	EventTitle string `json:"eventTitle"`
+	Category   string `json:"category"`
+	Location   string `json:"location"`
+}
+
+type AIGenerateEventResponse struct {
+	Title            string `json:"title"`
+	TitleEn          string `json:"title_en"`
+	Description      string `json:"description"`
+	DescriptionEn    string `json:"description_en"`
+	Organizer        string `json:"organizer"`
+	TicketPrice      string `json:"ticket_price"`
+	SeoTitle         string `json:"seo_title"`
+	SeoTitleEn       string `json:"seo_title_en"`
+	SeoDescription   string `json:"seo_description"`
+	SeoDescriptionEn string `json:"seo_description_en"`
+	SeoKeywords      string `json:"seo_keywords"`
+	SeoKeywordsEn    string `json:"seo_keywords_en"`
 }
 
 type AIImageSearchRequest struct {
@@ -112,16 +133,16 @@ type AIImageSearchRequest struct {
 
 // AITrendingItem represents a single trending pick — can be a destination or event.
 type AITrendingItem struct {
-	Type      string `json:"type"`      // "destination" or "event"
-	ID        string `json:"id"`        // external_id of the item
-	Badge     string `json:"badge"`     // e.g. "Spesial Hari Ini", "Trending", "Akan Datang"
-	BadgeType string `json:"badgeType"` // enum: trending, hidden_gem, event, today_only, popular, new, photographers_pick
-	Headline  string `json:"headline"`  // short punchy label
-	Reason    string `json:"reason"`    // one-sentence reason
-	ImageURL  string `json:"imageUrl"`  // thumbnail image
-	Rating    float64 `json:"rating"`   // 0 if event
-	Distance  string `json:"distance"`  // e.g. "18 km", empty if unknown
-	Location  string `json:"location"`  // sub-region or event location
+	Type      string  `json:"type"`      // "destination" or "event"
+	ID        string  `json:"id"`        // external_id of the item
+	Badge     string  `json:"badge"`     // e.g. "Spesial Hari Ini", "Trending", "Akan Datang"
+	BadgeType string  `json:"badgeType"` // enum: trending, hidden_gem, event, today_only, popular, new, photographers_pick
+	Headline  string  `json:"headline"`  // short punchy label
+	Reason    string  `json:"reason"`    // one-sentence reason
+	ImageURL  string  `json:"imageUrl"`  // thumbnail image
+	Rating    float64 `json:"rating"`    // 0 if event
+	Distance  string  `json:"distance"`  // e.g. "18 km", empty if unknown
+	Location  string  `json:"location"`  // sub-region or event location
 }
 
 type AITrendingResponse struct {
@@ -317,14 +338,14 @@ func destImageURL(d destination.Destination) string {
 func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event, isID bool) *AITrendingResponse {
 	// Preferred picks with curated badges/headlines — matched by external_id.
 	type preferredPick struct {
-		id       string
-		badge    string
-		badgeEN  string
+		id        string
+		badge     string
+		badgeEN   string
 		badgeType string
-		head     string
-		headEN   string
-		why      string
-		whyEN    string
+		head      string
+		headEN    string
+		why       string
+		whyEN     string
 	}
 	preferred := []preferredPick{
 		{"merapi", "Spesial Hari Ini", "Today's Special", "today_only", "Merapi Lava Tour", "Merapi Lava Tour", "Petualangan terbaik di hari yang cerah", "Best adventure on a sunny day"},
@@ -446,7 +467,7 @@ func (h *Handler) Query(c *gin.Context) {
 
 	eventsData, _ := h.EventRepo.FindAll() // best-effort — don't fail if events unavailable
 
-	destContext  := destinationsContextJSON(dests)
+	destContext := destinationsContextJSON(dests)
 	eventContext := eventsContextJSON(eventsData)
 
 	systemInstruction := fmt.Sprintf(`You are a warm, highly knowledgeable, and deeply hospitable local guide from Yogyakarta, Indonesia.
@@ -499,7 +520,7 @@ func (h *Handler) ImageSearch(c *gin.Context) {
 
 	if !h.AIService.Enabled() {
 		httpx.Success(c, 200, "AI disabled, using offline mode", &AIQueryResponse{
-			Reply:               "Sugeng rawuh! In offline mode, I have simulated a local vision scan of your uploaded image. It captures the enchanting heritage and magical energy of Yogyakarta!",
+			Reply:                 "Sugeng rawuh! In offline mode, I have simulated a local vision scan of your uploaded image. It captures the enchanting heritage and magical energy of Yogyakarta!",
 			MatchedDestinationIDs: []string{"tamansari", "prambanan"},
 		}, nil)
 		return
@@ -907,6 +928,79 @@ Return ONLY valid JSON matching this schema:
 	httpx.Success(c, 200, "Destination content generated", parsed, nil)
 }
 
+func (h *Handler) GenerateEvent(c *gin.Context) {
+	var req AIGenerateEventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.Success(c, 200, "AI disabled, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
+		return
+	}
+
+	systemInstruction := `You are an expert event content writer for Yogyakarta tourism.
+Your task is to generate compelling, accurate, and editorial-quality content for the given event in both Indonesian and English.
+
+Return ONLY valid JSON matching this schema:
+{
+  "title": "Corrected event title in Indonesian",
+  "title_en": "English version of the event title",
+  "description": "Editorial description in Indonesian (compelling, 1-2 paragraphs)",
+  "description_en": "English version of the description",
+  "organizer": "Organizer name",
+  "ticket_price": "Ticket price information",
+  "seo_title": "SEO title in Indonesian (max 60 chars)",
+  "seo_title_en": "SEO title in English (max 60 chars)",
+  "seo_description": "Meta description in Indonesian (max 160 chars)",
+  "seo_description_en": "Meta description in English (max 160 chars)",
+  "seo_keywords": "Comma-separated keywords in Indonesian",
+  "seo_keywords_en": "Comma-separated keywords in English"
+}`
+
+	userPrompt := fmt.Sprintf(
+		"Research and generate comprehensive event content for '%s' in %s, category: %s.",
+		req.EventTitle, req.Location, req.Category,
+	)
+
+	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		SystemPrompt: systemInstruction,
+		UserPrompt:   userPrompt,
+		Temperature:  0.7,
+		MaxTokens:    1000,
+	})
+	if err != nil {
+		httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
+		return
+	}
+
+	var parsed AIGenerateEventResponse
+	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+		httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
+		return
+	}
+
+	httpx.Success(c, 200, "Event content generated", parsed, nil)
+}
+
+func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventResponse {
+	return &AIGenerateEventResponse{
+		Title:            title,
+		TitleEn:          title,
+		Description:      fmt.Sprintf("Bergabunglah dalam event menarik '%s' yang akan diselenggarakan. Jangan lewatkan kesempatan untuk merasakan pengalaman tak terlupakan.", title),
+		DescriptionEn:    fmt.Sprintf("Join the exciting event '%s'. Don't miss out on an unforgettable experience.", title),
+		Organizer:        "Panitia Event",
+		TicketPrice:      "Hubungi penyelenggara",
+		SeoTitle:         title + " | JogjaGem",
+		SeoTitleEn:       title + " | JogjaGem",
+		SeoDescription:   "Informasi terbaru mengenai " + title + ". Dapatkan detail lokasi, jadwal, dan harga tiket di sini.",
+		SeoDescriptionEn: "Latest information about " + title + ". Get details on location, schedule, and ticket prices here.",
+		SeoKeywords:      title + ", event jogja, wisata jogja",
+		SeoKeywordsEn:    title + ", jogja event, jogja tourism",
+	}
+}
+
 func (h *Handler) offlineGenerateDestinationResponse(name, category, region string) *AIGenerateDestinationResponse {
 	cat := category
 	if cat == "" {
@@ -917,44 +1011,44 @@ func (h *Handler) offlineGenerateDestinationResponse(name, category, region stri
 		reg = "Yogyakarta"
 	}
 	return &AIGenerateDestinationResponse{
-		Name:            name,
-		NameEn:          name,
-		Category:        cat,
-		SubRegion:       reg,
-		Tagline:         fmt.Sprintf("Discover the Beauty of %s", name),
-		TaglineEn:       fmt.Sprintf("Discover the Beauty of %s", name),
-		Location:        fmt.Sprintf("%s, Daerah Istimewa Yogyakarta", name),
-		Description:     fmt.Sprintf("%s adalah destinasi wisata %s yang menakjubkan di %s, Yogyakarta. Tempat ini menawarkan pengalaman yang tak terlupakan bagi setiap pengunjung dengan keindahan alam dan nilai budayanya yang kaya.", name, cat, reg),
-		DescriptionEn:   fmt.Sprintf("%s is a breathtaking %s destination in %s, Yogyakarta. This place offers an unforgettable experience for every visitor with its natural beauty and rich cultural value.", name, cat, reg),
-		Story:           fmt.Sprintf("Terletak di %s yang asri, %s menyimpan pesona yang memikat hati setiap pengunjung. Saat pertama kali melangkah, Anda akan disambut oleh suasana yang tenang dan pemandangan yang memanjakan mata. Tempat ini bukan sekadar destinasi wisata, melainkan sebuah perjalanan yang membawa Anda lebih dekat dengan kekayaan budaya dan alam Yogyakarta.", reg, name),
-		StoryEn:         fmt.Sprintf("Nestled in the scenic %s, %s captivates the heart of every visitor. As you step in, you are greeted by a tranquil atmosphere and breathtaking views. This is not just a tourism destination, but a journey that brings you closer to Yogyakarta's rich culture and nature.", reg, name),
-		TicketPrice:     "Rp 50,000 – Rp 100,000",
-		OpeningHours:    "08:00 – 17:00",
-		BestTime:        "Pagi hari atau sore menjelang matahari terbenam",
-		BestTimeEn:      "Early morning or late afternoon near sunset",
-		Latitude:        "-7.7956",
-		Longitude:       "110.3695",
-		SeoTitle:        fmt.Sprintf("%s - Wisata %s di %s | Jogjagem", name, cat, reg),
-		SeoTitleEn:      fmt.Sprintf("%s - %s Tourism in %s | Jogjagem", name, cat, reg),
-		SeoDescription:  fmt.Sprintf("Kunjungi %s, destinasi %s terbaik di %s. Nikmati pengalaman wisata yang tak terlupakan dengan harga tiket terjangkau.", name, cat, reg),
+		Name:             name,
+		NameEn:           name,
+		Category:         cat,
+		SubRegion:        reg,
+		Tagline:          fmt.Sprintf("Discover the Beauty of %s", name),
+		TaglineEn:        fmt.Sprintf("Discover the Beauty of %s", name),
+		Location:         fmt.Sprintf("%s, Daerah Istimewa Yogyakarta", name),
+		Description:      fmt.Sprintf("%s adalah destinasi wisata %s yang menakjubkan di %s, Yogyakarta. Tempat ini menawarkan pengalaman yang tak terlupakan bagi setiap pengunjung dengan keindahan alam dan nilai budayanya yang kaya.", name, cat, reg),
+		DescriptionEn:    fmt.Sprintf("%s is a breathtaking %s destination in %s, Yogyakarta. This place offers an unforgettable experience for every visitor with its natural beauty and rich cultural value.", name, cat, reg),
+		Story:            fmt.Sprintf("Terletak di %s yang asri, %s menyimpan pesona yang memikat hati setiap pengunjung. Saat pertama kali melangkah, Anda akan disambut oleh suasana yang tenang dan pemandangan yang memanjakan mata. Tempat ini bukan sekadar destinasi wisata, melainkan sebuah perjalanan yang membawa Anda lebih dekat dengan kekayaan budaya dan alam Yogyakarta.", reg, name),
+		StoryEn:          fmt.Sprintf("Nestled in the scenic %s, %s captivates the heart of every visitor. As you step in, you are greeted by a tranquil atmosphere and breathtaking views. This is not just a tourism destination, but a journey that brings you closer to Yogyakarta's rich culture and nature.", reg, name),
+		TicketPrice:      "Rp 50,000 – Rp 100,000",
+		OpeningHours:     "08:00 – 17:00",
+		BestTime:         "Pagi hari atau sore menjelang matahari terbenam",
+		BestTimeEn:       "Early morning or late afternoon near sunset",
+		Latitude:         "-7.7956",
+		Longitude:        "110.3695",
+		SeoTitle:         fmt.Sprintf("%s - Wisata %s di %s | Jogjagem", name, cat, reg),
+		SeoTitleEn:       fmt.Sprintf("%s - %s Tourism in %s | Jogjagem", name, cat, reg),
+		SeoDescription:   fmt.Sprintf("Kunjungi %s, destinasi %s terbaik di %s. Nikmati pengalaman wisata yang tak terlupakan dengan harga tiket terjangkau.", name, cat, reg),
 		SeoDescriptionEn: fmt.Sprintf("Visit %s, the best %s destination in %s. Enjoy an unforgettable tourism experience with affordable ticket prices.", name, cat, reg),
-		Rating:          4.5,
-		ReviewCount:     1000,
-		SeoKeywords:     fmt.Sprintf("%s, %s, %s, Wisata Jogja, Destinasi Wisata", name, cat, reg),
-		SeoKeywordsEn:   fmt.Sprintf("%s, %s, %s, Jogja Tourism, Tourist Destination", name, cat, reg),
+		Rating:           "4.5",
+		ReviewCount:      "1000",
+		SeoKeywords:      fmt.Sprintf("%s, %s, %s, Wisata Jogja, Destinasi Wisata", name, cat, reg),
+		SeoKeywordsEn:    fmt.Sprintf("%s, %s, %s, Jogja Tourism, Tourist Destination", name, cat, reg),
 	}
 }
 
 // AIMultiRecommendItem is a single pick in the multi-recommendation response.
 type AIMultiRecommendItem struct {
-	DestinationID string `json:"destinationId"`
-	Headline      string `json:"headline"`
-	Reason        string `json:"reason"`
-	Badge         string `json:"badge"`
-	Crowd         string `json:"crowd"`
-	ImageURL      string `json:"imageUrl"`
+	DestinationID string  `json:"destinationId"`
+	Headline      string  `json:"headline"`
+	Reason        string  `json:"reason"`
+	Badge         string  `json:"badge"`
+	Crowd         string  `json:"crowd"`
+	ImageURL      string  `json:"imageUrl"`
 	Rating        float64 `json:"rating"`
-	Location      string `json:"location"`
+	Location      string  `json:"location"`
 }
 
 type AIMultiRecommendResponse struct {
@@ -1069,13 +1163,13 @@ Return exactly 4 items.`, now, langInstruction, destContext)
 // offlineMultiRecommend returns curated fallback picks without calling the AI.
 func (h *Handler) offlineMultiRecommend(timeOfDay string, dests []destination.Destination, isID bool) *AIMultiRecommendResponse {
 	type pick struct {
-		id    string
-		badge string
+		id      string
+		badge   string
 		badgeEN string
-		head  string
-		headEN string
-		why   string
-		whyEN string
+		head    string
+		headEN  string
+		why     string
+		whyEN   string
 	}
 
 	var ordered []pick
@@ -1421,18 +1515,18 @@ func matchMoodCategory(dest destination.Destination, filter string) bool {
 	if filter == "nature" || filter == "alam" {
 		// Explicit exclusions: if it's craft, weaving, cultural, temple, or museum -> NOT nature!
 		if strings.Contains(combined, "budaya") || strings.Contains(combined, "tenun") ||
-		   strings.Contains(combined, "batik") || strings.Contains(combined, "candi") ||
-		   strings.Contains(combined, "situs") || strings.Contains(combined, "museum") ||
-		   strings.Contains(combined, "kerajinan") {
+			strings.Contains(combined, "batik") || strings.Contains(combined, "candi") ||
+			strings.Contains(combined, "situs") || strings.Contains(combined, "museum") ||
+			strings.Contains(combined, "kerajinan") {
 			return false
 		}
 		return strings.Contains(cat, "nature") || strings.Contains(cat, "alam") ||
-		       strings.Contains(combined, "bukit") || strings.Contains(combined, "gunung") ||
-		       strings.Contains(combined, "air terjun") || strings.Contains(combined, "hutan") ||
-		       strings.Contains(combined, "curug") || strings.Contains(combined, "embung") ||
-		       strings.Contains(combined, "gua") || strings.Contains(combined, "puncak") ||
-		       strings.Contains(combined, "tebing") || strings.Contains(combined, "pantai") ||
-		       strings.Contains(combined, "beach")
+			strings.Contains(combined, "bukit") || strings.Contains(combined, "gunung") ||
+			strings.Contains(combined, "air terjun") || strings.Contains(combined, "hutan") ||
+			strings.Contains(combined, "curug") || strings.Contains(combined, "embung") ||
+			strings.Contains(combined, "gua") || strings.Contains(combined, "puncak") ||
+			strings.Contains(combined, "tebing") || strings.Contains(combined, "pantai") ||
+			strings.Contains(combined, "beach")
 	}
 
 	if filter == "pantai" || filter == "beach" {
@@ -1441,19 +1535,19 @@ func matchMoodCategory(dest destination.Destination, filter string) bool {
 
 	if filter == "cultural" || filter == "budaya" || filter == "heritage" {
 		return strings.Contains(combined, "cultural") || strings.Contains(combined, "budaya") ||
-		       strings.Contains(combined, "heritage") || strings.Contains(combined, "candi") ||
-		       strings.Contains(combined, "sejarah") || strings.Contains(combined, "museum") ||
-		       strings.Contains(combined, "situs") || strings.Contains(combined, "tenun") ||
-		       strings.Contains(combined, "batik") || strings.Contains(combined, "keraton") ||
-		       strings.Contains(combined, "tamansari") || strings.Contains(combined, "kerajinan")
+			strings.Contains(combined, "heritage") || strings.Contains(combined, "candi") ||
+			strings.Contains(combined, "sejarah") || strings.Contains(combined, "museum") ||
+			strings.Contains(combined, "situs") || strings.Contains(combined, "tenun") ||
+			strings.Contains(combined, "batik") || strings.Contains(combined, "keraton") ||
+			strings.Contains(combined, "tamansari") || strings.Contains(combined, "kerajinan")
 	}
 
 	if filter == "culinary" || filter == "kuliner" || filter == "food" {
 		return strings.Contains(combined, "culinary") || strings.Contains(combined, "kuliner") ||
-		       strings.Contains(combined, "food") || strings.Contains(combined, "makanan") ||
-		       strings.Contains(combined, "kopi") || strings.Contains(combined, "gudeg") ||
-		       strings.Contains(combined, "sate") || strings.Contains(combined, "warung") ||
-		       strings.Contains(combined, "resto") || strings.Contains(combined, "soto")
+			strings.Contains(combined, "food") || strings.Contains(combined, "makanan") ||
+			strings.Contains(combined, "kopi") || strings.Contains(combined, "gudeg") ||
+			strings.Contains(combined, "sate") || strings.Contains(combined, "warung") ||
+			strings.Contains(combined, "resto") || strings.Contains(combined, "soto")
 	}
 
 	return strings.Contains(combined, filter) || strings.Contains(filter, combined)
