@@ -1,13 +1,16 @@
 package scraper
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
+	"pleco-api/internal/modules/staging"
 
 	"github.com/gosimple/slug"
 	"gorm.io/gorm"
@@ -34,10 +37,11 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("destinations: %v", err))
 			log.Printf("[scraper] %s destinations error: %v", s.Name(), err)
 		} else {
-			di, du := upsertDestinations(db, dests, s.Name())
+			di, du, ds := upsertDestinations(db, dests, s.Name())
 			result.DestinationsInserted = di
 			result.DestinationsUpdated = du
-			log.Printf("[scraper] %s destinations: %d inserted, %d updated", s.Name(), di, du)
+			result.DestinationsStaged = ds
+			log.Printf("[scraper] %s destinations: %d inserted, %d updated, %d staged", s.Name(), di, du, ds)
 		}
 
 		events, err := s.ScrapeEvents()
@@ -45,21 +49,22 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("events: %v", err))
 			log.Printf("[scraper] %s events error: %v", s.Name(), err)
 		} else {
-			ei, eu := upsertEvents(db, events, s.Name(), destMap)
+			ei, eu, es := upsertEvents(db, events, s.Name(), destMap)
 			result.EventsInserted = ei
 			result.EventsUpdated = eu
-			log.Printf("[scraper] %s events: %d inserted, %d updated", s.Name(), ei, eu)
+			result.EventsStaged = es
+			log.Printf("[scraper] %s events: %d inserted, %d updated, %d staged", s.Name(), ei, eu, es)
 		}
 
 		results = append(results, result)
 	}
-	
+
 	// Fix any stale event statuses based on dates
 	BackfillEventStatuses(db)
 
 	// Populate missing videos for a few items per run
 	populateMissingVideos(db)
-	
+
 	return results
 }
 
@@ -75,10 +80,11 @@ func RunDestinationsOnly(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("destinations: %v", err))
 			log.Printf("[scraper] %s destinations error: %v", s.Name(), err)
 		} else {
-			di, du := upsertDestinations(db, dests, s.Name())
+			di, du, ds := upsertDestinations(db, dests, s.Name())
 			result.DestinationsInserted = di
 			result.DestinationsUpdated = du
-			log.Printf("[scraper] %s destinations: %d inserted, %d updated", s.Name(), di, du)
+			result.DestinationsStaged = ds
+			log.Printf("[scraper] %s destinations: %d inserted, %d updated, %d staged", s.Name(), di, du, ds)
 		}
 
 		results = append(results, result)
@@ -111,10 +117,11 @@ func RunEventsOnly(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("events: %v", err))
 			log.Printf("[scraper] %s events error: %v", s.Name(), err)
 		} else {
-			ei, eu := upsertEvents(db, events, s.Name(), destMap)
+			ei, eu, es := upsertEvents(db, events, s.Name(), destMap)
 			result.EventsInserted = ei
 			result.EventsUpdated = eu
-			log.Printf("[scraper] %s events: %d inserted, %d updated", s.Name(), ei, eu)
+			result.EventsStaged = es
+			log.Printf("[scraper] %s events: %d inserted, %d updated, %d staged", s.Name(), ei, eu, es)
 		}
 
 		results = append(results, result)
@@ -168,9 +175,10 @@ func buildDestMap(db *gorm.DB) map[string]string {
 	return m
 }
 
-func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) (int, int) {
+func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) (int, int, int) {
 	inserted := 0
 	updated := 0
+	staged := 0
 	now := time.Now()
 
 	for _, item := range items {
@@ -181,26 +189,10 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 		var existing destination.Destination
 		err := db.Where("external_id = ?", item.ExternalID).First(&existing).Error
 		if err != nil {
-			d := destination.Destination{
-				ExternalID:  item.ExternalID,
-				Name:        item.Name,
-				Tagline:     item.Tagline,
-				Category:    item.Category,
-				Location:    item.Location,
-				SubRegion:   item.SubRegion,
-				Images:      strsToDestJSONArr(item.Images),
-				Description: item.Description,
-				Story:       item.Story,
-				TicketPrice: item.TicketPrice,
-				Latitude:    item.Latitude,
-				Longitude:   item.Longitude,
-				VideoURL:    item.VideoURL,
-			}
-			if err := db.Create(&d).Error; err != nil {
-				log.Printf("[scraper] failed to create destination %s: %v", item.ExternalID, err)
-				continue
-			}
-			inserted++
+			// Not published yet → send to staging for review/approval instead
+			// of inserting straight into the live table.
+			stageDestination(db, item, source)
+			staged++
 			continue
 		}
 
@@ -228,12 +220,13 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 			updated++
 		}
 	}
-	return inserted, updated
+	return inserted, updated, staged
 }
 
-func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[string]string) (int, int) {
+func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[string]string) (int, int, int) {
 	inserted := 0
 	updated := 0
+	staged := 0
 	now := time.Now()
 
 	for _, item := range items {
@@ -249,29 +242,9 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 		var existing event.Event
 		err := db.Where("external_id = ?", item.ExternalID).First(&existing).Error
 		if err != nil {
-			e := event.Event{
-				ExternalID:    item.ExternalID,
-				Title:         item.Title,
-				Description:   item.Description,
-				Location:      item.Location,
-				StartDate:     item.StartDate,
-				EndDate:       item.EndDate,
-				ImageURL:      item.ImageURL,
-				Category:      item.Category,
-				Status:        resolveEventStatus(item.StartDate, item.EndDate),
-				Latitude:      item.Latitude,
-				Longitude:     item.Longitude,
-				TicketPrice:   item.TicketPrice,
-				Organizer:     item.Organizer,
-				Highlights:    strsToEventJSONArr(item.Highlights),
-				DestinationID: item.DestinationID,
-				VideoURL:      item.VideoURL,
-			}
-			if err := db.Create(&e).Error; err != nil {
-				log.Printf("[scraper] failed to create event %s: %v", item.ExternalID, err)
-				continue
-			}
-			inserted++
+			// Not published yet → send to staging for review/approval.
+			stageEvent(db, item, source)
+			staged++
 			continue
 		}
 
@@ -306,7 +279,80 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 			updated++
 		}
 	}
-	return inserted, updated
+	return inserted, updated, staged
+}
+
+// stageDestination queues a brand-new destination for human review. Already
+// queued providers (any status) are left untouched so re-runs don't duplicate
+// or resurrect rejected items.
+func stageDestination(db *gorm.DB, item ScrapedDestination, source string) {
+	var existing staging.StagingDestination
+	err := db.Where("provider_id = ? AND source = ?", item.ExternalID, source).First(&existing).Error
+	if err == nil {
+		return
+	}
+
+	images, _ := json.Marshal(item.Images)
+	raw, _ := json.Marshal(item)
+
+	lat, lng := "", ""
+	if item.Latitude != 0 {
+		lat = strconv.FormatFloat(item.Latitude, 'f', -1, 64)
+	}
+	if item.Longitude != 0 {
+		lng = strconv.FormatFloat(item.Longitude, 'f', -1, 64)
+	}
+
+	row := staging.StagingDestination{
+		Source:      source,
+		ProviderID:  item.ExternalID,
+		Name:        item.Name,
+		Description: item.Description,
+		Latitude:    lat,
+		Longitude:   lng,
+		Address:     item.Location,
+		Category:    item.Category,
+		Images:      string(images),
+		RawData:     string(raw),
+		Status:      "pending",
+	}
+	if err := db.Create(&row).Error; err != nil {
+		log.Printf("[scraper] failed to stage destination %s: %v", item.ExternalID, err)
+	}
+}
+
+// stageEvent queues a brand-new event for human review.
+func stageEvent(db *gorm.DB, item ScrapedEvent, source string) {
+	var existing staging.StagingEvent
+	err := db.Where("provider_id = ? AND source = ?", item.ExternalID, source).First(&existing).Error
+	if err == nil {
+		return
+	}
+
+	raw, _ := json.Marshal(item)
+
+	var start, end time.Time
+	if t, err := time.Parse("2006-01-02", item.StartDate); err == nil {
+		start = t
+	}
+	if t, err := time.Parse("2006-01-02", item.EndDate); err == nil {
+		end = t
+	}
+
+	row := staging.StagingEvent{
+		Source:      source,
+		ProviderID:  item.ExternalID,
+		Title:       item.Title,
+		Description: item.Description,
+		StartDate:   start,
+		EndDate:     end,
+		Location:    item.Location,
+		RawData:     string(raw),
+		Status:      "pending",
+	}
+	if err := db.Create(&row).Error; err != nil {
+		log.Printf("[scraper] failed to stage event %s: %v", item.ExternalID, err)
+	}
 }
 
 func strsToDestJSONArr(s []string) destination.JSONArr {

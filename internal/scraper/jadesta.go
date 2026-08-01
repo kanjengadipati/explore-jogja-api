@@ -80,7 +80,11 @@ func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			return
 		}
 
-		spanText := strings.TrimSpace(sel.Find("span").First().Text())
+		// The location lives in the span that directly follows the <h3>, e.g.
+		// "Desa Wisata, Kabupaten Bantul". The FIRST span inside the card is
+		// the village development level tag (Rintisan/Madya/Maju/Mandiri) and
+		// must be ignored.
+		spanText := strings.TrimSpace(sel.Find("h3").Next().Text())
 		if spanText == "" {
 			skipped++
 			return
@@ -90,8 +94,8 @@ func (s *jadestaScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 		subRegion := ""
 		parts := strings.SplitN(spanText, ", ", 2)
 		if len(parts) == 2 {
-			location = strings.TrimSpace(parts[0])
-			subRegion = normalizeSubRegion(parts[len(parts)-1])
+			location = strings.TrimSpace(parts[1])
+			subRegion = normalizeSubRegion(location)
 		} else {
 			subRegion = normalizeSubRegion(spanText)
 		}

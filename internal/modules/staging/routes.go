@@ -24,4 +24,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	staging.POST("/destinations/ai-review", m.Handler.AIReviewDestinations)
 	staging.POST("/destinations/approve", m.Handler.ApproveDestinations)
 	staging.POST("/destinations/reject", m.Handler.RejectDestinations)
+
+	staging.GET("/events", m.Handler.GetPendingEvents)
+	staging.POST("/events/approve", m.Handler.ApproveEvents)
+	staging.POST("/events/reject", m.Handler.RejectEvents)
 }

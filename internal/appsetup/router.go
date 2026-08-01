@@ -38,9 +38,9 @@ import (
 	"pleco-api/internal/modules/tourist"
 	"pleco-api/internal/modules/trips"
 	"pleco-api/internal/modules/user"
+	midtransprovider "pleco-api/internal/providers/payment/midtrans"
 	"pleco-api/internal/scraper"
 	"pleco-api/internal/services"
-	midtransprovider "pleco-api/internal/providers/payment/midtrans"
 
 	"gorm.io/gorm"
 
@@ -174,9 +174,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 			log.Println("[scraper] manual run triggered via /admin/scrape")
 			results := scraper.RunAll(db)
 			for _, r := range results {
-				log.Printf("[scraper] %s: dest(%d/%d) events(%d/%d) errors(%d)",
-					r.Source, r.DestinationsInserted, r.DestinationsUpdated,
-					r.EventsInserted, r.EventsUpdated, len(r.Errors))
+				log.Printf("[scraper] %s: dest(ins=%d upd=%d staged=%d) events(ins=%d upd=%d staged=%d) errors(%d)",
+					r.Source, r.DestinationsInserted, r.DestinationsUpdated, r.DestinationsStaged,
+					r.EventsInserted, r.EventsUpdated, r.EventsStaged, len(r.Errors))
 			}
 			log.Println("[scraper] manual run complete")
 		}()

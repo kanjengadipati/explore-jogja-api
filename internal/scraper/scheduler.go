@@ -20,9 +20,9 @@ func StartScheduler(db *gorm.DB, schedule string) {
 		log.Printf("[scraper] scheduled run started at %s", time.Now().Format(time.RFC3339))
 		results := RunAll(db)
 		for _, r := range results {
-			log.Printf("[scraper] %s complete: events(%d/%d) destinations(%d/%d) errors(%d)",
-				r.Source, r.EventsInserted, r.EventsUpdated,
-				r.DestinationsInserted, r.DestinationsUpdated,
+			log.Printf("[scraper] %s complete: events(ins=%d upd=%d staged=%d) destinations(ins=%d upd=%d staged=%d) errors(%d)",
+				r.Source, r.EventsInserted, r.EventsUpdated, r.EventsStaged,
+				r.DestinationsInserted, r.DestinationsUpdated, r.DestinationsStaged,
 				len(r.Errors))
 		}
 		log.Printf("[scraper] scheduled run finished at %s", time.Now().Format(time.RFC3339))
@@ -53,8 +53,8 @@ func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
 		log.Printf("[scraper] destinations scheduled run started at %s", time.Now().Format(time.RFC3339))
 		results := RunDestinationsOnly(db)
 		for _, r := range results {
-			log.Printf("[scraper] %s destinations complete: inserted(%d) updated(%d) errors(%d)",
-				r.Source, r.DestinationsInserted, r.DestinationsUpdated, len(r.Errors))
+			log.Printf("[scraper] %s destinations complete: inserted(%d) updated(%d) staged(%d) errors(%d)",
+				r.Source, r.DestinationsInserted, r.DestinationsUpdated, r.DestinationsStaged, len(r.Errors))
 		}
 		log.Printf("[scraper] destinations scheduled run finished at %s", time.Now().Format(time.RFC3339))
 	})
@@ -67,8 +67,8 @@ func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
 		log.Printf("[scraper] events scheduled run started at %s", time.Now().Format(time.RFC3339))
 		results := RunEventsOnly(db)
 		for _, r := range results {
-			log.Printf("[scraper] %s events complete: inserted(%d) updated(%d) errors(%d)",
-				r.Source, r.EventsInserted, r.EventsUpdated, len(r.Errors))
+			log.Printf("[scraper] %s events complete: inserted(%d) updated(%d) staged(%d) errors(%d)",
+				r.Source, r.EventsInserted, r.EventsUpdated, r.EventsStaged, len(r.Errors))
 		}
 		log.Printf("[scraper] events scheduled run finished at %s", time.Now().Format(time.RFC3339))
 	})

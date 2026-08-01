@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -36,9 +37,9 @@ type wpMediaResponse struct {
 }
 
 type wpPostResponse struct {
-	ID     int    `json:"id"`
-	Slug   string `json:"slug"`
-	Title  struct {
+	ID    int    `json:"id"`
+	Slug  string `json:"slug"`
+	Title struct {
 		Rendered string `json:"rendered"`
 	} `json:"title"`
 	Excerpt struct {
@@ -47,7 +48,14 @@ type wpPostResponse struct {
 	Content struct {
 		Rendered string `json:"rendered"`
 	} `json:"content"`
-	FeaturedMedia int `json:"featured_media"`
+	FeaturedMedia      int   `json:"featured_media"`
+	ExperienceCategory []int `json:"experience_category"`
+}
+
+type wpCategoryResponse struct {
+	ID   int    `json:"id"`
+	Slug string `json:"slug"`
+	Name string `json:"name"`
 }
 
 func (s *injourneyScraper) fetchJSON(url string) ([]wpPostResponse, error) {
@@ -126,17 +134,122 @@ func classifyInjourneyCategory(title string) string {
 	return "heritage"
 }
 
+// fetchCategories loads the "experience_category" taxonomy. The InJourney
+// experience/event posts are add-on packages tied to a specific heritage site
+// (Borobudur, Prambanan, Ratu Boko) and the taxonomy tells us which one — this
+// is the only reliable source of location, so we never hardcode "Yogyakarta".
+func (s *injourneyScraper) fetchCategories() (map[int]string, error) {
+	url := injourneyBase + "/wp-json/wp/v2/experience_category?per_page=100"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; ExploreJogja/1.0)")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+
+	var cats []wpCategoryResponse
+	if err := json.Unmarshal(body, &cats); err != nil {
+		return nil, fmt.Errorf("parse JSON: %w", err)
+	}
+
+	m := make(map[int]string, len(cats))
+	for _, c := range cats {
+		m[c.ID] = c.Slug
+	}
+	return m, nil
+}
+
+// injourneySiteLocations maps the InJourney site taxonomy slugs to real
+// locations/sub-regions. Borobudur sits in Magelang (Central Java), Prambanan
+// and Ratu Boko are in Sleman (DIY).
+func injourneyLocationFor(slug string) (location, subRegion string) {
+	switch slug {
+	case "borobudur":
+		return "Borobudur, Magelang", "Magelang"
+	case "prambanan", "ramayana":
+		return "Prambanan, Sleman", "Sleman"
+	case "ratu-boko":
+		return "Ratu Boko, Sleman", "Sleman"
+	}
+	return "", ""
+}
+
+func injourneyFallbackLocation() (string, string) {
+	return "Yogyakarta", "Yogyakarta"
+}
+
+func injourneyEventLocation(title string) (location, subRegion string) {
+	lower := strings.ToLower(title)
+	switch {
+	case strings.Contains(lower, "borobudur"):
+		return "Borobudur, Magelang", "Magelang"
+	case strings.Contains(lower, "ratu boko"):
+		return "Ratu Boko, Sleman", "Sleman"
+	case strings.Contains(lower, "prambanan") || strings.Contains(lower, "ramayana"):
+		return "Prambanan, Sleman", "Sleman"
+	}
+	return injourneyFallbackLocation()
+}
+
+var (
+	injourneyBEPattern = regexp.MustCompile(`\b(\d{4})\s*BE\b`)
+	injourneyCEPattern = regexp.MustCompile(`\b(19\d{2}|20\d{2})\b`)
+)
+
+// parseInjourneyEventDates extracts a best-effort year from the event title
+// (e.g. "Prambanan Jazz 2018" → 2018, "Waisak Borobudur 2570 BE" → 2027 CE) so
+// event statuses (completed/active/upcoming) are meaningful. Returns empty
+// strings when no year can be found.
+func parseInjourneyEventDates(title string) (start, end string) {
+	if m := injourneyBEPattern.FindStringSubmatch(title); m != nil {
+		year := 0
+		fmt.Sscanf(m[1], "%d", &year)
+		year -= 543 // Buddhist Era → CE
+		if year >= 1990 && year <= 2100 {
+			return fmt.Sprintf("%d-01-01", year), fmt.Sprintf("%d-12-31", year)
+		}
+	}
+	if m := injourneyCEPattern.FindStringSubmatch(title); m != nil {
+		return m[1] + "-01-01", m[1] + "-12-31"
+	}
+	return "", ""
+}
+
 func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 	posts, err := s.fetchJSON(injourneyDestAPI)
 	if err != nil {
 		return nil, fmt.Errorf("fetch injourney destinations: %w", err)
 	}
 
+	cats, _ := s.fetchCategories()
+
 	var dests []ScrapedDestination
 	for _, p := range posts {
 		title := strings.TrimSpace(p.Title.Rendered)
 		if title == "" {
 			continue
+		}
+
+		location, subRegion := "", ""
+		for _, id := range p.ExperienceCategory {
+			if loc, sub := injourneyLocationFor(cats[id]); sub != "" {
+				location, subRegion = loc, sub
+				break
+			}
+		}
+		if subRegion == "" {
+			location, subRegion = injourneyEventLocation(title)
 		}
 
 		img := s.fetchMedia(p.FeaturedMedia)
@@ -147,8 +260,8 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			Name:        title,
 			Tagline:     "",
 			Category:    classifyInjourneyCategory(title),
-			Location:    "Yogyakarta",
-			SubRegion:   "Yogyakarta",
+			Location:    location,
+			SubRegion:   subRegion,
 			Images:      imgs(img),
 			Description: desc,
 			TicketPrice: "Cek website resmi",
@@ -174,12 +287,16 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 
 		img := s.fetchMedia(p.FeaturedMedia)
 		desc := stripHTML(p.Excerpt.Rendered)
+		location, _ := injourneyEventLocation(title)
+		startDate, endDate := parseInjourneyEventDates(title)
 
 		events = append(events, ScrapedEvent{
 			ExternalID:  slugify(title),
 			Title:       title,
 			Description: desc,
-			Location:    "Yogyakarta",
+			Location:    location,
+			StartDate:   startDate,
+			EndDate:     endDate,
 			ImageURL:    img,
 			Category:    "Event",
 			TicketPrice: "Cek website resmi",

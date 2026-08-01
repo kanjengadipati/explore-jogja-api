@@ -40,12 +40,14 @@ type ScrapedDestination struct {
 
 // ScrapeResult holds the outcome of a single scraper run.
 type ScrapeResult struct {
-	Source           string
-	EventsInserted   int
-	EventsUpdated    int
+	Source               string
+	EventsInserted       int
+	EventsUpdated        int
+	EventsStaged         int
 	DestinationsInserted int
-	DestinationsUpdated int
-	Errors           []string
+	DestinationsUpdated  int
+	DestinationsStaged   int
+	Errors               []string
 }
 
 // Scraper defines the interface each source must implement.

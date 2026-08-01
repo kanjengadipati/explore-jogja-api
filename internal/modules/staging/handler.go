@@ -71,3 +71,44 @@ func (h *Handler) RejectDestinations(c *gin.Context) {
 	}
 	httpx.Success(c, http.StatusOK, "Destinations rejected", nil, nil)
 }
+
+func (h *Handler) GetPendingEvents(c *gin.Context) {
+	events, err := h.Service.Repo.FindPendingEvents()
+	if err != nil {
+		httpx.Error(c, http.StatusInternalServerError, "Failed to fetch pending events")
+		return
+	}
+	httpx.Success(c, http.StatusOK, "Pending events fetched", events, nil)
+}
+
+func (h *Handler) ApproveEvents(c *gin.Context) {
+	var input struct {
+		IDs []uint `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	if err := h.Service.Repo.ApproveMultipleEvents(input.IDs); err != nil {
+		httpx.Error(c, http.StatusInternalServerError, "Failed to approve events")
+		return
+	}
+	httpx.Success(c, http.StatusOK, "Events approved", nil, nil)
+}
+
+func (h *Handler) RejectEvents(c *gin.Context) {
+	var input struct {
+		IDs []uint `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	if err := h.Service.Repo.RejectMultipleEvents(input.IDs); err != nil {
+		httpx.Error(c, http.StatusInternalServerError, "Failed to reject events")
+		return
+	}
+	httpx.Success(c, http.StatusOK, "Events rejected", nil, nil)
+}
