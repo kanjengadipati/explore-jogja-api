@@ -921,8 +921,39 @@ Return ONLY valid JSON matching this schema:
 
 	var parsed AIGenerateDestinationResponse
 	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
-		return
+		// Relaxed parse: AI may return numbers for lat/lng/rating/review_count.
+		var raw map[string]interface{}
+		if uerr := json.Unmarshal([]byte(result.Text), &raw); uerr != nil {
+			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
+			return
+		}
+		for _, key := range []string{"latitude", "longitude", "rating", "review_count"} {
+			if v, ok := raw[key]; ok {
+				if n, ok := v.(float64); ok {
+					raw[key] = strconv.FormatFloat(n, 'f', -1, 64)
+				}
+			}
+		}
+		norm, _ := json.Marshal(raw)
+		if uerr := json.Unmarshal(norm, &parsed); uerr != nil {
+			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
+			return
+		}
+	}
+
+	// Per-field fallback so coordinates (and social proof) are never left empty.
+	fb := h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region)
+	if parsed.Latitude == "" {
+		parsed.Latitude = fb.Latitude
+	}
+	if parsed.Longitude == "" {
+		parsed.Longitude = fb.Longitude
+	}
+	if parsed.Rating == "" {
+		parsed.Rating = fb.Rating
+	}
+	if parsed.ReviewCount == "" {
+		parsed.ReviewCount = fb.ReviewCount
 	}
 
 	httpx.Success(c, 200, "Destination content generated", parsed, nil)
