@@ -9,6 +9,7 @@ import (
 	"pleco-api/internal/modules/adcampaign"
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/partner"
+	"pleco-api/internal/modules/subscription"
 	"pleco-api/internal/services"
 )
 
@@ -25,16 +26,18 @@ type Service struct {
 	Midtrans      MidtransClient
 	PartnerSvc    *partner.Service
 	AdCampaignSvc *adcampaign.Service
+	SubscriptionSvc *subscription.Service
 	AuditSvc      *audit.Service
 	EmailSvc      services.EmailService
 }
 
-func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, auditSvc *audit.Service, emailSvc services.EmailService) *Service {
+func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService) *Service {
 	return &Service{
 		Repo:          repo,
 		Midtrans:      midtrans,
 		PartnerSvc:    partnerSvc,
 		AdCampaignSvc: adCampaignSvc,
+		SubscriptionSvc: subscriptionSvc,
 		AuditSvc:      auditSvc,
 		EmailSvc:      emailSvc,
 	}
@@ -166,6 +169,9 @@ func (s *Service) propagatePaidStatus(tx *PaymentTransaction) error {
 		_, err := s.AdCampaignSvc.Update(tx.SubjectExternalID, adcampaign.UpdateAdCampaignRequest{
 			PaymentStatus: &paid,
 		})
+		return err
+	case SubjectSubscription:
+		_, err := s.SubscriptionSvc.Upgrade(tx.SubjectExternalID, tx.Amount)
 		return err
 	}
 	return errors.New("unknown subject type: " + tx.SubjectType)

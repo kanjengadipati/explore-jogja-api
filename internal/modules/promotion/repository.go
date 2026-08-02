@@ -15,6 +15,8 @@ type Repository interface {
 	Delete(externalID string) error
 	FindByPartnerID(partnerExternalID string) ([]Promotion, error)
 	FindByIDAndPartner(externalID string, partnerExternalID string) (*Promotion, error)
+	FindByBusinessID(businessExternalID string) ([]Promotion, error)
+	FindByIDAndBusiness(externalID string, businessExternalID string) (*Promotion, error)
 }
 
 type GormRepository struct {
@@ -30,7 +32,7 @@ func NewRepository(db *gorm.DB) Repository {
 func (r *GormRepository) FindAll() ([]Promotion, error) {
 	var promotions []Promotion
 	err := r.db.Where(
-		"status = 'approved' AND (partner_id IS NULL OR partner_id IN (SELECT external_id FROM partners WHERE status = 'approved'))",
+		"status = 'approved' AND (business_external_id IS NULL OR business_external_id IN (SELECT external_id FROM businesses WHERE status = 'approved'))",
 	).Order("id ASC").Find(&promotions).Error
 	return promotions, err
 }
@@ -38,7 +40,7 @@ func (r *GormRepository) FindAll() ([]Promotion, error) {
 func (r *GormRepository) FindByID(externalID string) (*Promotion, error) {
 	var promotion Promotion
 	err := r.db.Where(
-		"external_id = ? AND (partner_id IS NULL OR partner_id IN (SELECT external_id FROM partners WHERE status = 'approved'))",
+		"external_id = ? AND (business_external_id IS NULL OR business_external_id IN (SELECT external_id FROM businesses WHERE status = 'approved'))",
 		externalID,
 	).First(&promotion).Error
 	if err != nil {
@@ -60,7 +62,7 @@ func (r *GormRepository) Search(query string) ([]Promotion, error) {
 	var promotions []Promotion
 	like := "%" + query + "%"
 	err := r.db.Where(
-		"partner_id IS NULL OR partner_id IN (SELECT external_id FROM partners WHERE status = 'approved')",
+		"business_external_id IS NULL OR business_external_id IN (SELECT external_id FROM businesses WHERE status = 'approved')",
 	).Where(
 		r.db.Where("title ILIKE ?", like).
 			Or("description ILIKE ?", like).
@@ -84,13 +86,28 @@ func (r *GormRepository) Delete(externalID string) error {
 
 func (r *GormRepository) FindByPartnerID(partnerExternalID string) ([]Promotion, error) {
 	var promotions []Promotion
-	err := r.db.Where("partner_id = ?", partnerExternalID).Order("id ASC").Find(&promotions).Error
+	err := r.db.Where("legacy_partner_external_id = ?", partnerExternalID).Order("id ASC").Find(&promotions).Error
 	return promotions, err
 }
 
 func (r *GormRepository) FindByIDAndPartner(externalID string, partnerExternalID string) (*Promotion, error) {
 	var promotion Promotion
-	err := r.db.Where("external_id = ? AND partner_id = ?", externalID, partnerExternalID).First(&promotion).Error
+	err := r.db.Where("external_id = ? AND legacy_partner_external_id = ?", externalID, partnerExternalID).First(&promotion).Error
+	if err != nil {
+		return nil, err
+	}
+	return &promotion, nil
+}
+
+func (r *GormRepository) FindByBusinessID(businessExternalID string) ([]Promotion, error) {
+	var promotions []Promotion
+	err := r.db.Where("business_external_id = ?", businessExternalID).Order("id ASC").Find(&promotions).Error
+	return promotions, err
+}
+
+func (r *GormRepository) FindByIDAndBusiness(externalID string, businessExternalID string) (*Promotion, error) {
+	var promotion Promotion
+	err := r.db.Where("external_id = ? AND business_external_id = ?", externalID, businessExternalID).First(&promotion).Error
 	if err != nil {
 		return nil, err
 	}

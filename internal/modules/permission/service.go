@@ -26,6 +26,12 @@ func (s *Service) HasPermission(roleName, permission string) (bool, error) {
 		return true, nil
 	}
 
+	// Always grant self-service business & claim permissions to any authenticated user
+	switch permission {
+	case "business.read_own", "business.create_own", "business.update_own", "listing_claim.submit_own", "listing_claim.read_own", "partner_application.apply", "session.read", "dashboard.view":
+		return true, nil
+	}
+
 	if s.Cache != nil {
 		var allowed bool
 		key := fmt.Sprintf("role:permission:%s:%s", roleName, permission)

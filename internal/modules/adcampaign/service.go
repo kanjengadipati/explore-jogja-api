@@ -5,14 +5,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"pleco-api/internal/modules/subscription"
 )
 
 type Service struct {
-	Repo Repository
+	Repo           Repository
+	SubscriptionSvc *subscription.Service
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{Repo: repo}
+func NewService(repo Repository, subscriptionSvc *subscription.Service) *Service {
+	return &Service{Repo: repo, SubscriptionSvc: subscriptionSvc}
 }
 
 func (s *Service) GetAll() ([]AdCampaign, error) {
@@ -32,19 +35,39 @@ func (s *Service) GetActiveBanner(placement, category string) (*AdCampaign, erro
 }
 
 func (s *Service) Create(campaign *AdCampaign) error {
+	if campaign.BusinessExternalID == nil || *campaign.BusinessExternalID == "" {
+		return errors.New("business_external_id is required")
+	}
+	exists, err := s.Repo.BusinessExists(*campaign.BusinessExternalID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("business not found")
+	}
+
+	canCreate, err := s.SubscriptionSvc.CanCreateAdCampaign(*campaign.BusinessExternalID)
+	if err != nil {
+		return err
+	}
+	if !canCreate {
+		return errors.New("business on free plan cannot create ad campaigns")
+	}
+
 	return s.Repo.Create(campaign)
 }
 
 type UpdateAdCampaignRequest struct {
-	PartnerName *string    `json:"partner_name"`
-	Placement   *string    `json:"placement"`
-	ImageURL    *string    `json:"image_url"`
-	TargetURL   *string    `json:"target_url"`
-	Category    *string    `json:"category"`
-	StartAt     *time.Time `json:"start_at"`
-	EndAt       *time.Time `json:"end_at"`
-	Weight      *int       `json:"weight"`
-	IsActive    *bool      `json:"is_active"`
+	PartnerName        *string    `json:"partner_name"`
+	BusinessExternalID *string    `json:"business_external_id"`
+	Placement          *string    `json:"placement"`
+	ImageURL           *string    `json:"image_url"`
+	TargetURL          *string    `json:"target_url"`
+	Category           *string    `json:"category"`
+	StartAt            *time.Time `json:"start_at"`
+	EndAt              *time.Time `json:"end_at"`
+	Weight             *int       `json:"weight"`
+	IsActive           *bool      `json:"is_active"`
 
 	PriceAmount   *float64 `json:"price_amount"`
 	PriceCurrency *string  `json:"price_currency"`
@@ -59,6 +82,19 @@ func (s *Service) Update(externalID string, req UpdateAdCampaignRequest) (*AdCam
 
 	if req.PartnerName != nil {
 		campaign.PartnerName = *req.PartnerName
+	}
+	if req.BusinessExternalID != nil {
+		if *req.BusinessExternalID == "" {
+			return nil, errors.New("business_external_id cannot be empty")
+		}
+		exists, err := s.Repo.BusinessExists(*req.BusinessExternalID)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, errors.New("business not found")
+		}
+		campaign.BusinessExternalID = req.BusinessExternalID
 	}
 	if req.Placement != nil {
 		campaign.Placement = *req.Placement

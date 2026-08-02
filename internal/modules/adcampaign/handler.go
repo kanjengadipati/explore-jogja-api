@@ -68,7 +68,15 @@ func (h *Handler) Create(c *gin.Context) {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
+	if campaign.BusinessExternalID == nil || *campaign.BusinessExternalID == "" {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "business_external_id is required")
+		return
+	}
 	if err := h.Service.Create(&campaign); err != nil {
+		if err.Error() == "business not found" {
+			httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "business not found")
+			return
+		}
 		httpx.HandleError(c, err)
 		return
 	}
