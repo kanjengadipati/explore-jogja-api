@@ -2,6 +2,7 @@ package payment
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,8 +65,12 @@ func (s *Service) CreateTransaction(req CreateTransactionRequest, createdByUserI
 	token, redirectURL, err := s.Midtrans.CreateSnapTransaction(
 		orderID, int64(req.Amount), req.ItemName, req.CustomerName, req.CustomerEmail,
 	)
+	fmt.Printf("DEBUGPAY after midtrans token=%q redirect=%q err=%v midtransType=%T\n", token, redirectURL, err, s.Midtrans)
 	if err != nil {
-		return nil, "", err
+		// %v (not %w): midtrans-go v1.3.8 returns an *Error whose Unwrap() panics on a
+		// typed-nil RawError — errors.As in httpx.HandleError would nil-deref. Flatten
+		// the chain so the error handler never traverses into it.
+		return nil, "", fmt.Errorf("midtrans create snap transaction failed: %v", err)
 	}
 
 	expiresAt := time.Now().Add(24 * time.Hour)
