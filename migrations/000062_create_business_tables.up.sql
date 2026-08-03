@@ -29,6 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_businesses_deleted_at ON businesses(deleted_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_businesses_legacy_partner ON businesses(legacy_partner_external_id)
     WHERE legacy_partner_external_id IS NOT NULL;
 
+-- Idempotent: a previous partial run may have already added the constraint,
+-- and the dirty-migration retry path re-applies this file.
+ALTER TABLE businesses DROP CONSTRAINT IF EXISTS chk_businesses_status;
 ALTER TABLE businesses ADD CONSTRAINT chk_businesses_status
     CHECK (status IN ('draft', 'pending', 'approved', 'rejected', 'suspended'));
 
