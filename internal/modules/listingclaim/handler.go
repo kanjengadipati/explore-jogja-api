@@ -118,3 +118,13 @@ func (h *Handler) AdminReject(c *gin.Context) {
 	}
 	httpx.Success(c, http.StatusOK, "Claim rejected", nil, nil)
 }
+
+func (h *Handler) SearchListings(c *gin.Context) {
+	query := c.Query("q")
+	results, err := h.Service.SearchListings(query)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, http.StatusOK, "Search results", results, nil)
+}

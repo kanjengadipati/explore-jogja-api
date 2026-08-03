@@ -3,6 +3,7 @@ package listingclaim
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"gorm.io/gorm"
@@ -22,6 +23,7 @@ type Repository interface {
 	FindByBusiness(businessID uint) ([]ListingClaim, error)
 	Approve(externalID string, adminUserID uint) error
 	Reject(externalID string, reason string, adminUserID uint) error
+	SearchListings(query string) ([]SearchResult, error)
 }
 
 type GormRepository struct {
@@ -120,4 +122,33 @@ func (r *GormRepository) Reject(externalID string, reason string, adminUserID ui
 		}
 		return nil
 	})
+}
+
+func (r *GormRepository) SearchListings(query string) ([]SearchResult, error) {
+	results := []SearchResult{}
+	q := "%" + query + "%"
+	log.Printf("Searching listings with query: %s, q: %s", query, q)
+	err := r.db.Raw(`
+		SELECT listing_type, external_id, name FROM (
+			SELECT 'destination' AS listing_type, external_id, name FROM destinations WHERE name ILIKE ? AND status != 'draft'
+			UNION ALL
+			SELECT 'hotel', external_id, name FROM hotels WHERE name ILIKE ?
+			UNION ALL
+			SELECT 'restaurant', external_id, name FROM restaurants WHERE name ILIKE ?
+			UNION ALL
+			SELECT 'souvenir', external_id, name FROM souvenirs WHERE name ILIKE ?
+			UNION ALL
+			SELECT 'rental', external_id, name FROM rentals WHERE name ILIKE ?
+			UNION ALL
+			SELECT 'guide', external_id, name FROM guides WHERE name ILIKE ?
+			UNION ALL
+			SELECT 'event', external_id, title AS name FROM events WHERE title ILIKE ? AND status != 'draft'
+		) t LIMIT 20
+	`, q, q, q, q, q, q, q).Scan(&results).Error
+	if err != nil {
+		log.Printf("SearchListings error: %v", err)
+	} else {
+		log.Printf("SearchListings found %d results", len(results))
+	}
+	return results, err
 }

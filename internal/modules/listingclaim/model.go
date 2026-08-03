@@ -48,3 +48,9 @@ type ListingClaim struct {
 	ReviewedAt  *time.Time `json:"reviewed_at"`
 	ReviewedBy  *uint      `json:"reviewed_by"`
 }
+
+type SearchResult struct {
+	ListingType string `json:"listing_type"`
+	ExternalID  string `json:"id"`
+	Name        string `json:"name"`
+}

@@ -1714,3 +1714,61 @@ func (h *Handler) NextStop(c *gin.Context) {
 		ScheduledFor: scheduledFor,
 	}, nil)
 }
+
+func (h *Handler) GenerateArticle(c *gin.Context) {
+	var req struct {
+		Title string `json:"title" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	if !h.AIService.Enabled() {
+		httpx.ErrorWithCode(c, 503, "AI_DISABLED", "AI service is currently disabled")
+		return
+	}
+
+	systemPrompt := `You are an expert travel writer for Yogyakarta, Indonesia. Write a comprehensive, engaging, and informative travel article based on the provided title.
+	The article should be in BOTH Indonesian and English, editorial quality.
+	
+	Return ONLY valid JSON in this schema:
+	{
+	  "title": "...",
+	  "titleEn": "...",
+	  "content": "HTML formatted article body in Indonesian...",
+	  "contentEn": "HTML formatted article body in English...",
+	  "excerpt": "...",
+	  "excerptEn": "...",
+	  "seoTitle": "...",
+	  "seoTitleEn": "...",
+	  "seoDescription": "...",
+	  "seoDescriptionEn": "...",
+	  "seoKeywords": "...",
+	  "seoKeywordsEn": "..."
+	}`
+
+
+	userPrompt := fmt.Sprintf("Write an article with the title: %s", req.Title)
+
+
+	result, err := h.AIService.Generate(c.Request.Context(), ai.GenerateInput{
+		SystemPrompt: systemPrompt,
+		UserPrompt:   userPrompt,
+		Temperature:  0.7,
+	})
+
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+
+	// Parse the JSON string from AI and return it directly
+	var aiResponse map[string]interface{}
+	if err := json.Unmarshal([]byte(result.Text), &aiResponse); err != nil {
+		httpx.ErrorWithCode(c, 500, "AI_PARSING_ERROR", "Failed to parse AI response")
+		return
+	}
+
+	httpx.Success(c, 200, "Article generated", aiResponse, nil)
+}

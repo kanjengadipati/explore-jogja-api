@@ -91,3 +91,10 @@ func (s *Service) Approve(externalID string, adminUserID uint) error {
 func (s *Service) Reject(externalID string, reason string, adminUserID uint) error {
 	return s.Repo.Reject(externalID, reason, adminUserID)
 }
+
+func (s *Service) SearchListings(query string) ([]SearchResult, error) {
+	if len(query) < 3 {
+		return []SearchResult{}, nil
+	}
+	return s.Repo.SearchListings(query)
+}

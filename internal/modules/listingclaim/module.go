@@ -38,4 +38,5 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	admin.GET("/pending", middleware.RequirePermission(permSvc, "listing_claim.read_all"), handler.AdminGetPending)
 	admin.POST("/:id/approve", middleware.RequirePermission(permSvc, "listing_claim.approve"), handler.AdminApprove)
 	admin.POST("/:id/reject", middleware.RequirePermission(permSvc, "listing_claim.reject"), handler.AdminReject)
+	api.GET("/listings/search", handler.SearchListings)
 }

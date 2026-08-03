@@ -18,6 +18,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler) {
 	aiGroup.POST("/journey", handler.Journey)
 	aiGroup.POST("/generate-destination", handler.GenerateDestination)
 	aiGroup.POST("/generate-event", handler.GenerateEvent)
+	aiGroup.POST("/generate-article", handler.GenerateArticle)
 	aiGroup.GET("/trending", handler.Trending)
 	aiGroup.GET("/route-timeline", handler.RouteTimeline)
 	aiGroup.GET("/next-stop", handler.NextStop)
