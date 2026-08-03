@@ -32,6 +32,9 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	self.GET("/:id/reviews", middleware.RequirePermission(permSvc, "business.read_own"), handler.ListMyReviews)
 	self.POST("/:id/reviews/:rid/reply", middleware.RequirePermission(permSvc, "review.reply_own"), handler.ReplyToReview)
 
+	// Business subscription (self-service)
+	self.GET("/:id/subscription", middleware.RequirePermission(permSvc, "business.read_own"), handler.GetMySubscription)
+
 	// Admin approval workflow — mirrors /auth/admin/partners
 	authAdmin := api.Group("/auth")
 	authAdmin.Use(middleware.AuthMiddleware(jwtService))

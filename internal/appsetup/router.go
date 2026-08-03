@@ -137,7 +137,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)
 	// partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc, rateStore)
 
-	businessModule := business.BuildModule(db, promotionModule.Service, reviewModule.Service, auditModule.Service, notificationModule.Service, partnerModule.Service)
+	businessModule := business.BuildModule(db, promotionModule.Service, reviewModule.Service, auditModule.Service, notificationModule.Service, partnerModule.Service, subscriptionModule.Service)
 	business.SetupRoutes(api, businessModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	// partnerApplicationModule := partnerapplication.BuildModule(db, partnerModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)

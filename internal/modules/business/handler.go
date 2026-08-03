@@ -9,6 +9,7 @@ import (
 	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/review"
+	"pleco-api/internal/modules/subscription"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,10 +20,11 @@ type Handler struct {
 	ReviewService *review.Service
 	AuditSvc      *audit.Service
 	NotifSvc      *notification.Service
+	SubSvc        *subscription.Service
 }
 
-func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service) *Handler {
-	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc, NotifSvc: notifSvc}
+func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, subSvc *subscription.Service) *Handler {
+	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc, NotifSvc: notifSvc, SubSvc: subSvc}
 }
 
 // ownerLookup verifies the :id param belongs to the authenticated user.
@@ -346,4 +348,18 @@ func (h *Handler) ReplyToReview(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "Reply submitted", reviewObj, nil)
+}
+
+func (h *Handler) GetMySubscription(c *gin.Context) {
+	b, ok := h.ownerLookup(c)
+	if !ok {
+		return
+	}
+
+	sub, err := h.SubSvc.GetByBusinessExternalID(b.ExternalID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Subscription fetched", sub, nil)
 }
