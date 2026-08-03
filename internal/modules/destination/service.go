@@ -212,6 +212,8 @@ type UpdateDestinationRequest struct {
 	TravelTips        *JSONArr        `json:"travel_tips"`
 	VideoUrl          *string         `json:"video_url"`
 	GoogleMapsURL     *string         `json:"google_maps_url"`
+	FAQs              *JSONArr        `json:"faqs"`
+	Weather           *JSONMap        `json:"weather"`
 	Rating            *flexibleNumber `json:"rating"`
 	ReviewCount       *flexibleNumber `json:"review_count"`
 	GoogleReviewCount *flexibleNumber `json:"google_review_count"`
@@ -293,6 +295,12 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 	}
 	if req.GoogleMapsURL != nil {
 		dest.GoogleMapsURL = *req.GoogleMapsURL
+	}
+	if req.FAQs != nil {
+		dest.FAQs = *req.FAQs
+	}
+	if req.Weather != nil {
+		dest.Weather = *req.Weather
 	}
 	if req.Rating != nil && req.Rating.set {
 		dest.Rating = req.Rating.value
