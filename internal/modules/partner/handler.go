@@ -377,7 +377,7 @@ func (h *Handler) CreateMyPromotion(c *gin.Context) {
 		return
 	}
 	partnerID := partner.ExternalID
-	promo.PartnerID = &partnerID
+	promo.LegacyPartnerExternalID = &partnerID
 	// Default to pending — admin must approve before it goes public (§3.3)
 	promo.Status = "pending"
 
@@ -407,7 +407,7 @@ func (h *Handler) UpdateMyPromotion(c *gin.Context) {
 		return
 	}
 
-	// Strip partner_id — cannot reassign
+	// Strip legacy partner id — cannot reassign
 	req.PartnerID = nil
 
 	updated, err := h.PromoService.Update(promo.ExternalID, req)

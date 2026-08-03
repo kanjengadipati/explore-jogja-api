@@ -1,19 +1,23 @@
 package midtrans
 
 import (
+	"bytes"
 	"crypto/sha512"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"time"
 
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/coreapi"
-	"github.com/midtrans/midtrans-go/snap"
 )
 
 type Client struct {
-	snapClient snap.Client
 	coreClient coreapi.Client
 	serverKey  string
+	snapURL    string
 }
 
 func New(serverKey, clientKey string, isProduction bool) *Client {
@@ -21,26 +25,64 @@ func New(serverKey, clientKey string, isProduction bool) *Client {
 	if isProduction {
 		env = midtrans.Production
 	}
-	var s snap.Client
-	s.New(serverKey, env)
 	var c coreapi.Client
 	c.New(serverKey, env)
-	return &Client{snapClient: s, coreClient: c, serverKey: serverKey}
+	
+	snapURL := "https://app.sandbox.midtrans.com"
+	if isProduction {
+		snapURL = "https://app.midtrans.com"
+	}
+	
+	return &Client{coreClient: c, serverKey: serverKey, snapURL: snapURL}
 }
 
 func (c *Client) CreateSnapTransaction(orderID string, amount int64, itemName, customerName, customerEmail string) (token, redirectURL string, err error) {
-	req := &snap.Request{
-		TransactionDetails: midtrans.TransactionDetails{OrderID: orderID, GrossAmt: amount},
-		Items: &[]midtrans.ItemDetails{
-			{ID: orderID, Price: amount, Qty: 1, Name: itemName},
+	reqBody := map[string]interface{}{
+		"transaction_details": map[string]interface{}{
+			"order_id":  orderID,
+			"gross_amount": amount,
 		},
-		CustomerDetail: &midtrans.CustomerDetails{FName: customerName, Email: customerEmail},
+		"item_details": []map[string]interface{}{
+			{
+				"id":    orderID,
+				"price": amount,
+				"quantity": 1,
+				"name":  itemName,
+			},
+		},
+		"customer_details": map[string]interface{}{
+			"first_name": customerName,
+			"email":      customerEmail,
+		},
 	}
-	resp, err := c.snapClient.CreateTransaction(req)
+
+	body, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", c.snapURL+"/snap/v1/transactions", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.SetBasicAuth(c.serverKey, "")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("snap request failed: %v", err)
 	}
-	return resp.Token, resp.RedirectURL, nil
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", "", fmt.Errorf("snap API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result struct {
+		Token       string `json:"token"`
+		RedirectURL string `json:"redirect_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", "", fmt.Errorf("failed to decode snap response: %v", err)
+	}
+
+	return result.Token, result.RedirectURL, nil
 }
 
 // VerifySignature is the sole security gate for webhook notifications.

@@ -14,8 +14,26 @@ func SetupRoutes(api *gin.RouterGroup, handler *AuthHandler, jwtService *service
 	if rateStore == nil {
 		rateStore = middleware.NewInMemoryRateLimitStore()
 	}
-	loginLimiter := middleware.NewRateLimiterWithStore(5, 15*time.Minute, rateStore)
-	registerLimiter := middleware.NewRateLimiterWithStore(3, time.Hour, rateStore)
+	loginRequests := cfg.AuthRateLimit.LoginRequests
+	if loginRequests < 1 {
+		loginRequests = 5
+	}
+	loginWindow := time.Duration(cfg.AuthRateLimit.LoginWindowSeconds) * time.Second
+	if loginWindow < time.Second {
+		loginWindow = 15 * time.Minute
+	}
+	loginLimiter := middleware.NewRateLimiterWithStore(loginRequests, loginWindow, rateStore)
+
+	registerRequests := cfg.AuthRateLimit.RegisterRequests
+	if registerRequests < 1 {
+		registerRequests = 3
+	}
+	registerWindow := time.Duration(cfg.AuthRateLimit.RegisterWindowSeconds) * time.Second
+	if registerWindow < time.Second {
+		registerWindow = time.Hour
+	}
+	registerLimiter := middleware.NewRateLimiterWithStore(registerRequests, registerWindow, rateStore)
+
 	passwordLimiter := middleware.NewRateLimiterWithStore(3, time.Hour, rateStore)
 	refreshLimiter := middleware.NewRateLimiterWithStore(10, time.Minute, rateStore)
 	socialLimiter := middleware.NewRateLimiterWithStore(5, time.Minute, rateStore)

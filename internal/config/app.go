@@ -65,6 +65,13 @@ type OTPRateLimitConfig struct {
 	TargetWindowSeconds   int
 }
 
+type AuthRateLimitConfig struct {
+	LoginRequests         int
+	LoginWindowSeconds    int
+	RegisterRequests      int
+	RegisterWindowSeconds int
+}
+
 type MidtransConfig struct {
 	MerchantID   string
 	ServerKey    string
@@ -92,6 +99,7 @@ type AppConfig struct {
 	Social                   SocialConfig
 	AI                       AIConfig
 	OTPRateLimit             OTPRateLimitConfig
+	AuthRateLimit            AuthRateLimitConfig
 	Midtrans                 MidtransConfig
 }
 
@@ -156,6 +164,12 @@ func LoadAppConfig() AppConfig {
 			TargetCooldownSeconds: envInt("OTP_TARGET_COOLDOWN_SECONDS", 60),
 			TargetRequests:        envInt("OTP_TARGET_RATE_LIMIT_REQUESTS", 5),
 			TargetWindowSeconds:   envInt("OTP_TARGET_RATE_LIMIT_WINDOW_SECONDS", 3600),
+		},
+		AuthRateLimit: AuthRateLimitConfig{
+			LoginRequests:         envInt("AUTH_LOGIN_RATE_LIMIT_REQUESTS", 5),
+			LoginWindowSeconds:    envInt("AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS", 900),
+			RegisterRequests:      envInt("AUTH_REGISTER_RATE_LIMIT_REQUESTS", 3),
+			RegisterWindowSeconds: envInt("AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS", 3600),
 		},
 		Midtrans: MidtransConfig{
 			MerchantID:   GetEnv("MIDTRANS_MERCHANT_ID", ""),
@@ -259,6 +273,19 @@ func (c *AppConfig) Validate() error {
 	}
 	if c.OTPRateLimit.TargetWindowSeconds < 0 {
 		problems = append(problems, "OTP_TARGET_RATE_LIMIT_WINDOW_SECONDS must be greater than 0")
+	}
+
+	if c.AuthRateLimit.LoginRequests < 0 {
+		problems = append(problems, "AUTH_LOGIN_RATE_LIMIT_REQUESTS must be greater than 0")
+	}
+	if c.AuthRateLimit.LoginWindowSeconds < 0 {
+		problems = append(problems, "AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS must be greater than 0")
+	}
+	if c.AuthRateLimit.RegisterRequests < 0 {
+		problems = append(problems, "AUTH_REGISTER_RATE_LIMIT_REQUESTS must be greater than 0")
+	}
+	if c.AuthRateLimit.RegisterWindowSeconds < 0 {
+		problems = append(problems, "AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS must be greater than 0")
 	}
 
 	for _, p := range c.Social.ActiveProviders {

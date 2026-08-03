@@ -45,6 +45,44 @@ func (h *Handler) ListTransactions(c *gin.Context) {
 	httpx.Success(c, 200, "Transactions fetched", txs, nil)
 }
 
+func (h *Handler) CreateSubscriptionUpgrade(c *gin.Context) {
+	var req CreateTransactionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, err)
+		return
+	}
+
+	userID, _ := httpx.GetUserIDFromContext(c)
+
+	// Resolve the caller's own business so the invoice is always created
+	// against their own subscription, never someone else's.
+	b, err := h.Service.BizRepo.FindByIDAndOwner(c.Param("id"), userID)
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Business not found or not owned")
+		return
+	}
+
+	sub, err := h.Service.SubscriptionSvc.GetByBusinessExternalID(b.ExternalID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+
+	req.SubjectType = SubjectSubscription
+	req.SubjectExternalID = sub.ExternalID
+
+	tx, redirectURL, err := h.Service.CreateTransaction(req, &userID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 201, "Invoice created", CreateTransactionResponse{
+		OrderID:     tx.OrderID,
+		SnapToken:   tx.MidtransToken,
+		RedirectURL: redirectURL,
+	}, nil)
+}
+
 func (h *Handler) HandleNotification(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {

@@ -11,6 +11,7 @@ type Repository interface {
 	FindAll() ([]AdCampaign, error)
 	FindByID(externalID string) (*AdCampaign, error)
 	FindActiveCandidates(placement, category string) ([]AdCampaign, error)
+	BusinessExists(externalID string) (bool, error)
 	Create(campaign *AdCampaign) error
 	Update(campaign *AdCampaign) error
 	Delete(externalID string) error
@@ -36,13 +37,22 @@ func NewRepository(db *gorm.DB) Repository {
 
 func (r *GormRepository) FindAll() ([]AdCampaign, error) {
 	var campaigns []AdCampaign
-	err := r.db.Order("id DESC").Find(&campaigns).Error
+	err := r.db.Table("ad_campaigns").
+		Select("ad_campaigns.*, businesses.name AS business_name").
+		Joins("LEFT JOIN businesses ON businesses.external_id = ad_campaigns.business_external_id").
+		Order("ad_campaigns.id DESC").
+		Scan(&campaigns).Error
 	return campaigns, err
 }
 
 func (r *GormRepository) FindByID(externalID string) (*AdCampaign, error) {
 	var campaign AdCampaign
-	err := r.db.Where("external_id = ?", externalID).First(&campaign).Error
+	err := r.db.Table("ad_campaigns").
+		Select("ad_campaigns.*, businesses.name AS business_name").
+		Joins("LEFT JOIN businesses ON businesses.external_id = ad_campaigns.business_external_id").
+		Where("ad_campaigns.external_id = ?", externalID).
+		Limit(1).
+		Scan(&campaign).Error
 	if err != nil {
 		return nil, err
 	}
@@ -52,19 +62,30 @@ func (r *GormRepository) FindByID(externalID string) (*AdCampaign, error) {
 func (r *GormRepository) FindActiveCandidates(placement, category string) ([]AdCampaign, error) {
 	now := time.Now()
 	zero := time.Time{}
-	q := r.db.Where("placement = ?", placement).
-		Where("is_active = ?", true).
-		Where("payment_status = ?", "paid").
-		Where("(start_at IS NULL OR start_at = ? OR start_at <= ?)", zero, now).
-		Where("(end_at IS NULL OR end_at = ? OR end_at >= ?)", zero, now)
+	q := r.db.Table("ad_campaigns").
+		Select("ad_campaigns.*, businesses.name AS business_name").
+		Joins("LEFT JOIN businesses ON businesses.external_id = ad_campaigns.business_external_id").
+		Where("ad_campaigns.placement = ?", placement).
+		Where("ad_campaigns.is_active = ?", true).
+		Where("ad_campaigns.payment_status = ?", "paid").
+		Where("(ad_campaigns.start_at IS NULL OR ad_campaigns.start_at = ? OR ad_campaigns.start_at <= ?)", zero, now).
+		Where("(ad_campaigns.end_at IS NULL OR ad_campaigns.end_at = ? OR ad_campaigns.end_at >= ?)", zero, now)
 
 	if category != "" {
-		q = q.Where("category = ? OR category = ''", category)
+		q = q.Where("(ad_campaigns.category = ? OR ad_campaigns.category = '')", category)
 	}
 
 	var campaigns []AdCampaign
-	err := q.Find(&campaigns).Error
+	err := q.Scan(&campaigns).Error
 	return campaigns, err
+}
+
+func (r *GormRepository) BusinessExists(externalID string) (bool, error) {
+	var count int64
+	err := r.db.Table("businesses").
+		Where("external_id = ?", externalID).
+		Count(&count).Error
+	return count > 0, err
 }
 
 func (r *GormRepository) Create(campaign *AdCampaign) error {

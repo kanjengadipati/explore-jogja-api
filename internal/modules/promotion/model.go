@@ -18,7 +18,8 @@ type Promotion struct {
 	EndDate     string  `json:"end_date"`
 	ImageURL    string  `json:"image_url"`
 	Category    string  `gorm:"index" json:"category"`
-	Status      string  `gorm:"index" json:"status"`
-	Code        string  `json:"code"`
-	PartnerID   *string `gorm:"index" json:"partner_id"`
+	Status                  string  `gorm:"index" json:"status"`
+	Code                    string  `json:"code"`
+	LegacyPartnerExternalID *string `gorm:"index" json:"legacy_partner_external_id"`
+	BusinessExternalID      *string `gorm:"index" json:"business_external_id"`
 }

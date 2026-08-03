@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"pleco-api/internal/modules/business"
 	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/user"
 
@@ -98,20 +99,20 @@ type AdminCreatePartnerRequest struct {
 
 func (s *Service) AdminCreate(req AdminCreatePartnerRequest) (*Partner, error) {
 	partner := Partner{
-		ExternalID:   uuid.New().String(),
-		Name:         req.Name,
-		Category:     req.Category,
-		Description:  req.Description,
-		Location:     req.Location,
-		Address:      req.Address,
-		Image:        req.Image,
-		Phone:        req.Phone,
-		Website:      req.Website,
-		Latitude:     req.Latitude,
-		Longitude:    req.Longitude,
-		Price:        req.Price,
-		OwnerUserID:  req.OwnerUserID,
-		Status:       req.Status,
+		ExternalID:  uuid.New().String(),
+		Name:        req.Name,
+		Category:    req.Category,
+		Description: req.Description,
+		Location:    req.Location,
+		Address:     req.Address,
+		Image:       req.Image,
+		Phone:       req.Phone,
+		Website:     req.Website,
+		Latitude:    req.Latitude,
+		Longitude:   req.Longitude,
+		Price:       req.Price,
+		OwnerUserID: req.OwnerUserID,
+		Status:      req.Status,
 	}
 
 	if err := s.Repo.Create(&partner); err != nil {
@@ -120,8 +121,29 @@ func (s *Service) AdminCreate(req AdminCreatePartnerRequest) (*Partner, error) {
 	return &partner, nil
 }
 
-
 func (s *Service) Save(partner *Partner) error {
+	return s.Repo.Update(partner)
+}
+
+// SyncMirrorFromBusiness is the Phase 3 reverse dual-write: a business edit or
+// admin decision pushes the shared fields back onto the mirrored partners row.
+// The Repo.Update write re-fires the forward hook, re-applying the same values
+// onto the business row, so both rows converge after one hop.
+func (s *Service) SyncMirrorFromBusiness(m business.PartnerMirror) error {
+	partner, err := s.Repo.FindByIDAny(m.ExternalID)
+	if err != nil {
+		return err
+	}
+	partner.Name = m.Name
+	partner.Description = m.Description
+	partner.Category = m.Category
+	partner.Phone = m.Phone
+	partner.Website = m.Website
+	partner.Status = m.Status
+	partner.RejectionReason = m.RejectionReason
+	partner.SubmittedAt = m.SubmittedAt
+	partner.ReviewedAt = m.ReviewedAt
+	partner.ReviewedBy = m.ReviewedBy
 	return s.Repo.Update(partner)
 }
 

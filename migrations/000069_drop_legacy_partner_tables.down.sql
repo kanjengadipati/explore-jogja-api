@@ -1,0 +1,3 @@
+-- Phase 7 rollback (stub note: partners data lives in businesses and business_owners)
+-- To restore legacy schema structure if needed:
+-- Re-run migration 000024 and 000057.

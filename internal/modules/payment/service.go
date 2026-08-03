@@ -2,13 +2,16 @@ package payment
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 
 	"pleco-api/internal/modules/adcampaign"
 	"pleco-api/internal/modules/audit"
+	"pleco-api/internal/modules/business"
 	"pleco-api/internal/modules/partner"
+	"pleco-api/internal/modules/subscription"
 	"pleco-api/internal/services"
 )
 
@@ -21,22 +24,26 @@ type MidtransClient interface {
 }
 
 type Service struct {
-	Repo          Repository
-	Midtrans      MidtransClient
-	PartnerSvc    *partner.Service
-	AdCampaignSvc *adcampaign.Service
-	AuditSvc      *audit.Service
-	EmailSvc      services.EmailService
+	Repo             Repository
+	Midtrans         MidtransClient
+	PartnerSvc       *partner.Service
+	AdCampaignSvc    *adcampaign.Service
+	SubscriptionSvc  *subscription.Service
+	AuditSvc         *audit.Service
+	EmailSvc         services.EmailService
+	BizRepo          business.Repository
 }
 
-func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, auditSvc *audit.Service, emailSvc services.EmailService) *Service {
+func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService, bizRepo business.Repository) *Service {
 	return &Service{
-		Repo:          repo,
-		Midtrans:      midtrans,
-		PartnerSvc:    partnerSvc,
-		AdCampaignSvc: adCampaignSvc,
-		AuditSvc:      auditSvc,
-		EmailSvc:      emailSvc,
+		Repo:            repo,
+		Midtrans:        midtrans,
+		PartnerSvc:      partnerSvc,
+		AdCampaignSvc:   adCampaignSvc,
+		SubscriptionSvc: subscriptionSvc,
+		AuditSvc:        auditSvc,
+		EmailSvc:        emailSvc,
+		BizRepo:         bizRepo,
 	}
 }
 
@@ -61,8 +68,12 @@ func (s *Service) CreateTransaction(req CreateTransactionRequest, createdByUserI
 	token, redirectURL, err := s.Midtrans.CreateSnapTransaction(
 		orderID, int64(req.Amount), req.ItemName, req.CustomerName, req.CustomerEmail,
 	)
+	fmt.Printf("DEBUGPAY after midtrans token=%q redirect=%q err=%v midtransType=%T\n", token, redirectURL, err, s.Midtrans)
 	if err != nil {
-		return nil, "", err
+		// %v (not %w): midtrans-go v1.3.8 returns an *Error whose Unwrap() panics on a
+		// typed-nil RawError — errors.As in httpx.HandleError would nil-deref. Flatten
+		// the chain so the error handler never traverses into it.
+		return nil, "", fmt.Errorf("midtrans create snap transaction failed: %v", err)
 	}
 
 	expiresAt := time.Now().Add(24 * time.Hour)
@@ -166,6 +177,9 @@ func (s *Service) propagatePaidStatus(tx *PaymentTransaction) error {
 		_, err := s.AdCampaignSvc.Update(tx.SubjectExternalID, adcampaign.UpdateAdCampaignRequest{
 			PaymentStatus: &paid,
 		})
+		return err
+	case SubjectSubscription:
+		_, err := s.SubscriptionSvc.Upgrade(tx.SubjectExternalID, tx.Amount)
 		return err
 	}
 	return errors.New("unknown subject type: " + tx.SubjectType)

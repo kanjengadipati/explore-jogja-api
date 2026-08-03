@@ -30,12 +30,27 @@ type Repository interface {
 
 type GormRepository struct {
 	db *gorm.DB
+
+	// writeHook mirrors partner writes into the businesses tables (Phase 1
+	// dual-write). Called after successful Create/Update/Delete; optional.
+	writeHook func(p *Partner, deleted bool)
 }
 
 var _ Repository = (*GormRepository)(nil)
 
 func NewRepository(db *gorm.DB) Repository {
 	return &GormRepository{db: db}
+}
+
+// SetWriteHook installs the dual-write mirroring hook (Phase 1 scaffolding).
+func (r *GormRepository) SetWriteHook(hook func(p *Partner, deleted bool)) {
+	r.writeHook = hook
+}
+
+func (r *GormRepository) fireWriteHook(p *Partner, deleted bool) {
+	if r.writeHook != nil {
+		r.writeHook(p, deleted)
+	}
 }
 
 // --- Public (approved only) ---
@@ -121,15 +136,27 @@ func (r *GormRepository) DeleteByIDAndOwner(externalID string, ownerUserID uint)
 // --- Write ---
 
 func (r *GormRepository) Create(partner *Partner) error {
-	return r.db.Create(partner).Error
+	if err := r.db.Create(partner).Error; err != nil {
+		return err
+	}
+	r.fireWriteHook(partner, false)
+	return nil
 }
 
 func (r *GormRepository) Update(partner *Partner) error {
-	return r.db.Save(partner).Error
+	if err := r.db.Save(partner).Error; err != nil {
+		return err
+	}
+	r.fireWriteHook(partner, false)
+	return nil
 }
 
 func (r *GormRepository) Delete(externalID string) error {
-	return r.db.Where("external_id = ?", externalID).Delete(&Partner{}).Error
+	if err := r.db.Where("external_id = ?", externalID).Delete(&Partner{}).Error; err != nil {
+		return err
+	}
+	r.fireWriteHook(&Partner{ExternalID: externalID}, true)
+	return nil
 }
 
 // --- Sponsored / Tracking ---

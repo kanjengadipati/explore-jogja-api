@@ -91,6 +91,14 @@ func (s *Service) GetByIDAndPartner(externalID string, partnerExternalID string)
 	return s.Repo.FindByIDAndPartner(externalID, partnerExternalID)
 }
 
+func (s *Service) GetByBusinessID(businessExternalID string) ([]Promotion, error) {
+	return s.Repo.FindByBusinessID(businessExternalID)
+}
+
+func (s *Service) GetByIDAndBusiness(externalID string, businessExternalID string) (*Promotion, error) {
+	return s.Repo.FindByIDAndBusiness(externalID, businessExternalID)
+}
+
 func (s *Service) GetByStatus(status string) ([]Promotion, error) {
 	return s.Repo.FindByStatus(status)
 }

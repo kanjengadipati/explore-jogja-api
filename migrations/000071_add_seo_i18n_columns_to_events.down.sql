@@ -1,0 +1,9 @@
+ALTER TABLE events DROP COLUMN IF EXISTS title_en;
+ALTER TABLE events DROP COLUMN IF EXISTS description_en;
+ALTER TABLE events DROP COLUMN IF EXISTS seo_title;
+ALTER TABLE events DROP COLUMN IF EXISTS seo_title_en;
+ALTER TABLE events DROP COLUMN IF EXISTS seo_description;
+ALTER TABLE events DROP COLUMN IF EXISTS seo_description_en;
+ALTER TABLE events DROP COLUMN IF EXISTS seo_keywords;
+ALTER TABLE events DROP COLUMN IF EXISTS seo_keywords_en;
+ALTER TABLE events DROP COLUMN IF EXISTS og_image_url;
