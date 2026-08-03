@@ -15,6 +15,12 @@ func SetupRoutes(api *gin.RouterGroup, webhookGroup *gin.RouterGroup, handler *H
 	admin.POST("/create", handler.CreateTransaction)
 	admin.GET("", handler.ListTransactions)
 
+	// Self-service subscription upgrade for business owners.
+	self := api.Group("/businesses")
+	self.Use(middleware.AuthMiddleware(jwtService))
+	self.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))
+	self.POST("/me/:id/subscription/upgrade", middleware.RequirePermission(permSvc, "business.update_own"), handler.CreateSubscriptionUpgrade)
+
 	// Webhook: NO AuthMiddleware — Midtrans doesn't send our JWT.
 	// Security is enforced solely via HMAC-SHA512 signature verification in HandleNotification.
 	webhookGroup.POST("/midtrans/notification", handler.HandleNotification)

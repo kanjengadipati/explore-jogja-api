@@ -9,6 +9,7 @@ import (
 
 	"pleco-api/internal/modules/adcampaign"
 	"pleco-api/internal/modules/audit"
+	"pleco-api/internal/modules/business"
 	"pleco-api/internal/modules/partner"
 	"pleco-api/internal/modules/subscription"
 	"pleco-api/internal/services"
@@ -23,24 +24,26 @@ type MidtransClient interface {
 }
 
 type Service struct {
-	Repo          Repository
-	Midtrans      MidtransClient
-	PartnerSvc    *partner.Service
-	AdCampaignSvc *adcampaign.Service
-	SubscriptionSvc *subscription.Service
-	AuditSvc      *audit.Service
-	EmailSvc      services.EmailService
+	Repo             Repository
+	Midtrans         MidtransClient
+	PartnerSvc       *partner.Service
+	AdCampaignSvc    *adcampaign.Service
+	SubscriptionSvc  *subscription.Service
+	AuditSvc         *audit.Service
+	EmailSvc         services.EmailService
+	BizRepo          business.Repository
 }
 
-func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService) *Service {
+func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService, bizRepo business.Repository) *Service {
 	return &Service{
-		Repo:          repo,
-		Midtrans:      midtrans,
-		PartnerSvc:    partnerSvc,
-		AdCampaignSvc: adCampaignSvc,
+		Repo:            repo,
+		Midtrans:        midtrans,
+		PartnerSvc:      partnerSvc,
+		AdCampaignSvc:   adCampaignSvc,
 		SubscriptionSvc: subscriptionSvc,
-		AuditSvc:      auditSvc,
-		EmailSvc:      emailSvc,
+		AuditSvc:        auditSvc,
+		EmailSvc:        emailSvc,
+		BizRepo:         bizRepo,
 	}
 }
 

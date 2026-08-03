@@ -150,7 +150,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	webhooks := router.Group("/webhooks")
 	midtransClient := midtransprovider.New(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey, cfg.Midtrans.IsProduction)
 	emailSvc := services.NewEmailService(cfg.Email)
-	paymentModule := payment.BuildModule(db, midtransClient, partnerModule.Service, adCampaignModule.Service, subscriptionModule.Service, auditModule.Service, emailSvc)
+	paymentModule := payment.BuildModule(db, midtransClient, partnerModule.Service, adCampaignModule.Service, subscriptionModule.Service, auditModule.Service, emailSvc, businessModule.Repository)
 	payment.SetupRoutes(api, webhooks, paymentModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
