@@ -3,6 +3,8 @@ package subscription
 import (
 	"errors"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Service struct {
@@ -28,9 +30,14 @@ func (s *Service) GetByBusinessExternalID(businessExternalID string) (*Subscript
 func (s *Service) CanCreateAdCampaign(businessExternalID string) (bool, error) {
 	sub, err := s.Repo.FindByBusinessExternalID(businessExternalID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// If no subscription record exists yet, allow ad campaign creation (pay-per-campaign)
+			return true, nil
+		}
 		return false, err
 	}
-	return sub.CanCreateAdCampaign(), nil
+	// If subscription exists, check plan or allow pay-per-campaign
+	return sub.CanCreateAdCampaign() || sub.Plan == PlanFree, nil
 }
 
 func (s *Service) Upgrade(externalID string, amount float64) (*Subscription, error) {

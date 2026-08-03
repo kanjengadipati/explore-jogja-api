@@ -124,7 +124,16 @@ func (r *GormRepository) GetListings(businessID uint) ([]OwnedListing, error) {
 }
 
 func (r *GormRepository) Create(b *Business) error {
-	return r.db.Create(b).Error
+	if err := r.db.Create(b).Error; err != nil {
+		return err
+	}
+	subExtID := "sub_" + b.ExternalID
+	_ = r.db.Exec(`
+		INSERT INTO subscriptions (external_id, business_id, plan, status, created_at, updated_at)
+		SELECT ?, ?, 'free', 'active', NOW(), NOW()
+		WHERE NOT EXISTS (SELECT 1 FROM subscriptions WHERE business_id = ?)
+	`, subExtID, b.ID, b.ID).Error
+	return nil
 }
 
 func (r *GormRepository) Update(b *Business) error {
