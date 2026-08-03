@@ -14,8 +14,10 @@ CREATE TABLE IF NOT EXISTS listing_claims (
     deleted_at TIMESTAMP
 );
 
+ALTER TABLE listing_claims DROP CONSTRAINT IF EXISTS chk_listing_claims_status;
 ALTER TABLE listing_claims ADD CONSTRAINT chk_listing_claims_status
     CHECK (status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE listing_claims DROP CONSTRAINT IF EXISTS chk_listing_claims_type;
 ALTER TABLE listing_claims ADD CONSTRAINT chk_listing_claims_type
     CHECK (listing_type IN ('destination','hotel','restaurant','souvenir','rental','guide','event'));
 

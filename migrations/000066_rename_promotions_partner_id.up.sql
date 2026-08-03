@@ -1,7 +1,16 @@
 -- Phase 4: promotions get a real FK to businesses.
 -- The old partner_id is a clean rename (values carry over as-is) into
 -- legacy_partner_external_id, and business_external_id becomes the real FK.
-ALTER TABLE promotions RENAME COLUMN partner_id TO legacy_partner_external_id;
+-- Idempotent: only rename if the old column still exists (dirty retry path).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = current_schema()
+                 AND table_name = 'promotions'
+                 AND column_name = 'partner_id') THEN
+        ALTER TABLE promotions RENAME COLUMN partner_id TO legacy_partner_external_id;
+    END IF;
+END $$;
 ALTER TABLE promotions ADD COLUMN IF NOT EXISTS business_external_id VARCHAR(100)
     REFERENCES businesses(external_id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_promotions_business_external_id ON promotions(business_external_id);
