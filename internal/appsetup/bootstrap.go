@@ -101,4 +101,5 @@ func RunSeeds(db *gorm.DB, cfg config.AppConfig) {
 	seeds.SeedModules(db)
 	seeds.SeedEvents(db)
 	seeds.SeedArticles(db)
+	seeds.SeedHouseAds(db)
 }
