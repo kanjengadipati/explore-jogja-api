@@ -39,7 +39,16 @@ VALUES
    'Shows exactly when travelers are planning their visit.',
    'Pasang Iklan', 'Advertise Now',
    '/images/house-ads/promo-destination.jpg',
-   '/ads?placement=destination_detail', true)
+   '/ads?placement=destination_detail', true),
+
+  ('house_ad_promo_trending', 'homepage_hero_trending',
+   'Trending destinasi pilihan wisatawan',
+   'Trending destinations chosen by travelers',
+   'Pasang bisnismu di sini untuk menjangkau pencari inspirasi liburan.',
+   'Place your business here to reach holiday inspiration seekers.',
+   'Pasang Iklan', 'Advertise Now',
+   '/images/house-ads/promo-trending.jpg',
+   '/ads?placement=homepage_hero_trending', true)
 -- Upsert: only repair rows that are empty/stale (e.g. admin-created placeholder rows
 -- with blank headline). Never overwrite placements that already have real content.
 ON CONFLICT (placement) DO UPDATE SET

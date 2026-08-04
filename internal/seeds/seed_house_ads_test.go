@@ -64,14 +64,16 @@ func TestSeedHouseAds_EmptyTable(t *testing.T) {
 
 	var count int64
 	require.NoError(t, tx.Model(&adcampaign.HouseAd{}).Count(&count).Error)
-	require.Equal(t, int64(4), count)
+	require.Equal(t, int64(5), count)
 
 	for _, placement := range []string{
 		adcampaign.PlacementHomepageHeroAICard,
 		adcampaign.PlacementListingTop,
 		adcampaign.PlacementListingNative,
 		adcampaign.PlacementDestinationDetail,
+		adcampaign.PlacementHomepageHeroTrending,
 	} {
+
 		var ad adcampaign.HouseAd
 		require.NoError(t, tx.Where("placement = ?", placement).First(&ad).Error, "placement %s should exist", placement)
 		require.NotEmpty(t, ad.Headline, "headline for %s", placement)

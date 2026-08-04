@@ -70,6 +70,19 @@ func SeedHouseAds(db *gorm.DB) {
 			TargetURL:  "/ads?placement=destination_detail",
 			IsEnabled:  true,
 		},
+		{
+			ExternalID: "house_ad_promo_trending",
+			Placement:  adcampaign.PlacementHomepageHeroTrending,
+			Headline:   "Trending destinasi pilihan wisatawan",
+			HeadlineEn: "Trending destinations chosen by travelers",
+			Subline:    "Pasang bisnismu di sini untuk menjangkau pencari inspirasi liburan.",
+			SublineEn:  "Place your business here to reach holiday inspiration seekers.",
+			CTALabel:   "Pasang Iklan",
+			CTALabelEn: "Advertise Now",
+			ImageURL:   "/images/house-ads/promo-trending.jpg",
+			TargetURL:  "/ads?placement=homepage_hero_trending",
+			IsEnabled:  true,
+		},
 	}
 
 	inserted, updated := 0, 0
