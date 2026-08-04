@@ -7,10 +7,12 @@ import (
 )
 
 const (
-	PlacementHomepageHero      = "homepage_hero"
-	PlacementListingTop        = "listing_top"
-	PlacementListingNative     = "listing_native"
-	PlacementDestinationDetail = "destination_detail"
+	PlacementHomepageHeroAICard     = "homepage_hero_aicard"
+	PlacementHomepageHeroTranding   = "homepage_hero_tranding"
+	PlacementHomepageCategoryBanner = "homepage_category_banner"
+	PlacementListingTop             = "listing_top"
+	PlacementListingNative          = "listing_native"
+	PlacementDestinationDetail      = "destination_detail"
 )
 
 type AdCampaign struct {

@@ -1,11 +1,11 @@
 -- Seed self-promo House Ads with CTA "Pasang Iklan"
 INSERT INTO house_ads (external_id, placement, headline, subline, cta_label, image_url, target_url, is_enabled)
 VALUES
-  ('house_ad_promo_hero', 'homepage_hero',
+  ('house_ad_promo_hero', 'homepage_hero_aicard',
    'Ribuan wisatawan lihat halaman ini tiap hari',
    'Pasang bisnismu di posisi paling depan Jogjagem.',
    'Pasang Iklan', '/images/house-ads/promo-hero.jpg',
-   '/ads?placement=homepage_hero', true),
+   '/ads?placement=homepage_hero_aicard', true),
 
   ('house_ad_promo_listing_top', 'listing_top',
    'Bisnismu bisa tampil paling atas di sini',
