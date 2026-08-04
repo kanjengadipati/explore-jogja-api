@@ -31,12 +31,26 @@ const (
 	// TTLDestinations is how long destination cache stays valid. 7 days.
 	TTLDestinations = 7 * 24 * time.Hour
 
-	// KeyEventsAll is the cache key for all events.
-	KeyEventsAll = "events:all"
-	// KeyEventsIDPrefix is the prefix for caching an event by ID.
-	KeyEventsIDPrefix = "events:id:"
 	// TTLEvents is how long event cache stays valid. 7 days.
 	TTLEvents = 7 * 24 * time.Hour
 )
 
+// KeyEventsAll returns a locale-scoped cache key for the full events list.
+// Events are localized (title/description) and badged per locale, so the
+// cache must never be shared across locales.
+func KeyEventsAll(locale string) string {
+	return "events:all:" + locale
+}
 
+// KeyEventsID returns a locale-scoped cache key for a single event by ID.
+func KeyEventsID(locale, id string) string {
+	return "events:id:" + locale + ":" + id
+}
+
+// KeyEventsAllPrefix is the prefix for every locale variant of the events
+// list. Used to invalidate the whole list on writes.
+const KeyEventsAllPrefix = "events:all:"
+
+// KeyEventsIDAllPrefix is the prefix for every locale variant of the single
+// event cache. Used to invalidate event-by-ID caches on writes.
+const KeyEventsIDAllPrefix = "events:id:"

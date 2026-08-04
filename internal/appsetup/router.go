@@ -97,7 +97,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	configmodule.SetupRoutes(api, configModule.Handler)
 
 	eventModule := event.BuildModule(db, cacheStore)
-	event.SetupRoutes(api, eventModule.Handler, jwtService)
+	event.SetupRoutes(api, eventModule.Handler, jwtService, permissionModule.Service)
 
 	hotelModule := hotel.BuildModule(db)
 	hotel.SetupRoutes(api, hotelModule.Handler, jwtService)

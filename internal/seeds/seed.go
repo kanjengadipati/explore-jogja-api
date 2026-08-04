@@ -85,6 +85,7 @@ func SeedPermissions(db *gorm.DB) map[string]permissionModule.Permission {
 		"listing_claim.read_all",
 		"listing_claim.approve",
 		"listing_claim.reject",
+		"event.manage",
 	}
 	permMap := make(map[string]permissionModule.Permission)
 
@@ -149,6 +150,7 @@ func SeedRolePermissions(db *gorm.DB) {
 			"listing_claim.read_all",
 			"listing_claim.approve",
 			"listing_claim.reject",
+			"event.manage",
 		},
 		"admin": {
 			"dashboard.view",
@@ -181,6 +183,7 @@ func SeedRolePermissions(db *gorm.DB) {
 			"listing_claim.read_all",
 			"listing_claim.approve",
 			"listing_claim.reject",
+			"event.manage",
 		},
 		"user": {
 			"dashboard.view",

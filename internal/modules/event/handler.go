@@ -36,7 +36,7 @@ func resolveLocale(c *gin.Context) string {
 
 func (h *Handler) GetAll(c *gin.Context) {
 	locale := resolveLocale(c)
-	cacheKey := cache.KeyEventsAll
+	cacheKey := cache.KeyEventsAll(locale)
 
 	pag := httpx.ParsePagination(c)
 	if c.Query("limit") == "" {
@@ -59,7 +59,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 		allResponses = make([]EventResponse, len(events))
 		for i, e := range events {
-			allResponses[i] = e.ToResponse(trendingIDs)
+			allResponses[i] = e.ToResponse(locale, trendingIDs)
 		}
 
 		// Sort by badge priority: trending (0), populer (1), terbatas (2), akan_datang (3), others (4)
@@ -138,7 +138,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 func (h *Handler) GetByID(c *gin.Context) {
 	id := c.Param("id")
 	locale := resolveLocale(c)
-	cacheKey := cache.KeyEventsIDPrefix + id
+	cacheKey := cache.KeyEventsID(locale, id)
 
 	var cachedResponse EventResponse
 	if ok, err := h.Cache.GetJSON(c.Request.Context(), cacheKey, &cachedResponse); err == nil && ok {
@@ -153,7 +153,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 		return
 	}
 
-	response := event.ToResponse(trendingIDs)
+	response := event.ToResponse(locale, trendingIDs)
 
 	_ = h.Cache.SetJSON(c.Request.Context(), cacheKey, response, cache.TTLEvents)
 	httpx.Success(c, 200, "Event fetched", response, nil)
@@ -176,7 +176,7 @@ func (h *Handler) Search(c *gin.Context) {
 
 	responses := make([]EventResponse, len(events))
 	for i, e := range events {
-		responses[i] = e.ToResponse(trendingIDs)
+		responses[i] = e.ToResponse(locale, trendingIDs)
 	}
 
 	httpx.Success(c, 200, "Search results", responses, nil)
@@ -193,9 +193,10 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// Invalidate cache
+	// Invalidate cache (all locale variants)
 	ctx := c.Request.Context()
-	_ = h.Cache.Delete(ctx, cache.KeyEventsAll)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsAllPrefix)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsIDAllPrefix)
 
 	httpx.Success(c, 201, "Event created", event, nil)
 }
@@ -215,9 +216,10 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	// Invalidate cache
+	// Invalidate cache (all locale variants)
 	ctx := c.Request.Context()
-	_ = h.Cache.Delete(ctx, cache.KeyEventsAll, cache.KeyEventsIDPrefix+id)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsAllPrefix)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsIDAllPrefix)
 
 	httpx.Success(c, 200, "Event updated", event, nil)
 }
@@ -229,9 +231,10 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Invalidate cache
+	// Invalidate cache (all locale variants)
 	ctx := c.Request.Context()
-	_ = h.Cache.Delete(ctx, cache.KeyEventsAll, cache.KeyEventsIDPrefix+id)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsAllPrefix)
+	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsIDAllPrefix)
 
 	httpx.Success(c, 200, "Event deleted", nil, nil)
 }

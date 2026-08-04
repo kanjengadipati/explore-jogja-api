@@ -46,7 +46,7 @@ func (r *GormRepository) Search(query string) ([]Event, error) {
 			Or("description ILIKE ?", like).
 			Or("location ILIKE ?", like).
 			Or("category ILIKE ?", like),
-	).Order("start_date DESC").Find(&events).Error
+	).Order("start_date DESC").Limit(100).Find(&events).Error
 	return events, err
 }
 

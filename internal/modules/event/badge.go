@@ -8,33 +8,55 @@ import (
 )
 
 type EventResponse struct {
-	ID            uint        `json:"id_numeric"`
-	ExternalID    string      `json:"id"`
-	Title         string      `json:"title"`
-	Description   string      `json:"description"`
-	Location      string      `json:"location"`
-	StartDate     string      `json:"start_date"`
-	EndDate       string      `json:"end_date"`
-	ImageURL      string      `json:"image_url"`
-	Images        JSONArr     `json:"images"`
-	Category      string      `json:"category"`
-	Status        string      `json:"status"`
-	Latitude      float64     `json:"latitude"`
-	Longitude     float64     `json:"longitude"`
-	MaxAttendees  int         `json:"max_attendees"`
-	TicketPrice   string      `json:"ticket_price"`
-	Organizer     string      `json:"organizer"`
-	DestinationID string      `json:"destination_id"`
-	Highlights    JSONArr     `json:"highlights"`
-	VideoURL      string      `json:"video_url"`
-	Badge         string      `json:"badge"`
-	Badges        []string    `json:"badges"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	ID               uint      `json:"id_numeric"`
+	ExternalID       string    `json:"id"`
+	Title            string    `json:"title"`
+	Description      string    `json:"description"`
+	Location         string    `json:"location"`
+	StartDate        string    `json:"start_date"`
+	EndDate          string    `json:"end_date"`
+	ImageURL         string    `json:"image_url"`
+	Images           JSONArr   `json:"images"`
+	Category         string    `json:"category"`
+	Status           string    `json:"status"`
+	Latitude         float64   `json:"latitude"`
+	Longitude        float64   `json:"longitude"`
+	MaxAttendees     int       `json:"max_attendees"`
+	TicketPrice      string    `json:"ticket_price"`
+	Organizer        string    `json:"organizer"`
+	DestinationID    string    `json:"destination_id"`
+	Highlights       JSONArr   `json:"highlights"`
+	VideoURL         string    `json:"video_url"`
+	Badge            string    `json:"badge"`
+	Badges           []string  `json:"badges"`
+	TitleEn          string    `json:"title_en"`
+	DescriptionEn    string    `json:"description_en"`
+	SeoTitle         string    `json:"seo_title"`
+	SeoTitleEn       string    `json:"seo_title_en"`
+	SeoDescription   string    `json:"seo_description"`
+	SeoDescriptionEn string    `json:"seo_description_en"`
+	SeoKeywords      string    `json:"seo_keywords"`
+	SeoKeywordsEn    string    `json:"seo_keywords_en"`
+	OgImageUrl       string    `json:"og_image_url"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
+func (e *Event) ToResponse(locale string, trendingIDs map[string]bool) EventResponse {
 	var badges []string
+
+	// Localize title/description for English visitors, falling back to the
+	// Indonesian original when no translation exists.
+	title := e.Title
+	description := e.Description
+	if locale == "en" {
+		if e.TitleEn != "" {
+			title = e.TitleEn
+		}
+		if e.DescriptionEn != "" {
+			description = e.DescriptionEn
+		}
+	}
 
 	// 1. Cek Trending dari AI
 	if trendingIDs[e.ExternalID] {
@@ -66,29 +88,38 @@ func (e *Event) ToResponse(trendingIDs map[string]bool) EventResponse {
 	}
 
 	return EventResponse{
-		ID:            e.ID,
-		ExternalID:    e.ExternalID,
-		Title:         e.Title,
-		Description:   e.Description,
-		Location:      e.Location,
-		StartDate:     e.StartDate,
-		EndDate:       e.EndDate,
-		ImageURL:      e.ImageURL,
-		Images:        e.Images,
-		Category:      e.Category,
-		Status:        e.Status,
-		Latitude:      e.Latitude,
-		Longitude:     e.Longitude,
-		MaxAttendees:  e.MaxAttendees,
-		TicketPrice:   e.TicketPrice,
-		Organizer:     e.Organizer,
-		DestinationID: e.DestinationID,
-		Highlights:    e.Highlights,
-		VideoURL:      e.VideoURL,
-		Badge:         primaryBadge,
-		Badges:        badges,
-		CreatedAt:     e.CreatedAt,
-		UpdatedAt:     e.UpdatedAt,
+		ID:               e.ID,
+		ExternalID:       e.ExternalID,
+		Title:            title,
+		Description:      description,
+		Location:         e.Location,
+		StartDate:        e.StartDate,
+		EndDate:          e.EndDate,
+		ImageURL:         e.ImageURL,
+		Images:           e.Images,
+		Category:         e.Category,
+		Status:           e.Status,
+		Latitude:         e.Latitude,
+		Longitude:        e.Longitude,
+		MaxAttendees:     e.MaxAttendees,
+		TicketPrice:      e.TicketPrice,
+		Organizer:        e.Organizer,
+		DestinationID:    e.DestinationID,
+		Highlights:       e.Highlights,
+		VideoURL:         e.VideoURL,
+		Badge:            primaryBadge,
+		Badges:           badges,
+		TitleEn:          e.TitleEn,
+		DescriptionEn:    e.DescriptionEn,
+		SeoTitle:         e.SeoTitle,
+		SeoTitleEn:       e.SeoTitleEn,
+		SeoDescription:   e.SeoDescription,
+		SeoDescriptionEn: e.SeoDescriptionEn,
+		SeoKeywords:      e.SeoKeywords,
+		SeoKeywordsEn:    e.SeoKeywordsEn,
+		OgImageUrl:       e.OgImageUrl,
+		CreatedAt:        e.CreatedAt,
+		UpdatedAt:        e.UpdatedAt,
 	}
 }
 
