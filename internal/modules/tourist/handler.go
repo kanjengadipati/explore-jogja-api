@@ -118,6 +118,11 @@ type AIGenerateEventResponse struct {
 	DescriptionEn    string `json:"description_en"`
 	Organizer        string `json:"organizer"`
 	TicketPrice      string `json:"ticket_price"`
+	StartDate        string `json:"start_date"`
+	EndDate          string `json:"end_date"`
+	MaxAttendees     string `json:"max_attendees"`
+	Latitude         string `json:"latitude"`
+	Longitude        string `json:"longitude"`
 	SeoTitle         string `json:"seo_title"`
 	SeoTitleEn       string `json:"seo_title_en"`
 	SeoDescription   string `json:"seo_description"`
@@ -973,6 +978,7 @@ func (h *Handler) GenerateEvent(c *gin.Context) {
 
 	systemInstruction := `You are an expert event content writer for Yogyakarta tourism.
 Your task is to generate compelling, accurate, and editorial-quality content for the given event in both Indonesian and English.
+Research the event's practical details: real start/end dates (YYYY-MM-DD format), venue coordinates, and estimated max attendees. Use empty strings when a value cannot be determined.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -982,6 +988,11 @@ Return ONLY valid JSON matching this schema:
   "description_en": "English version of the description",
   "organizer": "Organizer name",
   "ticket_price": "Ticket price information",
+  "start_date": "Start date in YYYY-MM-DD format",
+  "end_date": "End date in YYYY-MM-DD format",
+  "max_attendees": "Estimated max attendees as a plain number string (e.g. '500')",
+  "latitude": "Decimal latitude coordinate of the venue",
+  "longitude": "Decimal longitude coordinate of the venue",
   "seo_title": "SEO title in Indonesian (max 60 chars)",
   "seo_title_en": "SEO title in English (max 60 chars)",
   "seo_description": "Meta description in Indonesian (max 160 chars)",
@@ -1008,8 +1019,24 @@ Return ONLY valid JSON matching this schema:
 
 	var parsed AIGenerateEventResponse
 	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
-		return
+		// Relaxed parse: AI may return numbers for max_attendees/latitude/longitude.
+		var raw map[string]interface{}
+		if uerr := json.Unmarshal([]byte(result.Text), &raw); uerr != nil {
+			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
+			return
+		}
+		for _, key := range []string{"max_attendees", "latitude", "longitude"} {
+			if v, ok := raw[key]; ok {
+				if n, ok := v.(float64); ok {
+					raw[key] = strconv.FormatFloat(n, 'f', -1, 64)
+				}
+			}
+		}
+		norm, _ := json.Marshal(raw)
+		if uerr := json.Unmarshal(norm, &parsed); uerr != nil {
+			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
+			return
+		}
 	}
 
 	httpx.Success(c, 200, "Event content generated", parsed, nil)
@@ -1023,6 +1050,11 @@ func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventRes
 		DescriptionEn:    fmt.Sprintf("Join the exciting event '%s'. Don't miss out on an unforgettable experience.", title),
 		Organizer:        "Panitia Event",
 		TicketPrice:      "Hubungi penyelenggara",
+		StartDate:        "",
+		EndDate:          "",
+		MaxAttendees:     "500",
+		Latitude:         "-7.7956",
+		Longitude:        "110.3695",
 		SeoTitle:         title + " | JogjaGem",
 		SeoTitleEn:       title + " | JogjaGem",
 		SeoDescription:   "Informasi terbaru mengenai " + title + ". Dapatkan detail lokasi, jadwal, dan harga tiket di sini.",

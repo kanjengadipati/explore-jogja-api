@@ -56,6 +56,24 @@ func (h *Handler) CreateMyBusiness(c *gin.Context) {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Kategori bisnis wajib diisi")
 		return
 	}
+	if strings.TrimSpace(req.Phone) == "" {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "No. Telepon/WhatsApp wajib diisi")
+		return
+	}
+	if strings.TrimSpace(req.Address) == "" {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Alamat usaha/kantor wajib diisi")
+		return
+	}
+	if len(req.Regions) == 0 {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Pilih minimal 1 wilayah layanan")
+		return
+	}
+	for _, region := range req.Regions {
+		if !IsValidServiceAreaRegion(region) {
+			httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Wilayah tidak dikenal: "+region)
+			return
+		}
+	}
 	userID, _ := httpx.GetUserIDFromContext(c)
 	b, err := h.Service.CreateOwned(userID, req)
 	if err != nil {
@@ -63,6 +81,18 @@ func (h *Handler) CreateMyBusiness(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 201, "Business created", b, nil)
+}
+
+// CheckNameSimilar returns approved businesses whose names are similar to the
+// given query. Used by the frontend name-dedup step at registration time.
+// Returns an empty list (not an error) for short queries (<3 chars).
+func (h *Handler) CheckNameSimilar(c *gin.Context) {
+	q := c.Query("q")
+	similar, _ := h.Service.FindSimilarApprovedName(q) // fail-open
+	if similar == nil {
+		similar = []Business{}
+	}
+	httpx.Success(c, 200, "Name check done", similar, nil)
 }
 
 func (h *Handler) GetMyBusinesses(c *gin.Context) {

@@ -161,13 +161,16 @@ func (s *Service) GetEnabledHouseAd(placement string) (*HouseAd, error) {
 }
 
 type UpdateHouseAdRequest struct {
-	Placement *string `json:"placement"`
-	Headline  *string `json:"headline"`
-	Subline   *string `json:"subline"`
-	CTALabel  *string `json:"cta_label"`
-	ImageURL  *string `json:"image_url"`
-	TargetURL *string `json:"target_url"`
-	IsEnabled *bool   `json:"is_enabled"`
+	Placement  *string `json:"placement"`
+	Headline   *string `json:"headline"`
+	HeadlineEn *string `json:"headline_en"`
+	Subline    *string `json:"subline"`
+	SublineEn  *string `json:"subline_en"`
+	CTALabel   *string `json:"cta_label"`
+	CTALabelEn *string `json:"cta_label_en"`
+	ImageURL   *string `json:"image_url"`
+	TargetURL  *string `json:"target_url"`
+	IsEnabled  *bool   `json:"is_enabled"`
 }
 
 func (s *Service) CreateHouseAd(houseAd *HouseAd) error {
@@ -188,11 +191,20 @@ func (s *Service) UpdateHouseAd(externalID string, req UpdateHouseAdRequest) (*H
 	if req.Headline != nil {
 		houseAd.Headline = *req.Headline
 	}
+	if req.HeadlineEn != nil {
+		houseAd.HeadlineEn = *req.HeadlineEn
+	}
 	if req.Subline != nil {
 		houseAd.Subline = *req.Subline
 	}
+	if req.SublineEn != nil {
+		houseAd.SublineEn = *req.SublineEn
+	}
 	if req.CTALabel != nil {
 		houseAd.CTALabel = *req.CTALabel
+	}
+	if req.CTALabelEn != nil {
+		houseAd.CTALabelEn = *req.CTALabelEn
 	}
 	if req.ImageURL != nil {
 		houseAd.ImageURL = *req.ImageURL

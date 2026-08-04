@@ -127,19 +127,51 @@ func (s *Service) mirrorToPartner(b *Business) {
 
 // --- Self-service dashboard ---
 
+// ValidServiceAreaRegions is the fixed whitelist for CreateBusinessRequest.Regions.
+// Kept as a plain slice (not a Gin binding "oneof" tag) because region names
+// contain spaces ("Kota Yogyakarta"), which oneof handles awkwardly.
+var ValidServiceAreaRegions = []string{
+	"Kota Yogyakarta", "Sleman", "Bantul", "Kulon Progo", "Gunungkidul", "Near Yogyakarta",
+}
+
+func IsValidServiceAreaRegion(region string) bool {
+	for _, r := range ValidServiceAreaRegions {
+		if r == region {
+			return true
+		}
+	}
+	return false
+}
+
+// CreateBusinessRequest — Name, Category, Phone, Address, and at least one
+// Region are required. Phone is the primary channel admin uses to verify
+// ownership before a listing claim is approved. Address is the specific street
+// address (verification use, not shown for public filtering). Regions is
+// separate from Address — it's the region-level service area (kabupaten/kota)
+// used for search/filter, and a business can serve more than one.
+// Email and Description stay optional; they can be filled in later via
+// profile edit after approval.
 type CreateBusinessRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	Phone       string `json:"phone"`
-	Email       string `json:"email"`
-	Website     string `json:"website"`
-	AvatarURL   string `json:"avatar_url"`
+	Name        string   `json:"name" binding:"required"`
+	Description string   `json:"description"`
+	Category    string   `json:"category" binding:"required"`
+	Phone       string   `json:"phone" binding:"required"`
+	Address     string   `json:"address" binding:"required"`
+	Regions     []string `json:"regions" binding:"required,min=1"`
+	Email       string   `json:"email"`
+	Website     string   `json:"website"`
+	AvatarURL   string   `json:"avatar_url"`
 }
 
 func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business, error) {
 	extID := fmt.Sprintf("biz_%d", time.Now().UnixNano())
 	now := time.Now()
+
+	for _, region := range req.Regions {
+		if !IsValidServiceAreaRegion(region) {
+			return nil, fmt.Errorf("wilayah tidak dikenal: %s", region)
+		}
+	}
 
 	b := Business{
 		ExternalID:  extID,
@@ -147,6 +179,7 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 		Description: req.Description,
 		Category:    req.Category,
 		Phone:       req.Phone,
+		Address:     req.Address,
 		Email:       req.Email,
 		Website:     req.Website,
 		AvatarURL:   req.AvatarURL,
@@ -155,7 +188,7 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 		ReviewedAt:  &now,
 	}
 
-	if err := s.Repo.Create(&b); err != nil {
+	if err := s.Repo.CreateWithServiceAreas(&b, req.Regions); err != nil {
 		return nil, err
 	}
 
@@ -165,6 +198,17 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 
 	s.mirrorToPartner(&b)
 	return &b, nil
+}
+
+// FindSimilarApprovedName returns approved businesses whose names are similar
+// to the given query (case-insensitive ILIKE). Used for the global name-dedup
+// check at registration time. Returns an empty slice (not an error) when the
+// query is too short, to avoid blocking the submit step.
+func (s *Service) FindSimilarApprovedName(query string) ([]Business, error) {
+	if len(query) < 3 {
+		return []Business{}, nil
+	}
+	return s.Repo.FindSimilarByName(query, StatusApproved)
 }
 
 func (s *Service) GetOwned(userID uint) ([]Business, error) {

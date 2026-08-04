@@ -49,6 +49,16 @@ func (s *Service) Submit(req SubmitRequest, ownerUserID uint) (*ListingClaim, er
 		}
 	}
 
+	// Duplicate-submission guard: block if an active (pending/approved) claim
+	// already exists for this exact listing — prevents spam submissions.
+	existing, err := s.Repo.FindActiveByListing(req.ListingType, req.ListingExternalID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, ErrClaimAlreadyPending
+	}
+
 	now := time.Now()
 	claim := ListingClaim{
 		ExternalID:        uuid.New().String(),

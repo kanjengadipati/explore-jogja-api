@@ -11,6 +11,8 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	businesses := api.Group("/businesses")
 	businesses.Use(middleware.AuthMiddleware(jwtService))
 	businesses.POST("", middleware.RequirePermission(permSvc, "business.create_own"), handler.CreateMyBusiness)
+	// Public name-dedup check — authenticated but no special permission needed
+	businesses.GET("/check-name", middleware.RequirePermission(permSvc, "business.create_own"), handler.CheckNameSimilar)
 
 	// Self-service business dashboard
 	self := businesses.Group("/me")

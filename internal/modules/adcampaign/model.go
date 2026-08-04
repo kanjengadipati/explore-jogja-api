@@ -46,14 +46,17 @@ type AdCampaign struct {
 
 type HouseAd struct {
 	gorm.Model
-	ExternalID string `gorm:"uniqueIndex;not null" json:"id"`
-	Placement  string `gorm:"uniqueIndex;not null" json:"placement"`
-	Headline   string `gorm:"not null" json:"headline"`
-	Subline    string `gorm:"type:text" json:"subline"`
-	CTALabel   string `gorm:"not null" json:"cta_label"`
-	ImageURL   string `json:"image_url"`
-	TargetURL  string `gorm:"not null" json:"target_url"`
-	IsEnabled  bool   `gorm:"index" json:"is_enabled"`
+	ExternalID  string `gorm:"uniqueIndex;not null" json:"id"`
+	Placement   string `gorm:"uniqueIndex;not null" json:"placement"`
+	Headline    string `gorm:"not null" json:"headline"`
+	HeadlineEn  string `gorm:"column:headline_en" json:"headline_en"`
+	Subline     string `gorm:"type:text" json:"subline"`
+	SublineEn   string `gorm:"type:text;column:subline_en" json:"subline_en"`
+	CTALabel    string `gorm:"not null" json:"cta_label"`
+	CTALabelEn  string `gorm:"column:cta_label_en" json:"cta_label_en"`
+	ImageURL    string `json:"image_url"`
+	TargetURL   string `gorm:"not null" json:"target_url"`
+	IsEnabled   bool   `gorm:"index" json:"is_enabled"`
 }
 
 func (a *AdCampaign) IsLive(now time.Time) bool {

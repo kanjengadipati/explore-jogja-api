@@ -13,8 +13,10 @@ type Repository interface {
 	FindByIDAndOwner(externalID string, userID uint) (*Business, error)
 	FindByStatus(status string) ([]Business, error)
 	FindOwnerUserIDs(businessID uint) ([]uint, error)
+	FindSimilarByName(query string, status string) ([]Business, error)
 	GetListings(businessID uint) ([]OwnedListing, error)
 	Create(b *Business) error
+	CreateWithServiceAreas(b *Business, regions []string) error
 	Update(b *Business) error
 	SoftDelete(externalID string) error
 	SoftDeleteByLegacyPartner(legacyExternalID string) error
@@ -134,6 +136,42 @@ func (r *GormRepository) Create(b *Business) error {
 		WHERE NOT EXISTS (SELECT 1 FROM subscriptions WHERE business_id = ?)
 	`, subExtID, b.ID, b.ID).Error
 	return nil
+}
+
+// CreateWithServiceAreas creates a business and its service area rows in a
+// single transaction, then auto-creates the free subscription.
+func (r *GormRepository) CreateWithServiceAreas(b *Business, regions []string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(b).Error; err != nil {
+			return err
+		}
+		if len(regions) > 0 {
+			areas := make([]BusinessServiceArea, len(regions))
+			for i, region := range regions {
+				areas[i] = BusinessServiceArea{BusinessID: b.ID, Region: region}
+			}
+			if err := tx.Create(&areas).Error; err != nil {
+				return err
+			}
+		}
+		subExtID := "sub_" + b.ExternalID
+		return tx.Exec(`
+			INSERT INTO subscriptions (external_id, business_id, plan, status, created_at, updated_at)
+			SELECT ?, ?, 'free', 'active', NOW(), NOW()
+			WHERE NOT EXISTS (SELECT 1 FROM subscriptions WHERE business_id = ?)
+		`, subExtID, b.ID, b.ID).Error
+	})
+}
+
+// FindSimilarByName returns businesses with names matching the query
+// (case-insensitive), filtered by status. Used for global name-dedup at
+// registration time.
+func (r *GormRepository) FindSimilarByName(query string, status string) ([]Business, error) {
+	var businesses []Business
+	err := r.db.Where("name ILIKE ? AND status = ?", "%"+query+"%", status).
+		Limit(5).
+		Find(&businesses).Error
+	return businesses, err
 }
 
 func (r *GormRepository) Update(b *Business) error {

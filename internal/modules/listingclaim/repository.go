@@ -14,6 +14,7 @@ var (
 	ErrClaimAlreadyDone    = errors.New("claim already reviewed")
 	ErrListingNotOwnable   = errors.New("listing type is not supported")
 	ErrListingAlreadyOwned = errors.New("listing is already claimed by another business")
+	ErrClaimAlreadyPending = errors.New("listing ini sudah ada klaim aktif (pending/approved)")
 )
 
 type Repository interface {
@@ -21,6 +22,7 @@ type Repository interface {
 	FindByExternalID(externalID string) (*ListingClaim, error)
 	FindPending() ([]ListingClaim, error)
 	FindByBusiness(businessID uint) ([]ListingClaim, error)
+	FindActiveByListing(listingType, listingExternalID string) (*ListingClaim, error)
 	Approve(externalID string, adminUserID uint) error
 	Reject(externalID string, reason string, adminUserID uint) error
 	SearchListings(query string) ([]SearchResult, error)
@@ -59,6 +61,21 @@ func (r *GormRepository) FindByBusiness(businessID uint) ([]ListingClaim, error)
 	var claims []ListingClaim
 	err := r.db.Where("business_id = ?", businessID).Order("submitted_at DESC, id DESC").Find(&claims).Error
 	return claims, err
+}
+
+func (r *GormRepository) FindActiveByListing(listingType, listingExternalID string) (*ListingClaim, error) {
+	var claim ListingClaim
+	err := r.db.Where(
+		"listing_type = ? AND listing_external_id = ? AND status IN ('pending','approved')",
+		listingType, listingExternalID,
+	).Limit(1).First(&claim).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &claim, nil
 }
 
 // Approve approves a claim and links the listing to the claiming business in a

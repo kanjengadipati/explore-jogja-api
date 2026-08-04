@@ -26,6 +26,7 @@ type Business struct {
 	Description             string     `gorm:"type:text" json:"description"`
 	Category                string     `gorm:"not null;index" json:"category"`
 	Phone                   string     `json:"phone"`
+	Address                 string     `json:"address"`
 	Email                   string     `json:"email"`
 	Website                 string     `json:"website"`
 	AvatarURL               string     `json:"avatar_url"`
@@ -36,7 +37,19 @@ type Business struct {
 	ReviewedBy              *uint      `json:"reviewed_by"`
 	LegacyPartnerExternalID *string    `gorm:"index" json:"legacy_partner_external_id"`
 
-	Owners []BusinessOwner `gorm:"foreignKey:BusinessID" json:"owners,omitempty"`
+	Owners       []BusinessOwner       `gorm:"foreignKey:BusinessID" json:"owners,omitempty"`
+	ServiceAreas []BusinessServiceArea `gorm:"foreignKey:BusinessID" json:"service_areas,omitempty"`
+}
+
+// BusinessServiceArea is one region (kabupaten/kota DIY) a business operates in.
+// A business can have multiple rows — e.g. a tour guide covering both Sleman and
+// Bantul. Region values are validated at the application layer (see
+// ValidServiceAreaRegions in service.go), not via a DB CHECK, so the list can be
+// extended without a schema migration if coverage expands beyond DIY later.
+type BusinessServiceArea struct {
+	ID         uint   `gorm:"primaryKey" json:"id"`
+	BusinessID uint   `gorm:"uniqueIndex:idx_business_service_area_unique;not null" json:"business_id"`
+	Region     string `gorm:"uniqueIndex:idx_business_service_area_unique;not null" json:"region"`
 }
 
 // BusinessOwner links a user account to a business. The DB-side unique index
