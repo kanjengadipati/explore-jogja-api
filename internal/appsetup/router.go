@@ -184,9 +184,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 			log.Println("[scraper] manual run triggered via /admin/scrape")
 			results := scraper.RunAll(db)
 			for _, r := range results {
-				log.Printf("[scraper] %s: dest(ins=%d upd=%d staged=%d) events(ins=%d upd=%d staged=%d) errors(%d)",
-					r.Source, r.DestinationsInserted, r.DestinationsUpdated, r.DestinationsStaged,
-					r.EventsInserted, r.EventsUpdated, r.EventsStaged, len(r.Errors))
+				log.Printf("[scraper] %s: dest(upd=%d staged=%d) events(upd=%d staged=%d) errors(%d)",
+					r.Source, r.DestinationsUpdated, r.DestinationsStaged,
+					r.EventsUpdated, r.EventsStaged, len(r.Errors))
 			}
 			log.Println("[scraper] manual run complete")
 		}()

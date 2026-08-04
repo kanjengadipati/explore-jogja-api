@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -39,6 +40,7 @@ type wpMediaResponse struct {
 type wpPostResponse struct {
 	ID    int    `json:"id"`
 	Slug  string `json:"slug"`
+	Date  string `json:"date"`
 	Title struct {
 		Rendered string `json:"rendered"`
 	} `json:"title"`
@@ -205,13 +207,40 @@ func injourneyEventLocation(title string) (location, subRegion string) {
 var (
 	injourneyBEPattern = regexp.MustCompile(`\b(\d{4})\s*BE\b`)
 	injourneyCEPattern = regexp.MustCompile(`\b(19\d{2}|20\d{2})\b`)
+
+	// Concrete date patterns found in the post body ("October 20th, 2018",
+	// "20 Oktober 2018", "2018-10-20"). Month names are English or Indonesian.
+	injourneyMonthDayYearPattern = regexp.MustCompile(`(?i)\b(january|february|march|april|may|june|july|august|september|october|november|december|januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)[a-z]*\s+(\d{1,2})(?:st|nd|rd|th)?[,\s]+(\d{4})\b`)
+	injourneyDayMonthYearPattern = regexp.MustCompile(`(?i)\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december|januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)[a-z]*[,\s]+(\d{4})\b`)
+	injourneyNumericDatePattern  = regexp.MustCompile(`\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b`)
+	injourneyDMYDatePattern      = regexp.MustCompile(`\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b`)
 )
 
-// parseInjourneyEventDates extracts a best-effort year from the event title
-// (e.g. "Prambanan Jazz 2018" → 2018, "Waisak Borobudur 2570 BE" → 2027 CE) so
-// event statuses (completed/active/upcoming) are meaningful. Returns empty
-// strings when no year can be found.
-func parseInjourneyEventDates(title string) (start, end string) {
+var injourneyMonthNumber = map[string]int{
+	"january": 1, "januari": 1,
+	"february": 2, "februari": 2,
+	"march": 3, "maret": 3,
+	"april": 4,
+	"may":   5, "mei": 5,
+	"june": 6, "juni": 6,
+	"july": 7, "juli": 7,
+	"august": 8, "agustus": 8,
+	"september": 9,
+	"october":   10, "oktober": 10,
+	"november": 11,
+	"december": 12, "desember": 12,
+}
+
+// parseInjourneyEventDates extracts the most specific date it can for an
+// event post, in order of reliability:
+//  1. a concrete date in the post body ("October 20th, 2018")
+//  2. a year in the title ("Prambanan Jazz 2018", "Waisak Borobudur 2570 BE")
+//  3. the post's publish date, so events without any explicit date still get
+//     a meaningful status instead of being "upcoming" forever.
+func parseInjourneyEventDates(title, content, published string) (start, end string) {
+	if s := parseContentDate(content); s != "" {
+		return s, s
+	}
 	if m := injourneyBEPattern.FindStringSubmatch(title); m != nil {
 		year := 0
 		fmt.Sscanf(m[1], "%d", &year)
@@ -221,9 +250,68 @@ func parseInjourneyEventDates(title string) (start, end string) {
 		}
 	}
 	if m := injourneyCEPattern.FindStringSubmatch(title); m != nil {
-		return m[1] + "-01-01", m[1] + "-12-31"
+		if year, err := strconv.Atoi(m[1]); err == nil && year >= 1990 && year <= 2100 {
+			return fmt.Sprintf("%d-01-01", year), fmt.Sprintf("%d-12-31", year)
+		}
+	}
+	if len(published) >= 10 {
+		if _, err := time.Parse("2006-01-02", published[:10]); err == nil {
+			return published[:10], published[:10]
+		}
 	}
 	return "", ""
+}
+
+// parseContentDate looks for a concrete date (month + day + year in either
+// language ordering, or a numeric format) inside the post body.
+func parseContentDate(content string) string {
+	text := stripHTML(content)
+
+	if m := injourneyMonthDayYearPattern.FindStringSubmatch(text); m != nil {
+		if d := dateFromParts(m[3], m[2], injourneyMonthNumber[strings.ToLower(m[1])]); d != "" {
+			return d
+		}
+	}
+	if m := injourneyDayMonthYearPattern.FindStringSubmatch(text); m != nil {
+		if d := dateFromParts(m[3], m[1], injourneyMonthNumber[strings.ToLower(m[2])]); d != "" {
+			return d
+		}
+	}
+	if m := injourneyNumericDatePattern.FindStringSubmatch(text); m != nil {
+		year, _ := strconv.Atoi(m[1])
+		month, _ := strconv.Atoi(m[2])
+		day, _ := strconv.Atoi(m[3])
+		if d := dateFromPartsInt(year, month, day); d != "" {
+			return d
+		}
+	}
+	if m := injourneyDMYDatePattern.FindStringSubmatch(text); m != nil {
+		day, _ := strconv.Atoi(m[1])
+		month, _ := strconv.Atoi(m[2])
+		year, _ := strconv.Atoi(m[3])
+		if d := dateFromPartsInt(year, month, day); d != "" {
+			return d
+		}
+	}
+	return ""
+}
+
+// dateFromParts validates a day/month/year given as strings (month is a 1-12
+// number) and formats it as YYYY-MM-DD, or "" when invalid.
+func dateFromParts(yearStr, dayStr string, month int) string {
+	year, err1 := strconv.Atoi(yearStr)
+	day, err2 := strconv.Atoi(dayStr)
+	if err1 != nil || err2 != nil {
+		return ""
+	}
+	return dateFromPartsInt(year, month, day)
+}
+
+func dateFromPartsInt(year, month, day int) string {
+	if year < 1990 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31 {
+		return ""
+	}
+	return fmt.Sprintf("%04d-%02d-%02d", year, month, day)
 }
 
 func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
@@ -288,7 +376,7 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 		img := s.fetchMedia(p.FeaturedMedia)
 		desc := stripHTML(p.Excerpt.Rendered)
 		location, _ := injourneyEventLocation(title)
-		startDate, endDate := parseInjourneyEventDates(title)
+		startDate, endDate := parseInjourneyEventDates(title, p.Content.Rendered, p.Date)
 
 		events = append(events, ScrapedEvent{
 			ExternalID:  slugify(title),

@@ -59,36 +59,37 @@ type WeatherInfo struct {
 
 type Destination struct {
 	gorm.Model
-	ExternalID        string  `gorm:"uniqueIndex;not null" json:"id"`
-	Name              string  `gorm:"not null" json:"name"`
-	Tagline           string  `json:"tagline"`
-	Category          string  `gorm:"index" json:"category"`
-	Location          string  `json:"location"`
-	SubRegion         string  `gorm:"index" json:"sub_region"`
-	Images            JSONArr `gorm:"type:jsonb" json:"images"`
-	Rating            float64 `json:"rating"`
-	ReviewCount       int     `json:"review_count"`
-	Description       string  `gorm:"type:text" json:"description"`
-	Story             string  `gorm:"type:text" json:"story"`
-	TicketPrice       string  `json:"ticket_price"`
-	OpeningHours      string  `json:"opening_hours"`
-	Facilities        JSONArr `gorm:"type:jsonb" json:"facilities"`
-	TravelTips        JSONArr `gorm:"type:jsonb" json:"travel_tips"`
-	BestTime          string  `json:"best_time"`
-	Weather           JSONMap `gorm:"type:jsonb" json:"weather"`
-	Latitude          float64 `json:"latitude"`
-	Longitude         float64 `json:"longitude"`
-	Reviews           JSONArr `gorm:"type:jsonb" json:"reviews"`
-	AffiliatePartners JSONArr `gorm:"type:jsonb" json:"affiliate_partners"`
-	FAQs              JSONArr `gorm:"type:jsonb;column:faqs" json:"faqs"`
-	GoogleMapsURL     string  `json:"google_maps_url"`
-	GoogleReviewCount int     `json:"google_review_count"`
-	SeoTitle          string  `json:"seo_title"`
-	SeoKeywords       string  `gorm:"type:text" json:"seo_keywords"`
-	SeoDescription    string  `gorm:"type:text" json:"seo_description"`
-	OgImageUrl        string  `json:"og_image_url"`
-	VideoURL          string  `gorm:"column:video_url" json:"video_url"`
-	Status            string  `gorm:"index;default:'published'" json:"status"`
+	ExternalID        string    `gorm:"uniqueIndex;not null" json:"id"`
+	Name              string    `gorm:"not null" json:"name"`
+	Tagline           string    `json:"tagline"`
+	Category          string    `gorm:"index" json:"category"`
+	Location          string    `json:"location"`
+	SubRegion         string    `gorm:"index" json:"sub_region"`
+	Images            JSONArr   `gorm:"type:jsonb" json:"images"`
+	Rating            float64   `json:"rating"`
+	ReviewCount       int       `json:"review_count"`
+	Description       string    `gorm:"type:text" json:"description"`
+	Story             string    `gorm:"type:text" json:"story"`
+	TicketPrice       string    `json:"ticket_price"`
+	OpeningHours      string    `json:"opening_hours"`
+	Facilities        JSONArr   `gorm:"type:jsonb" json:"facilities"`
+	TravelTips        JSONArr   `gorm:"type:jsonb" json:"travel_tips"`
+	BestTime          string    `json:"best_time"`
+	Weather           JSONMap   `gorm:"type:jsonb" json:"weather"`
+	Latitude          float64   `json:"latitude"`
+	Longitude         float64   `json:"longitude"`
+	Reviews           JSONArr   `gorm:"type:jsonb" json:"reviews"`
+	AffiliatePartners JSONArr   `gorm:"type:jsonb" json:"affiliate_partners"`
+	FAQs              JSONArr   `gorm:"type:jsonb;column:faqs" json:"faqs"`
+	GoogleMapsURL     string    `json:"google_maps_url"`
+	GoogleReviewCount int       `json:"google_review_count"`
+	SeoTitle          string    `json:"seo_title"`
+	SeoKeywords       string    `gorm:"type:text" json:"seo_keywords"`
+	SeoDescription    string    `gorm:"type:text" json:"seo_description"`
+	OgImageUrl        string    `json:"og_image_url"`
+	VideoURL          string    `gorm:"column:video_url" json:"video_url"`
+	Status            string    `gorm:"index;default:'published'" json:"status"`
+	LastScrapedAt     time.Time `gorm:"column:last_scraped_at" json:"-"`
 
 	// English translations (_en columns)
 	SeoTitleEn       string  `gorm:"column:seo_title_en" json:"seo_title_en"`

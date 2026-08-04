@@ -38,16 +38,16 @@ type ScrapedDestination struct {
 	Source      string
 }
 
-// ScrapeResult holds the outcome of a single scraper run.
+// ScrapeResult holds the outcome of a single scraper run. New items never go
+// straight into the live tables — they are queued for human review instead —
+// so there are no "inserted" counters, only updated/staged.
 type ScrapeResult struct {
-	Source               string
-	EventsInserted       int
-	EventsUpdated        int
-	EventsStaged         int
-	DestinationsInserted int
-	DestinationsUpdated  int
-	DestinationsStaged   int
-	Errors               []string
+	Source              string
+	EventsUpdated       int
+	EventsStaged        int
+	DestinationsUpdated int
+	DestinationsStaged  int
+	Errors              []string
 }
 
 // Scraper defines the interface each source must implement.

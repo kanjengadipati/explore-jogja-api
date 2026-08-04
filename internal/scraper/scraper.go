@@ -37,11 +37,10 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("destinations: %v", err))
 			log.Printf("[scraper] %s destinations error: %v", s.Name(), err)
 		} else {
-			di, du, ds := upsertDestinations(db, dests, s.Name())
-			result.DestinationsInserted = di
+			du, ds := upsertDestinations(db, dests, s.Name())
 			result.DestinationsUpdated = du
 			result.DestinationsStaged = ds
-			log.Printf("[scraper] %s destinations: %d inserted, %d updated, %d staged", s.Name(), di, du, ds)
+			log.Printf("[scraper] %s destinations: %d updated, %d staged", s.Name(), du, ds)
 		}
 
 		events, err := s.ScrapeEvents()
@@ -49,11 +48,10 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("events: %v", err))
 			log.Printf("[scraper] %s events error: %v", s.Name(), err)
 		} else {
-			ei, eu, es := upsertEvents(db, events, s.Name(), destMap)
-			result.EventsInserted = ei
+			eu, es := upsertEvents(db, events, s.Name(), destMap)
 			result.EventsUpdated = eu
 			result.EventsStaged = es
-			log.Printf("[scraper] %s events: %d inserted, %d updated, %d staged", s.Name(), ei, eu, es)
+			log.Printf("[scraper] %s events: %d updated, %d staged", s.Name(), eu, es)
 		}
 
 		results = append(results, result)
@@ -80,11 +78,10 @@ func RunDestinationsOnly(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("destinations: %v", err))
 			log.Printf("[scraper] %s destinations error: %v", s.Name(), err)
 		} else {
-			di, du, ds := upsertDestinations(db, dests, s.Name())
-			result.DestinationsInserted = di
+			du, ds := upsertDestinations(db, dests, s.Name())
 			result.DestinationsUpdated = du
 			result.DestinationsStaged = ds
-			log.Printf("[scraper] %s destinations: %d inserted, %d updated, %d staged", s.Name(), di, du, ds)
+			log.Printf("[scraper] %s destinations: %d updated, %d staged", s.Name(), du, ds)
 		}
 
 		results = append(results, result)
@@ -117,15 +114,17 @@ func RunEventsOnly(db *gorm.DB) []ScrapeResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("events: %v", err))
 			log.Printf("[scraper] %s events error: %v", s.Name(), err)
 		} else {
-			ei, eu, es := upsertEvents(db, events, s.Name(), destMap)
-			result.EventsInserted = ei
+			eu, es := upsertEvents(db, events, s.Name(), destMap)
 			result.EventsUpdated = eu
 			result.EventsStaged = es
-			log.Printf("[scraper] %s events: %d inserted, %d updated, %d staged", s.Name(), ei, eu, es)
+			log.Printf("[scraper] %s events: %d updated, %d staged", s.Name(), eu, es)
 		}
 
 		results = append(results, result)
 	}
+
+	// Fix any stale event statuses based on dates
+	BackfillEventStatuses(db)
 
 	// Populate missing videos for events only
 	var events []event.Event
@@ -175,8 +174,7 @@ func buildDestMap(db *gorm.DB) map[string]string {
 	return m
 }
 
-func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) (int, int, int) {
-	inserted := 0
+func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) (int, int) {
 	updated := 0
 	staged := 0
 	now := time.Now()
@@ -196,35 +194,44 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 			continue
 		}
 
-		if existing.UpdatedAt.Before(now) {
-			existing.Name = item.Name
-			existing.Tagline = item.Tagline
-			existing.Category = item.Category
-			existing.Location = item.Location
-			existing.SubRegion = item.SubRegion
-			if len(item.Images) > 0 {
-				existing.Images = strsToDestJSONArr(item.Images)
-			}
-			existing.Description = item.Description
-			existing.Story = item.Story
-			existing.TicketPrice = item.TicketPrice
-			existing.Latitude = item.Latitude
-			existing.Longitude = item.Longitude
-			if item.VideoURL != "" {
-				existing.VideoURL = item.VideoURL
-			}
-			if err := db.Save(&existing).Error; err != nil {
-				log.Printf("[scraper] failed to update destination %s: %v", item.ExternalID, err)
-				continue
-			}
-			updated++
+		// Respect manual edits: if the record was updated by a human after the
+		// last scrape, don't overwrite it.
+		if !existing.LastScrapedAt.IsZero() && existing.UpdatedAt.After(existing.LastScrapedAt) {
+			log.Printf("[scraper] skipping destination %s: manually edited since last scrape", item.ExternalID)
+			continue
 		}
+
+		existing.Name = item.Name
+		existing.Tagline = item.Tagline
+		existing.Category = item.Category
+		existing.Location = item.Location
+		existing.SubRegion = item.SubRegion
+		if len(item.Images) > 0 {
+			existing.Images = strsToDestJSONArr(item.Images)
+		}
+		existing.Description = item.Description
+		existing.Story = item.Story
+		existing.TicketPrice = item.TicketPrice
+		if item.Latitude != 0 {
+			existing.Latitude = item.Latitude
+		}
+		if item.Longitude != 0 {
+			existing.Longitude = item.Longitude
+		}
+		if item.VideoURL != "" {
+			existing.VideoURL = item.VideoURL
+		}
+		existing.LastScrapedAt = now
+		if err := db.Save(&existing).Error; err != nil {
+			log.Printf("[scraper] failed to update destination %s: %v", item.ExternalID, err)
+			continue
+		}
+		updated++
 	}
-	return inserted, updated, staged
+	return updated, staged
 }
 
-func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[string]string) (int, int, int) {
-	inserted := 0
+func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[string]string) (int, int) {
 	updated := 0
 	staged := 0
 	now := time.Now()
@@ -248,38 +255,52 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 			continue
 		}
 
-		if existing.UpdatedAt.Before(now) {
-			existing.Title = item.Title
-			existing.Description = item.Description
-			existing.Location = item.Location
-			existing.StartDate = item.StartDate
-			existing.EndDate = item.EndDate
-			if item.ImageURL != "" {
-				existing.ImageURL = item.ImageURL
-			}
-			existing.Category = item.Category
-			existing.Latitude = item.Latitude
-			existing.Longitude = item.Longitude
-			existing.TicketPrice = item.TicketPrice
-			existing.Organizer = item.Organizer
-			if len(item.Highlights) > 0 {
-				existing.Highlights = strsToEventJSONArr(item.Highlights)
-			}
-			if item.DestinationID != "" {
-				existing.DestinationID = item.DestinationID
-			}
-			if item.VideoURL != "" {
-				existing.VideoURL = item.VideoURL
-			}
-			existing.Status = resolveEventStatus(item.StartDate, item.EndDate)
-			if err := db.Save(&existing).Error; err != nil {
-				log.Printf("[scraper] failed to update event %s: %v", item.ExternalID, err)
-				continue
-			}
-			updated++
+		// Respect manual edits: if the record was updated by a human after the
+		// last scrape, don't overwrite it.
+		if !existing.LastScrapedAt.IsZero() && existing.UpdatedAt.After(existing.LastScrapedAt) {
+			log.Printf("[scraper] skipping event %s: manually edited since last scrape", item.ExternalID)
+			continue
 		}
+
+		existing.Title = item.Title
+		existing.Description = item.Description
+		existing.Location = item.Location
+		existing.StartDate = item.StartDate
+		existing.EndDate = item.EndDate
+		if item.ImageURL != "" {
+			existing.ImageURL = item.ImageURL
+		}
+		existing.Category = item.Category
+		if item.Latitude != 0 {
+			existing.Latitude = item.Latitude
+		}
+		if item.Longitude != 0 {
+			existing.Longitude = item.Longitude
+		}
+		existing.TicketPrice = item.TicketPrice
+		existing.Organizer = item.Organizer
+		if len(item.Highlights) > 0 {
+			existing.Highlights = strsToEventJSONArr(item.Highlights)
+		}
+		if item.DestinationID != "" {
+			existing.DestinationID = item.DestinationID
+		}
+		if item.VideoURL != "" {
+			existing.VideoURL = item.VideoURL
+		}
+		// Only refresh statuses the scraper owns — a manually set status such
+		// as "cancelled" must be left alone.
+		if existing.Status == "" || scraperManagedEventStatuses[existing.Status] {
+			existing.Status = resolveEventStatus(item.StartDate, item.EndDate)
+		}
+		existing.LastScrapedAt = now
+		if err := db.Save(&existing).Error; err != nil {
+			log.Printf("[scraper] failed to update event %s: %v", item.ExternalID, err)
+			continue
+		}
+		updated++
 	}
-	return inserted, updated, staged
+	return updated, staged
 }
 
 // stageDestination queues a brand-new destination for human review. Already
@@ -334,9 +355,13 @@ func stageEvent(db *gorm.DB, item ScrapedEvent, source string) {
 	var start, end time.Time
 	if t, err := time.Parse("2006-01-02", item.StartDate); err == nil {
 		start = t
+	} else if item.StartDate != "" {
+		log.Printf("[scraper] warning: unparsable start date %q for staged event %s: %v", item.StartDate, item.ExternalID, err)
 	}
 	if t, err := time.Parse("2006-01-02", item.EndDate); err == nil {
 		end = t
+	} else if item.EndDate != "" {
+		log.Printf("[scraper] warning: unparsable end date %q for staged event %s: %v", item.EndDate, item.ExternalID, err)
 	}
 
 	row := staging.StagingEvent{
@@ -375,6 +400,15 @@ func slugify(s string) string {
 	return slug.Make(s)
 }
 
+// scraperManagedEventStatuses are the statuses derived purely from dates.
+// Any status outside this set (e.g. "cancelled", "popular", "limited") is a
+// manual decision and must never be overwritten by the scraper.
+var scraperManagedEventStatuses = map[string]bool{
+	"active":    true,
+	"upcoming":  true,
+	"completed": true,
+}
+
 // resolveEventStatus determines the event status based on start/end dates.
 func resolveEventStatus(startDate, endDate string) string {
 	now := time.Now()
@@ -404,6 +438,10 @@ func BackfillEventStatuses(db *gorm.DB) {
 	db.Find(&events)
 	updated := 0
 	for _, e := range events {
+		// Never touch manually set statuses.
+		if e.Status != "" && !scraperManagedEventStatuses[e.Status] {
+			continue
+		}
 		correct := resolveEventStatus(e.StartDate, e.EndDate)
 		if correct != e.Status {
 			db.Model(&e).Update("status", correct)
@@ -458,23 +496,50 @@ func normalizeSubRegion(raw string) string {
 	return s
 }
 
-// matchFromDestMap tries to find a destination whose name is contained in the event
-// title or location.
+// matchFromDestMap tries to find a destination whose name appears as a whole
+// word in the event title or location. When several destinations match, the
+// longest (most specific) name wins, so "Ratu Boko" beats "Boko" and the
+// result is deterministic regardless of map iteration order.
 func matchFromDestMap(destMap map[string]string, title, location string) string {
 	titleLower := strings.ToLower(title)
 	locLower := strings.ToLower(location)
 
+	best := ""
+	bestLen := 0
 	for extID, nameLower := range destMap {
 		if nameLower == "" {
 			continue
 		}
-		if strings.Contains(titleLower, nameLower) {
-			return extID
+		matched := containsWholeWord(titleLower, nameLower)
+		if !matched && locLower != "" {
+			matched = containsWholeWord(locLower, nameLower)
 		}
-		if locLower != "" && strings.Contains(locLower, nameLower) {
-			return extID
+		if matched && len(nameLower) > bestLen {
+			best, bestLen = extID, len(nameLower)
 		}
 	}
+	return best
+}
 
-	return ""
+// containsWholeWord reports whether needle occurs in haystack as a whole word
+// (bounded on both sides by a non-word character or the string edges).
+func containsWholeWord(haystack, needle string) bool {
+	for {
+		idx := strings.Index(haystack, needle)
+		if idx < 0 {
+			return false
+		}
+		beforeOK := idx == 0 || !isWordChar(haystack[idx-1])
+		afterOK := idx+len(needle) >= len(haystack) || !isWordChar(haystack[idx+len(needle)])
+		if beforeOK && afterOK {
+			return true
+		}
+		haystack = haystack[idx+len(needle):]
+	}
+}
+
+// isWordChar reports whether b is an ASCII word character. Destination names
+// and event titles here are plain ASCII after slugification of the identifier.
+func isWordChar(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9' || b == '_'
 }
