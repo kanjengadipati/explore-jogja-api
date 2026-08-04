@@ -22,6 +22,10 @@ func (s *Service) GetAll() ([]AdCampaign, error) {
 	return s.Repo.FindAll()
 }
 
+func (s *Service) GetAllByBusiness(businessExternalID string) ([]AdCampaign, error) {
+	return s.Repo.FindAllByBusinessExternalID(businessExternalID)
+}
+
 func (s *Service) GetByID(externalID string) (*AdCampaign, error) {
 	return s.Repo.FindByID(externalID)
 }

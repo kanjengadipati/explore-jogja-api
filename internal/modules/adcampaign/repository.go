@@ -11,6 +11,7 @@ type Repository interface {
 	FindAll() ([]AdCampaign, error)
 	FindByID(externalID string) (*AdCampaign, error)
 	FindActiveCandidates(placement, category string) ([]AdCampaign, error)
+	FindAllByBusinessExternalID(businessExternalID string) ([]AdCampaign, error)
 	BusinessExists(externalID string) (bool, error)
 	Create(campaign *AdCampaign) error
 	Update(campaign *AdCampaign) error
@@ -33,6 +34,17 @@ var _ Repository = (*GormRepository)(nil)
 
 func NewRepository(db *gorm.DB) Repository {
 	return &GormRepository{db: db}
+}
+
+func (r *GormRepository) FindAllByBusinessExternalID(businessExternalID string) ([]AdCampaign, error) {
+	var campaigns []AdCampaign
+	err := r.db.Table("ad_campaigns").
+		Select("ad_campaigns.*, businesses.name AS business_name").
+		Joins("LEFT JOIN businesses ON businesses.external_id = ad_campaigns.business_external_id").
+		Where("ad_campaigns.business_external_id = ?", businessExternalID).
+		Order("ad_campaigns.id DESC").
+		Scan(&campaigns).Error
+	return campaigns, err
 }
 
 func (r *GormRepository) FindAll() ([]AdCampaign, error) {

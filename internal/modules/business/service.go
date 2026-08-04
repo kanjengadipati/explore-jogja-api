@@ -150,8 +150,9 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 		Email:       req.Email,
 		Website:     req.Website,
 		AvatarURL:   req.AvatarURL,
-		Status:      StatusPending,
+		Status:      StatusApproved,
 		SubmittedAt: &now,
+		ReviewedAt:  &now,
 	}
 
 	if err := s.Repo.Create(&b); err != nil {

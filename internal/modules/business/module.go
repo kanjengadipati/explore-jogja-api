@@ -1,6 +1,7 @@
 package business
 
 import (
+	"pleco-api/internal/modules/adcampaign"
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/promotion"
@@ -16,11 +17,11 @@ type Module struct {
 	Handler    *Handler
 }
 
-func BuildModule(db *gorm.DB, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, partnerSync PartnerMirrorSyncer, subSvc *subscription.Service) *Module {
+func BuildModule(db *gorm.DB, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, partnerSync PartnerMirrorSyncer, subSvc *subscription.Service, adCampaignSvc *adcampaign.Service) *Module {
 	repo := NewRepository(db)
 	service := NewService(repo)
 	service.PartnerSync = partnerSync
-	handler := NewHandler(service, promoSvc, reviewSvc, auditSvc, notifSvc, subSvc)
+	handler := NewHandler(service, promoSvc, reviewSvc, auditSvc, notifSvc, subSvc, adCampaignSvc)
 	return &Module{
 		Repository: repo,
 		Service:    service,

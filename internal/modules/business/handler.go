@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"pleco-api/internal/httpx"
+	"pleco-api/internal/modules/adcampaign"
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/notification"
 	"pleco-api/internal/modules/promotion"
@@ -21,10 +22,11 @@ type Handler struct {
 	AuditSvc      *audit.Service
 	NotifSvc      *notification.Service
 	SubSvc        *subscription.Service
+	AdCampaignSvc *adcampaign.Service
 }
 
-func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, subSvc *subscription.Service) *Handler {
-	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc, NotifSvc: notifSvc, SubSvc: subSvc}
+func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, subSvc *subscription.Service, adCampaignSvc *adcampaign.Service) *Handler {
+	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc, NotifSvc: notifSvc, SubSvc: subSvc, AdCampaignSvc: adCampaignSvc}
 }
 
 // ownerLookup verifies the :id param belongs to the authenticated user.
@@ -362,4 +364,17 @@ func (h *Handler) GetMySubscription(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "Subscription fetched", sub, nil)
+}
+
+func (h *Handler) GetMyAdCampaigns(c *gin.Context) {
+	b, ok := h.ownerLookup(c)
+	if !ok {
+		return
+	}
+	campaigns, err := h.AdCampaignSvc.GetAllByBusiness(b.ExternalID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Ad campaigns fetched", campaigns, nil)
 }
