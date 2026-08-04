@@ -8,7 +8,7 @@ import (
 
 const (
 	PlacementHomepageHeroAICard     = "homepage_hero_aicard"
-	PlacementHomepageHeroTranding   = "homepage_hero_tranding"
+	PlacementHomepageHeroTrending   = "homepage_hero_trending"
 	PlacementHomepageCategoryBanner = "homepage_category_banner"
 	PlacementListingTop             = "listing_top"
 	PlacementListingNative          = "listing_native"
