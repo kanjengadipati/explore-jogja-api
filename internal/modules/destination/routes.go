@@ -23,3 +23,16 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected.GET("/my-status", handler.GetUserDestinations)
 	protected.POST("/my-status/:slug", handler.UpdateUserDestinationStatus)
 }
+
+// SetupAdminContentRoutes wires the content-gen queue under /admin/content-queue.
+// Mounted separately so it can carry stricter permission middleware at the call site.
+func SetupAdminContentRoutes(api *gin.RouterGroup, contentHandler *ContentGenHandler, jwtService *services.JWTService, permSvc middleware.PermissionChecker, tokenVersionSrc middleware.AccessTokenVersionSource) {
+	admin := api.Group("/auth/admin/content-queue")
+	admin.Use(middleware.AuthMiddleware(jwtService))
+	admin.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))
+	admin.GET("", middleware.RequirePermission(permSvc, "destination.read_all"), contentHandler.ListQueue)
+	admin.POST("/:id/generate", middleware.RequirePermission(permSvc, "destination.manage"), contentHandler.GenerateDraft)
+	admin.POST("/:id/approve", middleware.RequirePermission(permSvc, "destination.manage"), contentHandler.ApproveDraft)
+	admin.POST("/:id/reject", middleware.RequirePermission(permSvc, "destination.manage"), contentHandler.RejectDraft)
+	admin.POST("/:id/regenerate", middleware.RequirePermission(permSvc, "destination.manage"), contentHandler.RegenerateDraft)
+}

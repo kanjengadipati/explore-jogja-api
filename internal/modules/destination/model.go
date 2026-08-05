@@ -89,7 +89,11 @@ type Destination struct {
 	OgImageUrl        string    `json:"og_image_url"`
 	VideoURL          string    `gorm:"column:video_url" json:"video_url"`
 	Status            string    `gorm:"index;default:'published'" json:"status"`
-	LastScrapedAt     time.Time `gorm:"column:last_scraped_at" json:"-"`
+	// ContentStatus tracks AI-generated content lifecycle: draft → review → published | flagged | rejected
+	// Separate from Status (which controls public visibility) so content can be reviewed before going live.
+	ContentStatus   string `gorm:"index;default:''" json:"content_status"`
+	TemplateVariant string `gorm:"default:''" json:"template_variant"` // narrative | facts | itinerary_first
+	LastScrapedAt   time.Time `gorm:"column:last_scraped_at" json:"-"`
 
 	// English translations (_en columns)
 	SeoTitleEn       string  `gorm:"column:seo_title_en" json:"seo_title_en"`

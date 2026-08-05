@@ -10,6 +10,7 @@ import (
 	"pleco-api/internal/cache"
 	"pleco-api/internal/domain"
 	"pleco-api/internal/modules/audit"
+	roleModule "pleco-api/internal/modules/role"
 	tokenModule "pleco-api/internal/modules/token"
 	"pleco-api/internal/services"
 
@@ -214,6 +215,11 @@ func (s *Service) PromoteToPartnerRole(userID uint) error {
 	}
 
 	user.Role = "partner"
+	// Keep role_id in sync with the role string so both sources agree.
+	var partnerRole roleModule.Role
+	if err := s.DB.Where("name = ?", "partner").First(&partnerRole).Error; err == nil {
+		user.RoleID = partnerRole.ID
+	}
 	// Do NOT bump AccessTokenVersion here — partner promotion is an upgrade,
 	// not a security event. Existing refresh tokens stay valid so the user
 	// can get a new access token (with the 'partner' role) via a normal refresh.

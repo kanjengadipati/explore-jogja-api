@@ -90,8 +90,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	audit.SetupRoutes(api, auditModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
-	destinationModule := destination.BuildModule(db, cacheStore)
+	destinationModule := destination.BuildModule(db, cacheStore, aiService)
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService)
+	destination.SetupAdminContentRoutes(api, destinationModule.ContentGenHandler, jwtService, permissionModule.Service, tokenVersionSrc)
+	destination.SetupLocationRoutes(api, destinationModule.LocationHandler)
 
 	configModule := configmodule.BuildModule(db)
 	configmodule.SetupRoutes(api, configModule.Handler)
@@ -137,7 +139,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)
 	// partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc, rateStore)
 
-	businessModule := business.BuildModule(db, promotionModule.Service, reviewModule.Service, auditModule.Service, notificationModule.Service, partnerModule.Service, subscriptionModule.Service, adCampaignModule.Service)
+	businessModule := business.BuildModule(db, promotionModule.Service, reviewModule.Service, auditModule.Service, notificationModule.Service, partnerModule.Service, subscriptionModule.Service, adCampaignModule.Service, userModule.Service)
 	business.SetupRoutes(api, businessModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	// partnerApplicationModule := partnerapplication.BuildModule(db, partnerModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)

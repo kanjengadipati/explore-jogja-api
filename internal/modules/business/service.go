@@ -19,10 +19,17 @@ type PartnerMirrorSyncer interface {
 type Service struct {
 	Repo        Repository
 	PartnerSync PartnerMirrorSyncer
+	UserSvc     PartnerPromoter
 }
 
 func NewService(repo Repository) *Service {
 	return &Service{Repo: repo}
+}
+
+// PartnerPromoter upgrades a user to the partner role once they own a
+// business. Implemented by user.Service.
+type PartnerPromoter interface {
+	PromoteToPartnerRole(userID uint) error
 }
 
 // PartnerMirror is a denormalized snapshot of a partners row used by the
@@ -194,6 +201,12 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 
 	if err := s.Repo.UpsertOwner(b.ID, userID); err != nil {
 		return nil, err
+	}
+
+	if s.UserSvc != nil {
+		if err := s.UserSvc.PromoteToPartnerRole(userID); err != nil {
+			return nil, err
+		}
 	}
 
 	s.mirrorToPartner(&b)

@@ -7,6 +7,7 @@ import (
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/review"
 	"pleco-api/internal/modules/subscription"
+	"pleco-api/internal/modules/user"
 
 	"gorm.io/gorm"
 )
@@ -17,10 +18,11 @@ type Module struct {
 	Handler    *Handler
 }
 
-func BuildModule(db *gorm.DB, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, partnerSync PartnerMirrorSyncer, subSvc *subscription.Service, adCampaignSvc *adcampaign.Service) *Module {
+func BuildModule(db *gorm.DB, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, partnerSync PartnerMirrorSyncer, subSvc *subscription.Service, adCampaignSvc *adcampaign.Service, userSvc *user.Service) *Module {
 	repo := NewRepository(db)
 	service := NewService(repo)
 	service.PartnerSync = partnerSync
+	service.UserSvc = userSvc
 	handler := NewHandler(service, promoSvc, reviewSvc, auditSvc, notifSvc, subSvc, adCampaignSvc)
 	return &Module{
 		Repository: repo,
