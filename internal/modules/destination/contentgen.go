@@ -165,18 +165,31 @@ func (s *ContentGenService) Generate(ctx context.Context, externalID string, var
 	dest.ContentStatus = ContentStatusDraft
 	dest.TemplateVariant = variant
 
+	// Calculate and persist quality score after content generation
+	ApplyScoreToDestination(dest)
+
 	if err := s.DestRepo.Update(dest); err != nil {
 		return nil, fmt.Errorf("failed to save draft: %w", err)
 	}
 	return dest, nil
 }
 
-// Approve publishes a draft after running the similarity gate. Returns an error
-// if the description is too similar to already-published content.
+// Approve publishes a draft after running the quality gate + similarity gate.
 func (s *ContentGenService) Approve(ctx context.Context, externalID string) (*Destination, error) {
 	dest, err := s.DestRepo.FindByID(externalID)
 	if err != nil {
 		return nil, errors.New("destination not found")
+	}
+
+	// Recalculate score to ensure freshness
+	ApplyScoreToDestination(dest)
+
+	// Quality gate — block publish if score below threshold
+	if dest.ContentScore < PublishScoreGate {
+		return nil, fmt.Errorf(
+			"quality gate failed: score %d/100 is below minimum %d required to publish (verdict: %s)",
+			dest.ContentScore, PublishScoreGate, dest.ContentVerdict,
+		)
 	}
 
 	// Similarity gate — flag if too close to published content
@@ -195,7 +208,9 @@ func (s *ContentGenService) Approve(ctx context.Context, externalID string) (*De
 		}
 	}
 
+	// Save updated score + publish status
 	_ = s.ContentRepo.UpdateContentStatus(externalID, ContentStatusPublished, dest.TemplateVariant)
+	_ = s.DestRepo.Update(dest) // persist new score fields
 	dest.ContentStatus = ContentStatusPublished
 	return dest, nil
 }

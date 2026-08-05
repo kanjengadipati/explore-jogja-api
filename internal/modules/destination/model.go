@@ -93,7 +93,11 @@ type Destination struct {
 	// Separate from Status (which controls public visibility) so content can be reviewed before going live.
 	ContentStatus   string `gorm:"index;default:''" json:"content_status"`
 	TemplateVariant string `gorm:"default:''" json:"template_variant"` // narrative | facts | itinerary_first
-	LastScrapedAt   time.Time `gorm:"column:last_scraped_at" json:"-"`
+	// ContentScore is the deterministic rubric score (0–100) calculated from field completeness.
+	// Persisted so it can be used as a publish gate and displayed without recalculation.
+	ContentScore   int    `gorm:"default:0" json:"content_score"`
+	ContentVerdict string `gorm:"default:''" json:"content_verdict"` // EXCELLENT | GOOD | NEEDS WORK
+	LastScrapedAt  time.Time `gorm:"column:last_scraped_at" json:"-"`
 
 	// English translations (_en columns)
 	SeoTitleEn       string  `gorm:"column:seo_title_en" json:"seo_title_en"`
