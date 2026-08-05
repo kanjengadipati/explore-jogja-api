@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"fmt"
 	"errors"
 	"strconv"
 	"strings"
@@ -49,6 +50,10 @@ func (s *Service) GetByID(externalID string) (*Destination, error) {
 
 func (s *Service) GetByCategory(category string) ([]Destination, error) {
 	return s.Repo.FindByCategory(category)
+}
+
+func (s *Service) GetByRegion(region string, status string) ([]Destination, error) {
+	return s.Repo.FindByRegion(region, status)
 }
 
 func (s *Service) Search(query string) ([]Destination, error) {
@@ -324,6 +329,16 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 		dest.OgImageUrl = *req.OgImageUrl
 	}
 	if req.Status != nil {
+		// Quality gate: block direct publish if score below threshold
+		if *req.Status == "published" {
+			qs := CalculateScore(dest)
+			if qs.Total < PublishScoreGate {
+				return nil, fmt.Errorf(
+					"quality gate: score %d/100 below minimum %d to publish (verdict: %s)",
+					qs.Total, PublishScoreGate, qs.Verdict,
+				)
+			}
+		}
 		dest.Status = *req.Status
 	}
 	if req.NameEn != nil {
@@ -357,8 +372,19 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 		dest.SeoDescriptionEn = *req.SeoDescriptionEn
 	}
 
+	// Recalculate quality score before saving
+	ApplyScoreToDestination(dest)
+
 	if err := s.Repo.Update(dest); err != nil {
 		return nil, err
 	}
 	return dest, nil
+}
+
+// recalcScore recalculates and persists the quality score for a destination.
+// Called after any content-touching update.
+func recalcScore(dest *Destination, repo Repository) {
+	ApplyScoreToDestination(dest)
+	// best-effort — don't fail the main operation if score update fails
+	_ = repo.Update(dest)
 }

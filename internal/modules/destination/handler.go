@@ -57,8 +57,12 @@ func (h *Handler) GetAll(c *gin.Context) {
 	if status == "all" {
 		status = ""
 	}
+	region := c.Query("sub_region")
 	if status != "" {
 		cacheKey += ":" + status
+	}
+	if region != "" {
+		cacheKey += ":" + region
 	}
 
 	// Parse pagination — default limit 15, max 100
@@ -76,7 +80,13 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 	if !cacheHit {
 		trendingIDs := h.loadTrendingIDs(locale)
-		dests, err := h.Service.GetAll(status)
+		var dests []Destination
+		var err error
+		if region != "" {
+			dests, err = h.Service.GetByRegion(region, status)
+		} else {
+			dests, err = h.Service.GetAll(status)
+		}
 		if err != nil {
 			httpx.HandleError(c, err)
 			return

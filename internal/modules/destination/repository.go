@@ -9,6 +9,7 @@ type Repository interface {
 	FindByID(externalID string) (*Destination, error)
 	FindBySlug(slug string) (*Destination, error)
 	FindByCategory(category string) ([]Destination, error)
+	FindByRegion(region string, status string) ([]Destination, error)
 	Search(query string) ([]Destination, error)
 	Create(dest *Destination) error
 	CreateBatch(dests []Destination) error
@@ -81,6 +82,16 @@ func (r *GormRepository) FindByCategory(category string) ([]Destination, error) 
 	default:
 		err = r.db.Where("status = ? AND category = ?", "published", category).Order("rating DESC").Find(&dests).Error
 	}
+	return dests, err
+}
+
+func (r *GormRepository) FindByRegion(region string, status string) ([]Destination, error) {
+	var dests []Destination
+	q := r.db.Order("rating DESC")
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	err := q.Where("sub_region ILIKE ?", "%"+region+"%").Find(&dests).Error
 	return dests, err
 }
 
