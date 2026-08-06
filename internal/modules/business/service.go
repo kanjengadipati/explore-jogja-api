@@ -100,7 +100,7 @@ func (s *Service) mirrorOwner(businessID uint, ownerUserID *uint) error {
 	if ownerUserID == nil {
 		return nil
 	}
-	return s.Repo.UpsertOwner(businessID, *ownerUserID)
+	return s.Repo.UpsertOwner(businessID, *ownerUserID, RoleOwner)
 }
 
 // DeleteForPartner soft-deletes the businesses row mirrored from a partners row.
@@ -199,7 +199,7 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 		return nil, err
 	}
 
-	if err := s.Repo.UpsertOwner(b.ID, userID); err != nil {
+	if err := s.Repo.UpsertOwner(b.ID, userID, RoleOwner); err != nil {
 		return nil, err
 	}
 

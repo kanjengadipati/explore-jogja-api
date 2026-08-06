@@ -24,6 +24,11 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	// Owned listings (claimed via listing claims)
 	self.GET("/:id/listings", middleware.RequirePermission(permSvc, "business.read_own"), handler.GetMyListings)
 
+	// Business team members (owner & admin roles)
+	self.GET("/:id/members", middleware.RequirePermission(permSvc, "business.read_own"), handler.GetMyMembers)
+	self.POST("/:id/members/invite", middleware.RequirePermission(permSvc, "business.update_own"), handler.InviteMember)
+	self.DELETE("/:id/members/:userId", middleware.RequirePermission(permSvc, "business.update_own"), handler.RemoveMember)
+
 	// Business promotions (require partner role for management)
 	self.GET("/:id/promotions", middleware.RequirePermission(permSvc, "business.read_own"), handler.ListMyPromotions)
 	self.POST("/:id/promotions", middleware.RequirePermission(permSvc, "promotion.manage_own"), handler.CreateMyPromotion)

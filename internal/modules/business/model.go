@@ -12,6 +12,9 @@ const (
 	StatusApproved  = "approved"
 	StatusRejected  = "rejected"
 	StatusSuspended = "suspended"
+
+	RoleOwner = "owner"
+	RoleAdmin = "admin"
 )
 
 // Business is the identity of a business account (the Partner -> Business
@@ -58,6 +61,8 @@ type BusinessOwner struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	BusinessID uint      `gorm:"uniqueIndex:idx_business_owners_unique;not null" json:"business_id"`
 	UserID     uint      `gorm:"uniqueIndex:idx_business_owners_unique;index;not null" json:"user_id"`
+	Role       string    `gorm:"size:20;not null;default:owner" json:"role"`
+	InvitedBy  *uint     `json:"invited_by,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 

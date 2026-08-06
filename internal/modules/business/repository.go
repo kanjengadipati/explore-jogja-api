@@ -9,19 +9,24 @@ type Repository interface {
 	FindByID(externalID string) (*Business, error)
 	FindByExternalIDs(ids []string) ([]Business, error)
 	FindByLegacyPartner(legacyExternalID string) (*Business, error)
+	SoftDeleteByLegacyPartner(legacyExternalID string) error
 	FindByOwner(userID uint) ([]Business, error)
 	FindByIDAndOwner(externalID string, userID uint) (*Business, error)
 	FindByStatus(status string) ([]Business, error)
 	FindOwnerUserIDs(businessID uint) ([]uint, error)
+	ListOwners(businessID uint) ([]BusinessOwner, error)
 	FindSimilarByName(query string, status string) ([]Business, error)
 	GetListings(businessID uint) ([]OwnedListing, error)
 	Create(b *Business) error
 	CreateWithServiceAreas(b *Business, regions []string) error
 	Update(b *Business) error
 	SoftDelete(externalID string) error
-	SoftDeleteByLegacyPartner(legacyExternalID string) error
-	UpsertOwner(businessID, userID uint) error
+	UpsertOwner(businessID, userID uint, role string) error
 	IsOwner(businessID, userID uint) (bool, error)
+	GetRole(businessID, userID uint) (string, error)
+	IsOwnerRole(businessID, userID uint) (bool, error)
+	SetInvitedBy(businessID, userID, inviterID uint) error
+	RemoveOwner(businessID, userID uint) error
 }
 
 type GormRepository struct {
@@ -96,6 +101,14 @@ func (r *GormRepository) FindOwnerUserIDs(businessID uint) ([]uint, error) {
 		Where("business_id = ?", businessID).
 		Pluck("user_id", &ids).Error
 	return ids, err
+}
+
+func (r *GormRepository) ListOwners(businessID uint) ([]BusinessOwner, error) {
+	var owners []BusinessOwner
+	err := r.db.Where("business_id = ?", businessID).
+		Order("created_at ASC").
+		Find(&owners).Error
+	return owners, err
 }
 
 // GetListings aggregates the listing rows claimed by a business (business_id FK
@@ -186,12 +199,13 @@ func (r *GormRepository) SoftDeleteByLegacyPartner(legacyExternalID string) erro
 	return r.db.Where("legacy_partner_external_id = ?", legacyExternalID).Delete(&Business{}).Error
 }
 
-func (r *GormRepository) UpsertOwner(businessID, userID uint) error {
+func (r *GormRepository) UpsertOwner(businessID, userID uint, role string) error {
 	return r.db.Exec(`
-		INSERT INTO business_owners (business_id, user_id, created_at)
-		VALUES (?, ?, NOW())
-		ON CONFLICT (business_id, user_id) DO NOTHING
-	`, businessID, userID).Error
+		INSERT INTO business_owners (business_id, user_id, role, created_at)
+		VALUES (?, ?, ?, NOW())
+		ON CONFLICT (business_id, user_id)
+		DO UPDATE SET role = EXCLUDED.role
+	`, businessID, userID, role).Error
 }
 
 func (r *GormRepository) IsOwner(businessID, userID uint) (bool, error) {
@@ -200,4 +214,32 @@ func (r *GormRepository) IsOwner(businessID, userID uint) (bool, error) {
 		Where("business_id = ? AND user_id = ?", businessID, userID).
 		Count(&count).Error
 	return count > 0, err
+}
+
+func (r *GormRepository) GetRole(businessID, userID uint) (string, error) {
+	var role string
+	err := r.db.Table("business_owners").
+		Where("business_id = ? AND user_id = ?", businessID, userID).
+		Pluck("role", &role).Error
+	return role, err
+}
+
+func (r *GormRepository) IsOwnerRole(businessID, userID uint) (bool, error) {
+	var count int64
+	err := r.db.Table("business_owners").
+		Where("business_id = ? AND user_id = ? AND role = ?", businessID, userID, RoleOwner).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *GormRepository) RemoveOwner(businessID, userID uint) error {
+	return r.db.Where("business_id = ? AND user_id = ?", businessID, userID).
+		Delete(&BusinessOwner{}).Error
+}
+
+func (r *GormRepository) SetInvitedBy(businessID, userID, inviterID uint) error {
+	return r.db.Exec(`
+		UPDATE business_owners SET invited_by = ?
+		WHERE business_id = ? AND user_id = ?
+	`, inviterID, businessID, userID).Error
 }

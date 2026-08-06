@@ -1,6 +1,7 @@
 package business
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/review"
 	"pleco-api/internal/modules/subscription"
+	"pleco-api/internal/modules/user"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,10 +25,20 @@ type Handler struct {
 	NotifSvc      *notification.Service
 	SubSvc        *subscription.Service
 	AdCampaignSvc *adcampaign.Service
+	UserRepo      user.Repository
 }
 
-func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, subSvc *subscription.Service, adCampaignSvc *adcampaign.Service) *Handler {
-	return &Handler{Service: service, PromoService: promoSvc, ReviewService: reviewSvc, AuditSvc: auditSvc, NotifSvc: notifSvc, SubSvc: subSvc, AdCampaignSvc: adCampaignSvc}
+func NewHandler(service *Service, promoSvc *promotion.Service, reviewSvc *review.Service, auditSvc *audit.Service, notifSvc *notification.Service, subSvc *subscription.Service, adCampaignSvc *adcampaign.Service, userRepo user.Repository) *Handler {
+	return &Handler{
+		Service:       service,
+		PromoService:  promoSvc,
+		ReviewService: reviewSvc,
+		AuditSvc:      auditSvc,
+		NotifSvc:      notifSvc,
+		SubSvc:        subSvc,
+		AdCampaignSvc: adCampaignSvc,
+		UserRepo:      userRepo,
+	}
 }
 
 // ownerLookup verifies the :id param belongs to the authenticated user.
@@ -35,6 +47,26 @@ func (h *Handler) ownerLookup(c *gin.Context) (*Business, bool) {
 	b, err := h.Service.GetOwnedByID(userID, c.Param("id"))
 	if err != nil {
 		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Business not found")
+		return nil, false
+	}
+	return b, true
+}
+
+// requireOwnerRole resolves the business via ownerLookup, then insists the
+// caller holds the owner role (admins cannot manage members).
+func (h *Handler) requireOwnerRole(c *gin.Context) (*Business, bool) {
+	b, ok := h.ownerLookup(c)
+	if !ok {
+		return nil, false
+	}
+	userID, _ := httpx.GetUserIDFromContext(c)
+	isOwner, err := h.Service.Repo.IsOwnerRole(b.ID, userID)
+	if err != nil {
+		httpx.ErrorWithCode(c, 500, "INTERNAL", "Failed to check role")
+		return nil, false
+	}
+	if !isOwner {
+		httpx.ErrorWithCode(c, 403, "FORBIDDEN", "Only the business owner can manage members")
 		return nil, false
 	}
 	return b, true
@@ -142,6 +174,133 @@ func (h *Handler) GetMyListings(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "Listings fetched", listings, nil)
+}
+
+// --- Business team members (owner & admin roles) ---
+
+// teamMember is the member projection returned to the dashboard.
+type teamMember struct {
+	UserID       uint   `json:"user_id"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	AvatarURL    string `json:"avatar_url,omitempty"`
+	Role         string `json:"role"`
+	InvitedBy    *uint  `json:"invited_by,omitempty"`
+	IsCurrentUser bool  `json:"is_current_user"`
+}
+
+func (h *Handler) GetMyMembers(c *gin.Context) {
+	b, ok := h.ownerLookup(c)
+	if !ok {
+		return
+	}
+	owners, err := h.Service.Repo.ListOwners(b.ID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	currentUserID, _ := httpx.GetUserIDFromContext(c)
+	members := make([]teamMember, 0, len(owners))
+	for _, o := range owners {
+		u, err := h.UserRepo.FindByID(o.UserID)
+		if err != nil {
+			continue
+		}
+		members = append(members, teamMember{
+			UserID:        o.UserID,
+			Name:          u.Name,
+			Email:         u.Email,
+			AvatarURL:     u.AvatarURL,
+			Role:          o.Role,
+			InvitedBy:     o.InvitedBy,
+			IsCurrentUser: o.UserID == currentUserID,
+		})
+	}
+	httpx.Success(c, 200, "Members fetched", members, nil)
+}
+
+type inviteMemberRequest struct {
+	Email string `json:"email" binding:"required"`
+	Role  string `json:"role" binding:"required,oneof=owner admin"`
+}
+
+func (h *Handler) InviteMember(c *gin.Context) {
+	b, ok := h.requireOwnerRole(c)
+	if !ok {
+		return
+	}
+	var req inviteMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, err)
+		return
+	}
+	inviterID, _ := httpx.GetUserIDFromContext(c)
+
+	target, err := h.UserRepo.FindByEmail(strings.TrimSpace(req.Email))
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "User with this email was not found")
+		return
+	}
+	if target.ID == inviterID {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "You are already a member of this business")
+		return
+	}
+	if err := h.Service.Repo.UpsertOwner(b.ID, target.ID, req.Role); err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	if err := h.Service.Repo.SetInvitedBy(b.ID, target.ID, inviterID); err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	_ = h.NotifSvc.Notify(target.ID, "Akses Bisnis", "Anda telah ditambahkan sebagai "+req.Role+" di bisnis '"+b.Name+"'", "application")
+	httpx.Success(c, 201, "Member invited", gin.H{"user_id": target.ID, "role": req.Role}, nil)
+}
+
+func (h *Handler) RemoveMember(c *gin.Context) {
+	b, ok := h.requireOwnerRole(c)
+	if !ok {
+		return
+	}
+	actorID, _ := httpx.GetUserIDFromContext(c)
+	var userID uint
+	if _, err := fmt.Sscan(c.Param("userId"), &userID); err != nil {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid member id")
+		return
+	}
+	if userID == actorID {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "You cannot remove yourself")
+		return
+	}
+	role, err := h.Service.Repo.GetRole(b.ID, userID)
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Member not found")
+		return
+	}
+	if role == "" {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Member not found")
+		return
+	}
+	if role == RoleOwner {
+		ownerIDs, _ := h.Service.Repo.FindOwnerUserIDs(b.ID)
+		ownerCount := 0
+		for _, id := range ownerIDs {
+			r, _ := h.Service.Repo.GetRole(b.ID, id)
+			if r == RoleOwner {
+				ownerCount++
+			}
+		}
+		if ownerCount <= 1 {
+			httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "At least one owner must remain")
+			return
+		}
+	}
+	if err := h.Service.Repo.RemoveOwner(b.ID, userID); err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	_ = h.NotifSvc.Notify(userID, "Akses Bisnis", "Anda telah dihapus dari bisnis '"+b.Name+"'", "application")
+	httpx.Success(c, 200, "Member removed", nil, nil)
 }
 
 // --- Admin approval workflow ---
