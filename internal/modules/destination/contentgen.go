@@ -239,7 +239,7 @@ func buildPrompt(d *Destination, variant string) builtPrompt {
 		d.Description, d.TicketPrice, d.OpeningHours, d.BestTime,
 	)
 
-	schema := `Return ONLY valid JSON with fields: description, description_en, story, story_en, tagline, tagline_en, seo_title, seo_title_en, seo_description, seo_description_en, seo_keywords, seo_keywords_en`
+	schema := `Return ONLY valid JSON with fields: description, description_en, story, story_en, tagline, tagline_en, seo_title, seo_title_en, seo_description, seo_description_en, seo_keywords, seo_keywords_en, facilities (array of strings), travel_tips (array of strings)`
 
 	var systemInstruction, userPrompt string
 	switch variant {
@@ -263,6 +263,13 @@ func applyGeneratedContent(d *Destination, generated map[string]interface{}) {
 			*field = v
 		}
 	}
+
+	setArr := func(field *JSONArr, key string) {
+		if v, ok := generated[key].([]interface{}); ok {
+			*field = JSONArr(v)
+		}
+	}
+
 	setStr(&d.Description, "description")
 	setStr(&d.DescriptionEn, "description_en")
 	setStr(&d.Story, "story")
@@ -275,6 +282,9 @@ func applyGeneratedContent(d *Destination, generated map[string]interface{}) {
 	setStr(&d.SeoDescriptionEn, "seo_description_en")
 	setStr(&d.SeoKeywords, "seo_keywords")
 	setStr(&d.SeoKeywordsEn, "seo_keywords_en")
+
+	setArr(&d.Facilities, "facilities")
+	setArr(&d.TravelTips, "travel_tips")
 }
 
 // ─── HTTP handler methods ─────────────────────────────────────────────────────
