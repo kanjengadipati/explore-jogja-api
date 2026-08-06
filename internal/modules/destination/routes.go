@@ -27,7 +27,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 // SetupAdminContentRoutes wires the content-gen queue under /admin/content-queue.
 // Mounted separately so it can carry stricter permission middleware at the call site.
 func SetupAdminContentRoutes(api *gin.RouterGroup, contentHandler *ContentGenHandler, jwtService *services.JWTService, permSvc middleware.PermissionChecker, tokenVersionSrc middleware.AccessTokenVersionSource) {
-	admin := api.Group("/auth/admin/content-queue")
+	admin := api.Group("/admin/content-queue")
 	admin.Use(middleware.AuthMiddleware(jwtService))
 	admin.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))
 	admin.GET("", middleware.RequirePermission(permSvc, "destination.read_all"), contentHandler.ListQueue)

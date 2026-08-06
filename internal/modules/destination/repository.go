@@ -35,6 +35,9 @@ func (r *GormRepository) FindAll(status string) ([]Destination, error) {
 	if status != "" {
 		q = q.Where("status = ?", status)
 	}
+	// Only return destinations whose AI content has been approved (or has no AI content yet).
+	// This prevents AI-generated drafts from leaking to public pages before review.
+	q = q.Where("content_status = '' OR content_status = 'published'")
 	err := q.Find(&dests).Error
 	return dests, err
 }
@@ -43,20 +46,19 @@ func (r *GormRepository) FindByID(externalID string) (*Destination, error) {
 	var dest Destination
 	err := r.db.Where("external_id = ?", externalID).First(&dest).Error
 	if err != nil {
-		// Fallback: try slug-based lookup (slugify name and match)
 		return r.FindBySlug(externalID)
 	}
 	return &dest, nil
 }
 
 // FindBySlug looks up a destination by converting name to a URL slug and comparing.
-// e.g. "Malioboro Street" → "malioboro-street"
 func (r *GormRepository) FindBySlug(slug string) (*Destination, error) {
 	var dest Destination
 	err := r.db.Where(
 		"LOWER(REGEXP_REPLACE(name, '[^a-zA-Z0-9]+', '-', 'g')) = ?",
 		slug,
-	).First(&dest).Error
+	).Where("content_status = '' OR content_status = 'published'").
+		First(&dest).Error
 	if err != nil {
 		return nil, err
 	}
@@ -66,28 +68,31 @@ func (r *GormRepository) FindBySlug(slug string) (*Destination, error) {
 func (r *GormRepository) FindByCategory(category string) ([]Destination, error) {
 	var dests []Destination
 	var err error
+	// safeContent is appended to all public queries to exclude AI drafts under review.
+	safeContent := "AND (content_status = '' OR content_status = 'published')"
 	switch category {
 	case "hidden-gem":
-		err = r.db.Where("status = ? AND rating >= ? AND review_count < ?", "published", 4.5, 2500).Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND rating >= ? AND review_count < ? "+safeContent, "published", 4.5, 2500).Order("rating DESC").Find(&dests).Error
 	case "sunset":
-		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?)", "published", "%sore%", "%sunset%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?) "+safeContent, "published", "%sore%", "%sunset%").Order("rating DESC").Find(&dests).Error
 	case "sunrise":
-		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?)", "published", "%sunrise%", "%fajar%", "%dawn%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?) "+safeContent, "published", "%sunrise%", "%fajar%", "%dawn%").Order("rating DESC").Find(&dests).Error
 	case "camping":
-		err = r.db.Where("status = ? AND (LOWER(category) = ? OR LOWER(best_time) LIKE ?)", "published", "camping", "%camping%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(category) = ? OR LOWER(best_time) LIKE ?) "+safeContent, "published", "camping", "%camping%").Order("rating DESC").Find(&dests).Error
 	case "weekend":
-		err = r.db.Where("status = ? AND rating >= ? AND review_count >= ?", "published", 4.3, 100).Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND rating >= ? AND review_count >= ? "+safeContent, "published", 4.3, 100).Order("rating DESC").Find(&dests).Error
 	case "temple", "candi":
-		err = r.db.Where("status = ? AND (LOWER(category) = ? OR LOWER(category) = ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(tagline) LIKE ? OR LOWER(tagline) LIKE ?)", "published", "temple", "candi", "%candi%", "%temple%", "%candi%", "%temple%").Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND (LOWER(category) = ? OR LOWER(category) = ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(tagline) LIKE ? OR LOWER(tagline) LIKE ?) "+safeContent, "published", "temple", "candi", "%candi%", "%temple%", "%candi%", "%temple%").Order("rating DESC").Find(&dests).Error
 	default:
-		err = r.db.Where("status = ? AND category = ?", "published", category).Order("rating DESC").Find(&dests).Error
+		err = r.db.Where("status = ? AND category = ? "+safeContent, "published", category).Order("rating DESC").Find(&dests).Error
 	}
 	return dests, err
 }
 
 func (r *GormRepository) FindByRegion(region string, status string) ([]Destination, error) {
 	var dests []Destination
-	q := r.db.Order("rating DESC")
+	q := r.db.Order("rating DESC").
+		Where("content_status = '' OR content_status = 'published'")
 	if status != "" {
 		q = q.Where("status = ?", status)
 	}
@@ -105,7 +110,9 @@ func (r *GormRepository) Search(query string) ([]Destination, error) {
 			Or("location ILIKE ?", like).
 			Or("category ILIKE ?", like).
 			Or("sub_region ILIKE ?", like),
-	).Where("status = ?", "published").Order("rating DESC").Find(&dests).Error
+	).Where("status = ?", "published").
+		Where("content_status = '' OR content_status = 'published'").
+		Order("rating DESC").Find(&dests).Error
 	return dests, err
 }
 

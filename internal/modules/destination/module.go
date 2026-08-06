@@ -24,7 +24,7 @@ func BuildModule(db *gorm.DB, cacheStore cache.Store, aiService *ai.Service) *Mo
 	contentSvc := NewContentGenService(repository, contentRepo, aiService)
 	contentHandler := NewContentGenHandler(contentSvc)
 
-	locationHandler := NewLocationHandler(handler, service)
+	locationHandler := NewLocationHandler(handler, service, repository)
 
 	return &Module{
 		Repository:        repository,

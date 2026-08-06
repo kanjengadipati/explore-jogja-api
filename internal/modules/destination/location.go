@@ -73,10 +73,11 @@ type CategoryCount struct {
 type LocationHandler struct {
 	DestHandler *Handler
 	DestService *Service
+	DestRepo    Repository
 }
 
-func NewLocationHandler(destHandler *Handler, destService *Service) *LocationHandler {
-	return &LocationHandler{DestHandler: destHandler, DestService: destService}
+func NewLocationHandler(destHandler *Handler, destService *Service, destRepo Repository) *LocationHandler {
+	return &LocationHandler{DestHandler: destHandler, DestService: destService, DestRepo: destRepo}
 }
 
 // GET /locations — list all regions with destination counts
@@ -119,7 +120,7 @@ func (h *LocationHandler) GetByRegion(c *gin.Context) {
 		return
 	}
 
-	dests, err := h.DestService.GetAll("published")
+	dests, err := h.DestRepo.FindByRegion(regionName, "published")
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -127,15 +128,12 @@ func (h *LocationHandler) GetByRegion(c *gin.Context) {
 
 	trendingIDs := h.DestHandler.loadTrendingIDs(locale)
 	catCounts := make(map[string]int)
-	responses := make([]DestinationResponse, 0)
+	responses := make([]DestinationResponse, 0, len(dests))
 
 	for _, d := range dests {
-		// Match on both stored forms ("Yogyakarta" and "Kota Yogyakarta" both map to kota-yogyakarta)
-		if d.SubRegion == regionName || RegionNameToSlug(d.SubRegion) == regionSlug {
-			localized := d.Localize(locale)
-			responses = append(responses, localized.ToResponse(trendingIDs))
-			catCounts[d.Category]++
-		}
+		localized := d.Localize(locale)
+		responses = append(responses, localized.ToResponse(trendingIDs))
+		catCounts[d.Category]++
 	}
 
 	categories := make([]CategoryCount, 0, len(catCounts))

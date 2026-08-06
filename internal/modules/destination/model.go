@@ -163,10 +163,11 @@ type UserDestination struct {
 // Badges contains all badges that apply to this destination.
 type DestinationResponse struct {
 	Destination
-	Badge     BadgeType   `json:"badge"`
-	Badges    []BadgeType `json:"badges"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
+	Badge             BadgeType   `json:"badge"`
+	Badges            []BadgeType `json:"badges"`
+	FactDensityScore  int         `json:"fact_density_score"`
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
 }
 
 // ToResponse converts a Destination to DestinationResponse by computing its badges.
@@ -179,10 +180,11 @@ func (d *Destination) ToResponse(trendingIDs map[string]bool) DestinationRespons
 		badges = []BadgeType{}
 	}
 	return DestinationResponse{
-		Destination: *d,
-		Badge:       primary,
-		Badges:      badges,
-		CreatedAt:   d.CreatedAt,
+		Destination:      *d,
+		Badge:            primary,
+		Badges:           badges,
+		FactDensityScore: factDensityScore(d),
+		CreatedAt:        d.CreatedAt,
 		UpdatedAt:   d.UpdatedAt,
 	}
 }

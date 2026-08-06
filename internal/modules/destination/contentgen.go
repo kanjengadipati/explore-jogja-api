@@ -33,8 +33,10 @@ const (
 
 // ─── Fact-density gate ────────────────────────────────────────────────────────
 
-// factDensityScore counts how many key factual fields are populated on a destination.
+// FactDensityScore counts how many key factual fields are populated.
 // Minimum 4 populated fields required before AI generation is worthwhile.
+// This is the canonical 10-field version — also exposed in DestinationResponse
+// as fact_density_score so the frontend never needs to duplicate this logic.
 func factDensityScore(d *Destination) int {
 	score := 0
 	if strings.TrimSpace(d.TicketPrice) != "" { score++ }
@@ -42,7 +44,7 @@ func factDensityScore(d *Destination) int {
 	if len(d.Facilities) > 0 { score++ }
 	if len(d.TravelTips) > 0 { score++ }
 	if strings.TrimSpace(d.BestTime) != "" { score++ }
-	if d.Latitude != 0 && d.Longitude != 0 { score++ }
+	if d.Latitude != 0 && d.Longitude != 0 { score++ } // gabungan — keduanya harus ada
 	if d.Rating > 0 { score++ }
 	if d.ReviewCount > 0 { score++ }
 	if strings.TrimSpace(d.Description) != "" { score++ }
