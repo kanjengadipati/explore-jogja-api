@@ -197,7 +197,21 @@ func CalculateScore(d *Destination) QualityScore {
 // PersistScore is kept for future use (direct DB update by external callers).
 func PersistScore(_ *Destination) {}
 
-// ApplyScoreToDestination calculates and sets score fields on the struct in-place.
+// AutoFillGoogleMapsURL sets GoogleMapsURL from coordinates if it's empty and
+// valid coordinates are available. Safe to call unconditionally — no-ops when
+// GoogleMapsURL is already set or coordinates are zero.
+func AutoFillGoogleMapsURL(d *Destination) {
+	if d.GoogleMapsURL != "" {
+		return // already set — don't overwrite
+	}
+	if d.Latitude == 0 || d.Longitude == 0 {
+		return // no coordinates — can't build URL
+	}
+	d.GoogleMapsURL = fmt.Sprintf(
+		"https://www.google.com/maps?q=%.6f,%.6f",
+		d.Latitude, d.Longitude,
+	)
+}
 func ApplyScoreToDestination(d *Destination) {
 	qs := CalculateScore(d)
 	d.ContentScore = qs.Total
