@@ -138,6 +138,12 @@ func (s *ContentGenService) Generate(ctx context.Context, externalID string, var
 		return nil, fmt.Errorf("destination not found: %w", err)
 	}
 
+	// Fact-density gate — block generation when fewer than 4/10 key factual
+	// fields are populated (regression: removed in 24a4053, restored here).
+	if score := factDensityScore(dest); score < 4 {
+		return nil, fmt.Errorf("fact density too low (%d/10 fields populated, minimum 4 required)", score)
+	}
+
 	if variant == "" {
 		variant = TemplateNarrative
 	}
@@ -291,7 +297,21 @@ func (h *ContentGenHandler) ListQueue(c *gin.Context) {
 		httpx.HandleError(c, err)
 		return
 	}
-	httpx.Success(c, 200, "Content queue fetched", drafts, nil)
+	items := make([]contentQueueItem, 0, len(drafts))
+	for i := range drafts {
+		items = append(items, contentQueueItem{
+			Destination:      drafts[i],
+			FactDensityScore: factDensityScore(&drafts[i]),
+		})
+	}
+	httpx.Success(c, 200, "Content queue fetched", items, nil)
+}
+
+// contentQueueItem wraps a draft with its canonical fact-density score so the
+// admin frontend never has to re-derive it from raw fields (max 10).
+type contentQueueItem struct {
+	Destination
+	FactDensityScore int `json:"fact_density_score"`
 }
 
 // POST /admin/content-queue/:id/generate — generate AI draft for a destination

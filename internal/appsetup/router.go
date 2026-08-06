@@ -91,7 +91,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	destinationModule := destination.BuildModule(db, cacheStore, aiService)
-	destination.SetupRoutes(api, destinationModule.Handler, jwtService)
+	destination.SetupRoutes(api, destinationModule.Handler, jwtService, permissionModule.Service)
 	destination.SetupAdminContentRoutes(api, destinationModule.ContentGenHandler, jwtService, permissionModule.Service, tokenVersionSrc)
 	destination.SetupLocationRoutes(api, destinationModule.LocationHandler)
 

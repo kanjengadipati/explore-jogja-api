@@ -7,21 +7,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService) {
+func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JWTService, permSvc middleware.PermissionChecker) {
 	dest := api.Group("/destinations")
 	dest.GET("", handler.GetAll)
 	dest.GET("/search", handler.Search)
 	dest.GET("/:id", handler.GetByID)
 	dest.GET("/category/:category", handler.GetByCategory)
 
-	// Protected routes (require auth)
+	// Admin-write routes (require auth + destination.manage permission)
 	protected := dest.Group("")
-	protected.Use(middleware.AuthMiddleware(jwtService))
+	protected.Use(middleware.AuthMiddleware(jwtService), middleware.RequirePermission(permSvc, "destination.manage"))
 	protected.POST("", handler.Create)
 	protected.PUT("/:id", handler.Update)
 	protected.DELETE("/:id", handler.Delete)
-	protected.GET("/my-status", handler.GetUserDestinations)
-	protected.POST("/my-status/:slug", handler.UpdateUserDestinationStatus)
+
+	// User-self routes (require auth only)
+	self := dest.Group("")
+	self.Use(middleware.AuthMiddleware(jwtService))
+	self.GET("/my-status", handler.GetUserDestinations)
+	self.POST("/my-status/:slug", handler.UpdateUserDestinationStatus)
 }
 
 // SetupAdminContentRoutes wires the content-gen queue under /admin/content-queue.
