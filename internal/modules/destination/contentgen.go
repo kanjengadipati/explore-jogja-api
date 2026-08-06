@@ -209,9 +209,11 @@ func (s *ContentGenService) Approve(ctx context.Context, externalID string) (*De
 	}
 
 	// Save updated score + publish status
-	_ = s.ContentRepo.UpdateContentStatus(externalID, ContentStatusPublished, dest.TemplateVariant)
-	_ = s.DestRepo.Update(dest) // persist new score fields
 	dest.ContentStatus = ContentStatusPublished
+	if err := s.DestRepo.Update(dest); err != nil {
+		return nil, fmt.Errorf("failed to persist approval: %w", err)
+	}
+	_ = s.ContentRepo.UpdateContentStatus(externalID, ContentStatusPublished, dest.TemplateVariant)
 	return dest, nil
 }
 
