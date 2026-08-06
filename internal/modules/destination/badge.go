@@ -53,8 +53,8 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeSunsetSpot)
 	}
 
-	// Camping Spot: bestTime mengandung "camping"
-	if strings.Contains(bestTime, "camping") {
+	// Camping Spot: facilities mengandung "camping"
+	if hasFacility(d.Facilities, "camping") {
 		badges = append(badges, BadgeCampingSpot)
 	}
 
@@ -119,6 +119,18 @@ func travelTipsString(tips JSONArr) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+func hasFacility(facilities JSONArr, target string) bool {
+	target = strings.ToLower(strings.TrimSpace(target))
+	for _, v := range facilities {
+		if s, ok := v.(string); ok {
+			if strings.Contains(strings.ToLower(strings.TrimSpace(s)), target) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // badgePriority defines display priority order (highest first).
