@@ -91,6 +91,8 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	destinationModule := destination.BuildModule(db, cacheStore, aiService)
+	// Wire YouTube fetcher — breaks import cycle between destination and scraper packages
+	destination.YouTubeFetcher = scraper.FetchYouTubeVideoURL
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService, permissionModule.Service)
 	destination.SetupAdminContentRoutes(api, destinationModule.ContentGenHandler, jwtService, permissionModule.Service, tokenVersionSrc)
 	destination.SetupLocationRoutes(api, destinationModule.LocationHandler)
