@@ -44,6 +44,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 
 	// Business ad campaigns (self-service, read-only)
 	self.GET("/:id/ad-campaigns", middleware.RequirePermission(permSvc, "business.read_own"), handler.GetMyAdCampaigns)
+	self.POST("/:id/ad-campaigns", middleware.RequirePermission(permSvc, "business.update_own"), handler.CreateMyAdCampaign)
 
 	// Admin approval workflow — mirrors /auth/admin/partners
 	authAdmin := api.Group("/auth")

@@ -109,6 +109,49 @@ func (h *Handler) Delete(c *gin.Context) {
 	httpx.Success(c, 200, "Ad campaign deleted", nil, nil)
 }
 
+func (h *Handler) Approve(c *gin.Context) {
+	id := c.Param("id")
+	campaign, err := h.Service.Approve(id, actorUserID(c))
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Ad campaign approved", campaign, nil)
+}
+
+type rejectRequestBody struct {
+	Reason string `json:"reason"`
+}
+
+func (h *Handler) Reject(c *gin.Context) {
+	id := c.Param("id")
+
+	var req rejectRequestBody
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+
+	campaign, err := h.Service.Reject(id, req.Reason, actorUserID(c))
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Ad campaign rejected", campaign, nil)
+}
+
+// actorUserID extracts the authenticated user ID from the JWT context set by
+// AuthMiddleware. Returns 0 when unavailable so the audit columns stay empty
+// rather than recording a bogus actor.
+func actorUserID(c *gin.Context) uint {
+	if v, exists := c.Get("user_id"); exists {
+		if id, ok := v.(uint); ok {
+			return id
+		}
+	}
+	return 0
+}
+
 func (h *Handler) TrackImpression(c *gin.Context) {
 	id := c.Param("id")
 	_ = h.Service.TrackImpression(id)

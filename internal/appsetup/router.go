@@ -109,7 +109,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	subscriptionModule := subscription.BuildModule(db)
 
-	adCampaignModule := adcampaign.BuildModule(db, subscriptionModule.Service)
+	emailSvc := services.NewEmailService(cfg.Email)
+
+	adCampaignModule := adcampaign.BuildModule(db, subscriptionModule.Service, emailSvc)
 	adcampaign.SetupRoutes(api, adCampaignModule.Handler, jwtService, permissionModule.Service, rateStore)
 
 	guideModule := guide.BuildModule(db)
@@ -151,7 +153,6 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	// Payment module — builds after partner and adcampaign so their services are available
 	webhooks := router.Group("/webhooks")
 	midtransClient := midtransprovider.New(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey, cfg.Midtrans.IsProduction)
-	emailSvc := services.NewEmailService(cfg.Email)
 	paymentModule := payment.BuildModule(db, midtransClient, partnerModule.Service, adCampaignModule.Service, subscriptionModule.Service, auditModule.Service, emailSvc, businessModule.Repository)
 	payment.SetupRoutes(api, webhooks, paymentModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 

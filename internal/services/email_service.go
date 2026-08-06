@@ -26,6 +26,8 @@ type EmailService interface {
 	SendOTP(toEmail, code string, expiresIn time.Duration) error
 	SendMagicLink(toEmail, token string) error
 	SendPaymentConfirmation(toEmail, subjectName string, amount float64, currency string) error
+	SendAdCampaignApproved(toEmail, campaignName, placement string, startAt, endAt time.Time) error
+	SendAdCampaignRejected(toEmail, campaignName, placement, reason string) error
 }
 
 type emailService struct {
@@ -134,6 +136,57 @@ func (s *emailService) SendPaymentConfirmation(toEmail, subjectName string, amou
 		<p>Pembayaran Anda sejumlah <strong>%.2f %s</strong> untuk <strong>%s</strong> telah diterima.</p>
 		<p>Terima kasih.</p>
 	`, amount, currency, subjectName)
+
+	return s.sendEmail(toEmail, subject, plainText, htmlContent)
+}
+
+func formatCampaignPeriod(startAt, endAt time.Time) string {
+	const layout = "02 Jan 2006"
+	switch {
+	case !startAt.IsZero() && !endAt.IsZero():
+		return startAt.Format(layout) + " — " + endAt.Format(layout)
+	case !startAt.IsZero():
+		return "mulai " + startAt.Format(layout)
+	case !endAt.IsZero():
+		return "sampai " + endAt.Format(layout)
+	default:
+		return "durasi menyesuaikan penawaran"
+	}
+}
+
+func (s *emailService) SendAdCampaignApproved(toEmail, campaignName, placement string, startAt, endAt time.Time) error {
+	subject := "Iklan Anda telah disetujui — Jogjagem"
+	period := formatCampaignPeriod(startAt, endAt)
+	plainText := fmt.Sprintf(
+		"Iklan Anda (%s — %s) telah disetujui dan siap untuk pembayaran.\n\nKampanye: %s\nPlacement: %s\nPeriode tayang: %s\n\nLanjutkan pembayaran melalui portal bisnis Anda untuk menayangkan iklan.",
+		campaignName, placement, campaignName, placement, period,
+	)
+	htmlContent := fmt.Sprintf(`
+		<strong>Iklan Anda Telah Disetujui</strong><br>
+		<p>Kampanye <strong>%s</strong> (placement: <strong>%s</strong>) telah disetujui oleh tim Jogjagem dan siap untuk pembayaran.</p>
+		<p>Periode tayang: %s</p>
+		<p>Silakan lanjutkan pembayaran melalui portal bisnis Anda agar iklan segera tayang.</p>
+	`, campaignName, placement, period)
+
+	return s.sendEmail(toEmail, subject, plainText, htmlContent)
+}
+
+func (s *emailService) SendAdCampaignRejected(toEmail, campaignName, placement, reason string) error {
+	subject := "Perlu Perbaikan — Kampanye Iklan Jogjagem"
+	reasonText := reason
+	if strings.TrimSpace(reasonText) == "" {
+		reasonText = "Konten belum sesuai dengan pedoman penayangan Jogjagem."
+	}
+	plainText := fmt.Sprintf(
+		"Iklan Anda (%s — %s) belum dapat disetujui.\n\nAlasan: %s\n\nSilakan perbaiki kreatif dan ajukan kembali melalui portal bisnis Anda.",
+		campaignName, placement, reasonText,
+	)
+	htmlContent := fmt.Sprintf(`
+		<strong>Kampanye Iklan Belum Disetujui</strong><br>
+		<p>Kampanye <strong>%s</strong> (placement: <strong>%s</strong>) belum dapat disetujui.</p>
+		<p><strong>Alasan:</strong> %s</p>
+		<p>Silakan perbaiki kreatif dan ajukan kembali melalui portal bisnis Anda.</p>
+	`, campaignName, placement, reasonText)
 
 	return s.sendEmail(toEmail, subject, plainText, htmlContent)
 }

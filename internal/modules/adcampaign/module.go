@@ -4,6 +4,7 @@ import (
 	"gorm.io/gorm"
 
 	"pleco-api/internal/modules/subscription"
+	"pleco-api/internal/services"
 )
 
 type Module struct {
@@ -12,9 +13,9 @@ type Module struct {
 	Handler    *Handler
 }
 
-func BuildModule(db *gorm.DB, subSvc *subscription.Service) *Module {
+func BuildModule(db *gorm.DB, subSvc *subscription.Service, emailSvc services.EmailService) *Module {
 	repository := NewRepository(db)
-	service := NewService(repository, subSvc)
+	service := NewService(repository, subSvc, emailSvc)
 	handler := NewHandler(service)
 
 	return &Module{

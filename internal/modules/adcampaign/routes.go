@@ -29,6 +29,8 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected.POST("/campaigns", handler.Create)
 	protected.PUT("/campaigns/:id", handler.Update)
 	protected.DELETE("/campaigns/:id", handler.Delete)
+	protected.POST("/campaigns/:id/approve", handler.Approve)
+	protected.POST("/campaigns/:id/reject", handler.Reject)
 	protected.GET("/house-ads", handler.GetAllHouseAds)
 	protected.POST("/house-ads", handler.CreateHouseAd)
 	protected.PUT("/house-ads/:id", handler.UpdateHouseAd)

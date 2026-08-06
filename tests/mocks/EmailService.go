@@ -85,6 +85,42 @@ func (_m *EmailService) SendPaymentConfirmation(toEmail string, subjectName stri
 	return r0
 }
 
+// SendAdCampaignApproved provides a mock function with given fields: toEmail, campaignName, placement, startAt, endAt
+func (_m *EmailService) SendAdCampaignApproved(toEmail string, campaignName string, placement string, startAt time.Time, endAt time.Time) error {
+	ret := _m.Called(toEmail, campaignName, placement, startAt, endAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SendAdCampaignApproved")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string, time.Time, time.Time) error); ok {
+		r0 = rf(toEmail, campaignName, placement, startAt, endAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendAdCampaignRejected provides a mock function with given fields: toEmail, campaignName, placement, reason
+func (_m *EmailService) SendAdCampaignRejected(toEmail string, campaignName string, placement string, reason string) error {
+	ret := _m.Called(toEmail, campaignName, placement, reason)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SendAdCampaignRejected")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string, string) error); ok {
+		r0 = rf(toEmail, campaignName, placement, reason)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SendVerificationEmail provides a mock function with given fields: toEmail, token
 func (_m *EmailService) SendVerificationEmail(toEmail string, token string) error {
 	ret := _m.Called(toEmail, token)

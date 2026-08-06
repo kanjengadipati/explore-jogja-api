@@ -567,3 +567,21 @@ func (h *Handler) GetMyAdCampaigns(c *gin.Context) {
 	}
 	httpx.Success(c, 200, "Ad campaigns fetched", campaigns, nil)
 }
+
+func (h *Handler) CreateMyAdCampaign(c *gin.Context) {
+	b, ok := h.ownerLookup(c)
+	if !ok {
+		return
+	}
+	var req adcampaign.SelfServiceCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, err)
+		return
+	}
+	campaign, err := h.AdCampaignSvc.CreateSelfService(b.ExternalID, b.Name, req)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 201, "Ad campaign created", campaign, nil)
+}

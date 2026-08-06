@@ -15,6 +15,17 @@ const (
 	PlacementDestinationDetail      = "destination_detail"
 )
 
+// Approval/status flow for ad campaigns. Approval is mandatory for every
+// sellable placement: new campaigns start pending_review, staff approve
+// (→ pending_payment) or reject (→ rejected), then the Midtrans webhook flips
+// a payable campaign to paid. PaymentStatus is the single gate used by IsLive.
+const (
+	PaymentStatusPendingReview  = "pending_review"
+	PaymentStatusPendingPayment = "pending_payment"
+	PaymentStatusPaid           = "paid"
+	PaymentStatusRejected       = "rejected"
+)
+
 type AdCampaign struct {
 	gorm.Model
 	ExternalID         string  `gorm:"uniqueIndex;not null" json:"id"`
@@ -44,6 +55,14 @@ type AdCampaign struct {
 	PriceAmount   float64 `json:"price_amount"`
 	PriceCurrency string  `gorm:"default:IDR" json:"price_currency"`
 	PaymentStatus string  `gorm:"default:pending" json:"payment_status"`
+
+	// Approval audit trail (migration 000082). Populated by Approve/Reject —
+	// approved_by / rejected_by hold the acting admin's user identity.
+	ApprovedAt      *time.Time `json:"approved_at,omitempty"`
+	ApprovedBy      string     `json:"approved_by,omitempty"`
+	RejectionReason string     `json:"rejection_reason,omitempty"`
+	RejectedAt      *time.Time `json:"rejected_at,omitempty"`
+	RejectedBy      string     `json:"rejected_by,omitempty"`
 }
 
 type HouseAd struct {

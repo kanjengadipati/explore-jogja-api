@@ -13,6 +13,8 @@ type Repository interface {
 	FindActiveCandidates(placement, category string) ([]AdCampaign, error)
 	FindAllByBusinessExternalID(businessExternalID string) ([]AdCampaign, error)
 	BusinessExists(externalID string) (bool, error)
+	OwnerEmailsForBusiness(businessExternalID string) ([]string, error)
+	UserEmailByID(userID uint) (string, error)
 	Create(campaign *AdCampaign) error
 	Update(campaign *AdCampaign) error
 	Delete(externalID string) error
@@ -98,6 +100,42 @@ func (r *GormRepository) BusinessExists(externalID string) (bool, error) {
 		Where("external_id = ?", externalID).
 		Count(&count).Error
 	return count > 0, err
+}
+
+// OwnerEmailsForBusiness resolves the recipient email addresses for approval /
+// rejection notifications of a campaign owned by a business. It collects the
+// unique emails of the user accounts linked via business_owners, falling back
+// to the business contact email when no owner user has an email on file.
+func (r *GormRepository) OwnerEmailsForBusiness(businessExternalID string) ([]string, error) {
+	var emails []string
+	err := r.db.Raw(`
+		SELECT DISTINCT u.email
+		FROM business_owners bo
+		JOIN users u ON u.id = bo.user_id
+		JOIN businesses b ON b.id = bo.business_id
+		WHERE b.external_id = ?
+		  AND u.email <> ''`, businessExternalID).Scan(&emails).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(emails) > 0 {
+		return emails, nil
+	}
+	err = r.db.Table("businesses").
+		Select("email").
+		Where("external_id = ? AND email <> ''", businessExternalID).
+		Scan(&emails).Error
+	return emails, err
+}
+
+// UserEmailByID returns the email of a user account, used to record the acting
+// admin's identity in approved_by / rejected_by.
+func (r *GormRepository) UserEmailByID(userID uint) (string, error) {
+	var email string
+	err := r.db.Table("users").
+		Where("id = ?", userID).
+		Pluck("email", &email).Error
+	return email, err
 }
 
 func (r *GormRepository) Create(campaign *AdCampaign) error {
