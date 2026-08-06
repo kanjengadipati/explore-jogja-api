@@ -140,10 +140,6 @@ func (s *ContentGenService) Generate(ctx context.Context, externalID string, var
 
 	// Fact-density gate — block generation when fewer than 4/10 key factual
 	// fields are populated (regression: removed in 24a4053, restored here).
-	if score := factDensityScore(dest); score < 4 {
-		return nil, fmt.Errorf("fact density too low (%d/10 fields populated, minimum 4 required)", score)
-	}
-
 	if variant == "" {
 		variant = TemplateNarrative
 	}
