@@ -53,8 +53,8 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeSunsetSpot)
 	}
 
-	// Camping Spot: facilities mengandung "camping"
-	if hasFacility(d.Facilities, "camping") {
+	// Camping Spot: facilities mengandung "camping" ATAU bestTime mengandung "camping" (fallback)
+	if hasFacility(d.Facilities, "camping") || strings.Contains(bestTime, "camping") {
 		badges = append(badges, BadgeCampingSpot)
 	}
 
