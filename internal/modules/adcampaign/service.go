@@ -4,13 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"pleco-api/internal/domain"
 	"pleco-api/internal/modules/subscription"
 	"pleco-api/internal/services"
+	"pleco-api/internal/utils"
 )
 
 type Service struct {
@@ -74,14 +77,22 @@ func (s *Service) Create(campaign *AdCampaign) error {
 
 // SelfServiceCreateRequest is the payload the business portal submits when a
 // business owner creates their own ad campaign (no price/status fields — those
-// are derived server-side from the placement).
+// are derived server-side from the placement). The creative image and target
+// URL are required for banner-style placements; ecosystem placements derive
+// both from the promoted listing instead.
 type SelfServiceCreateRequest struct {
 	Placement string     `json:"placement" binding:"required"`
-	ImageURL  string     `json:"image_url" binding:"required"`
-	TargetURL string     `json:"target_url" binding:"required"`
+	ImageURL  string     `json:"image_url"`
+	TargetURL string     `json:"target_url"`
 	Category  string     `json:"category"`
 	StartAt   *time.Time `json:"start_at"`
 	EndAt     *time.Time `json:"end_at"`
+
+	// Ecosystem rail fields — required when placement is ecosystem_*.
+	ListingType       string   `json:"listing_type"`
+	ListingExternalID string   `json:"listing_external_id"`
+	TargetDestIDs     []string `json:"target_dest_ids"`
+	SortOrder         int      `json:"sort_order"`
 }
 
 // CreateSelfService creates an ad campaign on behalf of a business owner.
@@ -91,10 +102,34 @@ type SelfServiceCreateRequest struct {
 // automatically once the payment webhook marks them paid.
 func (s *Service) CreateSelfService(businessExternalID, partnerName string, req SelfServiceCreateRequest) (*AdCampaign, error) {
 	if !IsSellablePlacement(req.Placement) {
-		return nil, errors.New("unknown or non-sellable placement")
+		return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+			"unknown or non-sellable placement", nil)
 	}
-	if strings.TrimSpace(req.ImageURL) == "" || strings.TrimSpace(req.TargetURL) == "" {
-		return nil, errors.New("image_url and target_url are required")
+
+	// Ecosystem placements promote a real listing owned by the business. The
+	// creative image and target URL are derived from the listing record itself,
+	// so the owner does not have to upload a separate creative for these slots.
+	if IsEcosystemPlacement(req.Placement) {
+		if strings.TrimSpace(req.ListingType) == "" || strings.TrimSpace(req.ListingExternalID) == "" {
+			return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+				"listing_type and listing_external_id are required for ecosystem placements", nil)
+		}
+		if err := s.validateListingOwnership(businessExternalID, req.ListingType, req.ListingExternalID); err != nil {
+			return nil, err
+		}
+		listing, err := s.Repo.FindEcosystemListing(req.ListingType, req.ListingExternalID)
+		if err != nil {
+			return nil, err
+		}
+		if listing == nil {
+			return nil, domain.NewAPIError(http.StatusNotFound, domain.CodeNotFound,
+				"listing not found or not owned by this business", nil)
+		}
+		req.ImageURL = listing.Image
+		req.TargetURL = listing.Website
+	} else if strings.TrimSpace(req.ImageURL) == "" || strings.TrimSpace(req.TargetURL) == "" {
+		return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+			"image_url and target_url are required", nil)
 	}
 
 	exists, err := s.Repo.BusinessExists(businessExternalID)
@@ -102,7 +137,7 @@ func (s *Service) CreateSelfService(businessExternalID, partnerName string, req 
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.New("business not found")
+		return nil, domain.NewAPIError(http.StatusNotFound, domain.CodeNotFound, "business not found", nil)
 	}
 
 	canCreate, err := s.SubscriptionSvc.CanCreateAdCampaign(businessExternalID)
@@ -110,7 +145,8 @@ func (s *Service) CreateSelfService(businessExternalID, partnerName string, req 
 		return nil, err
 	}
 	if !canCreate {
-		return nil, errors.New("business on free plan cannot create ad campaigns")
+		return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+			"business on free plan cannot create ad campaigns", nil)
 	}
 
 	var startAt, endAt time.Time
@@ -121,6 +157,11 @@ func (s *Service) CreateSelfService(businessExternalID, partnerName string, req 
 		endAt = *req.EndAt
 	}
 
+	targetDestIDs := make(utils.JSONArr, 0, len(req.TargetDestIDs))
+	for _, id := range req.TargetDestIDs {
+		targetDestIDs = append(targetDestIDs, id)
+	}
+
 	campaign := &AdCampaign{
 		ExternalID:         uuid.New().String(),
 		BusinessExternalID: &businessExternalID,
@@ -129,6 +170,10 @@ func (s *Service) CreateSelfService(businessExternalID, partnerName string, req 
 		ImageURL:           req.ImageURL,
 		TargetURL:          req.TargetURL,
 		Category:           req.Category,
+		ListingType:        req.ListingType,
+		ListingExternalID:  req.ListingExternalID,
+		TargetDestIDs:      targetDestIDs,
+		SortOrder:          req.SortOrder,
 		StartAt:            startAt,
 		EndAt:              endAt,
 		Weight:             1,
@@ -144,6 +189,20 @@ func (s *Service) CreateSelfService(businessExternalID, partnerName string, req 
 	return campaign, nil
 }
 
+// validateListingOwnership ensures a business can only sponsor listings it
+// actually owns (business_id FK set by the listing-claim approval flow).
+func (s *Service) validateListingOwnership(businessExternalID, listingType, listingExternalID string) error {
+	ok, err := s.Repo.ListingBelongsToBusiness(listingType, listingExternalID, businessExternalID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return domain.NewAPIError(http.StatusNotFound, domain.CodeNotFound,
+			"listing not found or not owned by this business", nil)
+	}
+	return nil
+}
+
 type UpdateAdCampaignRequest struct {
 	PartnerName        *string    `json:"partner_name"`
 	BusinessExternalID *string    `json:"business_external_id"`
@@ -151,6 +210,10 @@ type UpdateAdCampaignRequest struct {
 	ImageURL           *string    `json:"image_url"`
 	TargetURL          *string    `json:"target_url"`
 	Category           *string    `json:"category"`
+	ListingType        *string    `json:"listing_type"`
+	ListingExternalID  *string    `json:"listing_external_id"`
+	TargetDestIDs      *[]string  `json:"target_dest_ids"`
+	SortOrder          *int       `json:"sort_order"`
 	StartAt            *time.Time `json:"start_at"`
 	EndAt              *time.Time `json:"end_at"`
 	Weight             *int       `json:"weight"`
@@ -194,6 +257,22 @@ func (s *Service) Update(externalID string, req UpdateAdCampaignRequest) (*AdCam
 	}
 	if req.Category != nil {
 		campaign.Category = *req.Category
+	}
+	if req.ListingType != nil {
+		campaign.ListingType = *req.ListingType
+	}
+	if req.ListingExternalID != nil {
+		campaign.ListingExternalID = *req.ListingExternalID
+	}
+	if req.TargetDestIDs != nil {
+		ids := make(utils.JSONArr, 0, len(*req.TargetDestIDs))
+		for _, id := range *req.TargetDestIDs {
+			ids = append(ids, id)
+		}
+		campaign.TargetDestIDs = ids
+	}
+	if req.SortOrder != nil {
+		campaign.SortOrder = *req.SortOrder
 	}
 	if req.StartAt != nil {
 		campaign.StartAt = *req.StartAt

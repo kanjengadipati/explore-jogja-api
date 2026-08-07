@@ -21,6 +21,13 @@ var MonthlyPrices = map[string]float64{
 	PlacementListingTop:             250000,
 	PlacementListingNative:          200000,
 	PlacementDestinationDetail:      400000,
+
+	PlacementEcosystemStay:       300000,
+	PlacementEcosystemEat:        250000,
+	PlacementEcosystemExperience: 250000,
+	PlacementEcosystemShop:       200000,
+	PlacementEcosystemMove:       200000,
+	PlacementEcosystemGuide:      200000,
 }
 
 func IsSellablePlacement(placement string) bool {
@@ -70,6 +77,13 @@ var PlacementLabel = map[string]string{
 	PlacementListingTop:             "Grid Destinasi Populer",
 	PlacementListingNative:          "Native Ad Festival & Destinasi",
 	PlacementDestinationDetail:      "Sponsorship Halaman Destinasi",
+
+	PlacementEcosystemStay:       "Rel Rekomendasi — Menginap",
+	PlacementEcosystemEat:        "Rel Rekomendasi — Kuliner",
+	PlacementEcosystemExperience: "Rel Rekomendasi — Vibe & Aktivitas",
+	PlacementEcosystemShop:       "Rel Rekomendasi — Belanja",
+	PlacementEcosystemMove:       "Rel Rekomendasi — Transport",
+	PlacementEcosystemGuide:      "Rel Rekomendasi — Guide Lokal",
 }
 
 func PlacementName(placement string) string {

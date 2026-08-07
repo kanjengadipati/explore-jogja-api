@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"pleco-api/internal/utils"
 )
 
 const (
@@ -13,7 +15,38 @@ const (
 	PlacementListingTop             = "listing_top"
 	PlacementListingNative          = "listing_native"
 	PlacementDestinationDetail      = "destination_detail"
+
+	// Ecosystem rail placements — one per tab of the destination detail
+	// "Rekomendasi Kebutuhan Traveler" section. Each campaign promotes a
+	// specific listing (listing_type + listing_external_id) owned by the
+	// business, and the card data is enriched from that listing at serve time.
+	PlacementEcosystemStay       = "ecosystem_stay"
+	PlacementEcosystemEat        = "ecosystem_eat"
+	PlacementEcosystemExperience = "ecosystem_experience"
+	PlacementEcosystemShop       = "ecosystem_shop"
+	PlacementEcosystemMove       = "ecosystem_move"
+	PlacementEcosystemGuide      = "ecosystem_guide"
 )
+
+// EcosystemPlacements is the full set of ecosystem rail placements. Serving and
+// validation code should use this slice instead of hand-listing them.
+var EcosystemPlacements = []string{
+	PlacementEcosystemStay,
+	PlacementEcosystemEat,
+	PlacementEcosystemExperience,
+	PlacementEcosystemShop,
+	PlacementEcosystemMove,
+	PlacementEcosystemGuide,
+}
+
+func IsEcosystemPlacement(placement string) bool {
+	for _, p := range EcosystemPlacements {
+		if p == placement {
+			return true
+		}
+	}
+	return false
+}
 
 // Approval/status flow for ad campaigns. Approval is mandatory for every
 // sellable placement: new campaigns start pending_review, staff approve
@@ -41,6 +74,15 @@ type AdCampaign struct {
 	ImageURL     string `gorm:"not null" json:"image_url"`
 	TargetURL    string `gorm:"not null" json:"target_url"`
 	Category     string `gorm:"index" json:"category"`
+
+	// Ecosystem rail fields (migration 000083). ListingType is one of
+	// hotel | restaurant | souvenir | rental | guide; ListingExternalID is the
+	// external id of that listing. TargetDestIDs scopes the campaign to
+	// destination(s); empty array means all destinations.
+	ListingType       string        `json:"listing_type"`
+	ListingExternalID string        `json:"listing_external_id"`
+	TargetDestIDs     utils.JSONArr `gorm:"type:jsonb" json:"target_dest_ids"`
+	SortOrder         int           `json:"sort_order"`
 
 	StartAt time.Time `json:"start_at"`
 	EndAt   time.Time `json:"end_at"`

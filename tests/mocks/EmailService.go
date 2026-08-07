@@ -139,6 +139,34 @@ func (_m *EmailService) SendVerificationEmail(toEmail string, token string) erro
 	return r0
 }
 
+// SendBusinessInvite mocks SendBusinessInvite.
+func (_m *EmailService) SendBusinessInvite(toEmail string, inviteURL string) error {
+	ret := _m.Called(toEmail, inviteURL)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(toEmail, inviteURL)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// BusinessInviteURL mocks BusinessInviteURL.
+func (_m *EmailService) BusinessInviteURL(token string) string {
+	ret := _m.Called(token)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(token)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // NewEmailService creates a new instance of EmailService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewEmailService(t interface {

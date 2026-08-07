@@ -7,9 +7,8 @@ import (
 )
 
 const (
-	SubjectAdCampaign         = "ad_campaign"
-	SubjectPartnerSponsorship = "partner_sponsorship"
-	SubjectSubscription       = "subscription"
+	SubjectAdCampaign   = "ad_campaign"
+	SubjectSubscription = "subscription"
 
 	StatusPending  = "pending"
 	StatusPaid     = "paid"

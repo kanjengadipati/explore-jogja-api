@@ -4,22 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 )
 
-// PartnerMirrorSyncer lets business writes mirror back onto the legacy partners
-// row so both endpoint families stay consistent during the transition (Phase 3
-// reverse dual-write). Implemented by partner.Service. Temporary scaffolding,
-// retired in Phase 6.
-type PartnerMirrorSyncer interface {
-	SyncMirrorFromBusiness(m PartnerMirror) error
-}
-
 type Service struct {
-	Repo        Repository
-	PartnerSync PartnerMirrorSyncer
-	UserSvc     PartnerPromoter
+	Repo    Repository
+	UserSvc PartnerPromoter
 }
 
 func NewService(repo Repository) *Service {
@@ -30,106 +19,6 @@ func NewService(repo Repository) *Service {
 // business. Implemented by user.Service.
 type PartnerPromoter interface {
 	PromoteToPartnerRole(userID uint) error
-}
-
-// PartnerMirror is a denormalized snapshot of a partners row used by the
-// Phase 1 dual-write hook. Kept as primitives so this package never has to
-// import the partner package.
-type PartnerMirror struct {
-	ExternalID              string
-	Name                    string
-	Description             string
-	Category                string
-	Phone                   string
-	Website                 string
-	Status                  string
-	RejectionReason         string
-	SubmittedAt             *time.Time
-	ReviewedAt              *time.Time
-	ReviewedBy              *uint
-	OwnerUserID             *uint
-	LegacyPartnerExternalID *string
-}
-
-// SyncFromPartner upserts the businesses row mirroring a partners row, joined
-// on legacy_partner_external_id, and mirrors owner_user_id into business_owners.
-// Temporary Phase 1 scaffolding; retired in Phase 6.
-func (s *Service) SyncFromPartner(m PartnerMirror) error {
-	existing, err := s.Repo.FindByLegacyPartner(m.ExternalID)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		b := Business{
-			ExternalID:              "biz_" + m.ExternalID,
-			Name:                    m.Name,
-			Description:             m.Description,
-			Category:                m.Category,
-			Phone:                   m.Phone,
-			Website:                 m.Website,
-			Status:                  m.Status,
-			RejectionReason:         m.RejectionReason,
-			SubmittedAt:             m.SubmittedAt,
-			ReviewedAt:              m.ReviewedAt,
-			ReviewedBy:              m.ReviewedBy,
-			LegacyPartnerExternalID: &m.ExternalID,
-		}
-		if err := s.Repo.Create(&b); err != nil {
-			return err
-		}
-		return s.mirrorOwner(b.ID, m.OwnerUserID)
-	}
-	if err != nil {
-		return err
-	}
-
-	existing.Name = m.Name
-	existing.Description = m.Description
-	existing.Category = m.Category
-	existing.Phone = m.Phone
-	existing.Website = m.Website
-	existing.Status = m.Status
-	existing.RejectionReason = m.RejectionReason
-	existing.SubmittedAt = m.SubmittedAt
-	existing.ReviewedAt = m.ReviewedAt
-	existing.ReviewedBy = m.ReviewedBy
-	if err := s.Repo.Update(existing); err != nil {
-		return err
-	}
-	return s.mirrorOwner(existing.ID, m.OwnerUserID)
-}
-
-func (s *Service) mirrorOwner(businessID uint, ownerUserID *uint) error {
-	if ownerUserID == nil {
-		return nil
-	}
-	return s.Repo.UpsertOwner(businessID, *ownerUserID, RoleOwner)
-}
-
-// DeleteForPartner soft-deletes the businesses row mirrored from a partners row.
-func (s *Service) DeleteForPartner(legacyExternalID string) error {
-	return s.Repo.SoftDeleteByLegacyPartner(legacyExternalID)
-}
-
-// mirrorToPartner pushes business edits back onto the mirrored partners row.
-// The partner write re-fires the Phase 1 forward hook, which re-applies the
-// same values onto the business row — so the round-trip terminates after one
-// hop and both rows stay identical.
-func (s *Service) mirrorToPartner(b *Business) {
-	if s.PartnerSync == nil || b.LegacyPartnerExternalID == nil {
-		return
-	}
-	legacyID := *b.LegacyPartnerExternalID
-	_ = s.PartnerSync.SyncMirrorFromBusiness(PartnerMirror{
-		ExternalID:      legacyID,
-		Name:            b.Name,
-		Description:     b.Description,
-		Category:        b.Category,
-		Phone:           b.Phone,
-		Website:         b.Website,
-		Status:          b.Status,
-		RejectionReason: b.RejectionReason,
-		SubmittedAt:     b.SubmittedAt,
-		ReviewedAt:      b.ReviewedAt,
-		ReviewedBy:      b.ReviewedBy,
-	})
 }
 
 // --- Self-service dashboard ---
@@ -209,7 +98,6 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 		}
 	}
 
-	s.mirrorToPartner(&b)
 	return &b, nil
 }
 
@@ -278,7 +166,6 @@ func (s *Service) UpdateOwned(userID uint, externalID string, req UpdateBusiness
 	if err := s.Repo.Update(b); err != nil {
 		return nil, err
 	}
-	s.mirrorToPartner(b)
 	return b, nil
 }
 
@@ -300,8 +187,7 @@ func (s *Service) GetByStatus(status string) ([]Business, error) {
 	return s.Repo.FindByStatus(status)
 }
 
-// SetStatus applies an admin decision (approve/reject/suspend) and mirrors it
-// back onto the legacy partners row so both endpoint families stay consistent.
+// SetStatus applies an admin decision (approve/reject/suspend).
 func (s *Service) SetStatus(externalID, status, reason string, adminUserID uint) (*Business, error) {
 	b, err := s.Repo.FindByID(externalID)
 	if err != nil {
@@ -317,6 +203,5 @@ func (s *Service) SetStatus(externalID, status, reason string, adminUserID uint)
 	if err := s.Repo.Update(b); err != nil {
 		return nil, err
 	}
-	s.mirrorToPartner(b)
 	return b, nil
 }

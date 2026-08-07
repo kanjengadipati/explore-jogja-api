@@ -22,7 +22,6 @@ type OverviewResponse struct {
 	TotalUsers          int64   `json:"total_users"`
 	TotalReviews        int64   `json:"total_reviews"`
 	TotalStories        int64   `json:"total_stories"`
-	TotalPartners       int64   `json:"total_partners"`
 	TotalHotels         int64   `json:"total_hotels"`
 	TotalRestaurants    int64   `json:"total_restaurants"`
 	TotalGuides         int64   `json:"total_guides"`
@@ -63,7 +62,6 @@ func (h *Handler) GetOverview(c *gin.Context) {
 	h.DB.Table("users").Where("deleted_at IS NULL").Count(&resp.TotalUsers)
 	h.DB.Table("reviews").Where("deleted_at IS NULL").Count(&resp.TotalReviews)
 	h.DB.Table("stories").Where("deleted_at IS NULL").Count(&resp.TotalStories)
-	h.DB.Table("partners").Where("deleted_at IS NULL").Count(&resp.TotalPartners)
 	h.DB.Table("hotels").Where("deleted_at IS NULL").Count(&resp.TotalHotels)
 	h.DB.Table("restaurants").Where("deleted_at IS NULL").Count(&resp.TotalRestaurants)
 	h.DB.Table("guides").Where("deleted_at IS NULL").Count(&resp.TotalGuides)

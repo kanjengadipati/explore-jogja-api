@@ -8,8 +8,6 @@ type Repository interface {
 	FindAll() ([]Business, error)
 	FindByID(externalID string) (*Business, error)
 	FindByExternalIDs(ids []string) ([]Business, error)
-	FindByLegacyPartner(legacyExternalID string) (*Business, error)
-	SoftDeleteByLegacyPartner(legacyExternalID string) error
 	FindByOwner(userID uint) ([]Business, error)
 	FindByIDAndOwner(externalID string, userID uint) (*Business, error)
 	FindByStatus(status string) ([]Business, error)
@@ -27,6 +25,12 @@ type Repository interface {
 	IsOwnerRole(businessID, userID uint) (bool, error)
 	SetInvitedBy(businessID, userID, inviterID uint) error
 	RemoveOwner(businessID, userID uint) error
+	CreateInvite(invite *BusinessMemberInvite) error
+	FindInviteByTokenHash(tokenHash string) (*BusinessMemberInvite, error)
+	FindPendingInviteByBusinessAndEmail(businessID uint, email string) (*BusinessMemberInvite, error)
+	ListPendingInvites(businessID uint) ([]BusinessMemberInvite, error)
+	FindInviteByID(inviteID uint) (*BusinessMemberInvite, error)
+	UpdateInvite(invite *BusinessMemberInvite) error
 }
 
 type GormRepository struct {
@@ -58,15 +62,6 @@ func (r *GormRepository) FindByExternalIDs(ids []string) ([]Business, error) {
 	var businesses []Business
 	err := r.db.Where("external_id IN ?", ids).Find(&businesses).Error
 	return businesses, err
-}
-
-func (r *GormRepository) FindByLegacyPartner(legacyExternalID string) (*Business, error) {
-	var b Business
-	err := r.db.Where("legacy_partner_external_id = ?", legacyExternalID).First(&b).Error
-	if err != nil {
-		return nil, err
-	}
-	return &b, nil
 }
 
 func (r *GormRepository) FindByOwner(userID uint) ([]Business, error) {
@@ -195,10 +190,6 @@ func (r *GormRepository) SoftDelete(externalID string) error {
 	return r.db.Where("external_id = ?", externalID).Delete(&Business{}).Error
 }
 
-func (r *GormRepository) SoftDeleteByLegacyPartner(legacyExternalID string) error {
-	return r.db.Where("legacy_partner_external_id = ?", legacyExternalID).Delete(&Business{}).Error
-}
-
 func (r *GormRepository) UpsertOwner(businessID, userID uint, role string) error {
 	return r.db.Exec(`
 		INSERT INTO business_owners (business_id, user_id, role, created_at)
@@ -242,4 +233,49 @@ func (r *GormRepository) SetInvitedBy(businessID, userID, inviterID uint) error 
 		UPDATE business_owners SET invited_by = ?
 		WHERE business_id = ? AND user_id = ?
 	`, inviterID, businessID, userID).Error
+}
+
+func (r *GormRepository) CreateInvite(invite *BusinessMemberInvite) error {
+	return r.db.Create(invite).Error
+}
+
+func (r *GormRepository) FindInviteByTokenHash(tokenHash string) (*BusinessMemberInvite, error) {
+	var invite BusinessMemberInvite
+	err := r.db.Where("token_hash = ?", tokenHash).First(&invite).Error
+	if err != nil {
+		return nil, err
+	}
+	return &invite, nil
+}
+
+func (r *GormRepository) FindPendingInviteByBusinessAndEmail(businessID uint, email string) (*BusinessMemberInvite, error) {
+	var invite BusinessMemberInvite
+	err := r.db.Where("business_id = ? AND email = ? AND status = ?", businessID, email, InviteStatusPending).
+		Order("created_at DESC").
+		First(&invite).Error
+	if err != nil {
+		return nil, err
+	}
+	return &invite, nil
+}
+
+func (r *GormRepository) ListPendingInvites(businessID uint) ([]BusinessMemberInvite, error) {
+	var invites []BusinessMemberInvite
+	err := r.db.Where("business_id = ? AND status = ?", businessID, InviteStatusPending).
+		Order("created_at DESC").
+		Find(&invites).Error
+	return invites, err
+}
+
+func (r *GormRepository) FindInviteByID(inviteID uint) (*BusinessMemberInvite, error) {
+	var invite BusinessMemberInvite
+	err := r.db.First(&invite, inviteID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &invite, nil
+}
+
+func (r *GormRepository) UpdateInvite(invite *BusinessMemberInvite) error {
+	return r.db.Save(invite).Error
 }

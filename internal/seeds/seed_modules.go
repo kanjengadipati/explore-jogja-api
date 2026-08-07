@@ -8,7 +8,6 @@ import (
 	"pleco-api/internal/modules/event"
 	"pleco-api/internal/modules/guide"
 	"pleco-api/internal/modules/hotel"
-	"pleco-api/internal/modules/partner"
 	"pleco-api/internal/modules/promotion"
 	"pleco-api/internal/modules/rental"
 	"pleco-api/internal/modules/restaurant"
@@ -25,7 +24,6 @@ func SeedModules(db *gorm.DB) {
 	seedEvents(db)
 	seedHotels(db)
 	seedRestaurants(db)
-	seedPartners(db)
 	seedGuides(db)
 	seedSouvenirs(db)
 	seedRentals(db)
@@ -375,70 +373,6 @@ func seedRestaurants(db *gorm.DB) {
 		log.Printf("Failed to seed restaurants: %v", err)
 	}
 	fmt.Printf("Restaurants seeding done (%d records)\n", len(restaurants))
-}
-
-func seedPartners(db *gorm.DB) {
-	var count int64
-	db.Model(&partner.Partner{}).Count(&count)
-	if count > 0 {
-		fmt.Println("Partners already seeded, skipping")
-		return
-	}
-
-	partners := []partner.Partner{
-		{
-			ExternalID:  "ptr-1",
-			Name:        "The Phoenix Hotel Yogyakarta",
-			Description: "A luxurious colonial heritage hotel with royal Javanese spa and grand courtyard pool.",
-			Category:    "hotel",
-			Location:    "Yogyakarta City",
-			Address:     "Jl. Jend. Sudirman No.9, Yogyakarta",
-			Image:       "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=600",
-			Rating:      4.9,
-			Price:       "IDR 1,500,000 / night",
-			Distance:    "0 km",
-			Phone:       "+62 274 123456",
-			Website:     "https://phoenixjogja.com",
-			Latitude:    -7.7895,
-			Longitude:   110.3642,
-		},
-		{
-			ExternalID:  "ptr-2",
-			Name:        "Gunungkidul Cave Guides Guild",
-			Description: "Highly trained SRT safety experts with decades of cave experience.",
-			Category:    "guide",
-			Location:    "Gunungkidul, Yogyakarta",
-			Address:     "Pacarejo, Semanu, Gunungkidul",
-			Image:       "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?q=80&w=600",
-			Rating:      4.9,
-			Price:       "IDR 500,000 / trip",
-			Distance:    "35 km",
-			Phone:       "+62 274 789012",
-			Website:     "",
-			Latitude:    -8.0287,
-			Longitude:   110.6384,
-		},
-		{
-			ExternalID:  "ptr-3",
-			Name:        "Borobudur Sunset Jeep Tour",
-			Description: "Off-road jeep adventure to the best sunset viewpoints around Borobudur.",
-			Category:    "transport",
-			Location:    "Magelang, Central Java",
-			Address:     "Jl. Badrawati, Borobudur, Magelang",
-			Image:       "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?q=80&w=600",
-			Rating:      4.7,
-			Price:       "IDR 350,000 / jeep",
-			Distance:    "42 km",
-			Phone:       "+62 293 890123",
-			Website:     "https://borobudurjeep.com",
-			Latitude:    -7.6079,
-			Longitude:   110.2038,
-		},
-	}
-	if err := db.CreateInBatches(partners, 10).Error; err != nil {
-		log.Printf("Failed to seed partners: %v", err)
-	}
-	fmt.Printf("Partners seeding done (%d records)\n", len(partners))
 }
 
 func seedGuides(db *gorm.DB) {

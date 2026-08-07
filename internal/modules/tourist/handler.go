@@ -905,7 +905,11 @@ Return ONLY valid JSON matching this schema:
   "seo_description": "Meta description in Indonesian (max 160 chars)",
   "seo_description_en": "Meta description in English (max 160 chars)",
   "seo_keywords": "Comma-separated keywords in Indonesian",
-  "seo_keywords_en": "Comma-separated keywords in English"
+  "seo_keywords_en": "Comma-separated keywords in English",
+  "facilities": ["list of physical amenities in Indonesian (min 3, e.g. Parkir, Toilet, Mushola)"],
+  "facilities_en": ["same amenities in English"],
+  "travel_tips": ["practical visitor tips in Indonesian (min 3, e.g. Datang pagi hari)"],
+  "travel_tips_en": ["same tips in English"]
 }`
 
 	userPrompt := fmt.Sprintf(

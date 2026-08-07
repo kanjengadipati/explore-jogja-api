@@ -10,7 +10,6 @@ import (
 	"pleco-api/internal/modules/adcampaign"
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/business"
-	"pleco-api/internal/modules/partner"
 	"pleco-api/internal/modules/subscription"
 	"pleco-api/internal/services"
 )
@@ -24,21 +23,19 @@ type MidtransClient interface {
 }
 
 type Service struct {
-	Repo             Repository
-	Midtrans         MidtransClient
-	PartnerSvc       *partner.Service
-	AdCampaignSvc    *adcampaign.Service
-	SubscriptionSvc  *subscription.Service
-	AuditSvc         *audit.Service
-	EmailSvc         services.EmailService
-	BizRepo          business.Repository
+	Repo            Repository
+	Midtrans        MidtransClient
+	AdCampaignSvc   *adcampaign.Service
+	SubscriptionSvc *subscription.Service
+	AuditSvc        *audit.Service
+	EmailSvc        services.EmailService
+	BizRepo         business.Repository
 }
 
-func NewService(repo Repository, midtrans MidtransClient, partnerSvc *partner.Service, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService, bizRepo business.Repository) *Service {
+func NewService(repo Repository, midtrans MidtransClient, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService, bizRepo business.Repository) *Service {
 	return &Service{
 		Repo:            repo,
 		Midtrans:        midtrans,
-		PartnerSvc:      partnerSvc,
 		AdCampaignSvc:   adCampaignSvc,
 		SubscriptionSvc: subscriptionSvc,
 		AuditSvc:        auditSvc,
@@ -165,14 +162,6 @@ func (s *Service) HandleNotification(payload map[string]any) error {
 func (s *Service) propagatePaidStatus(tx *PaymentTransaction) error {
 	paid := StatusPaid
 	switch tx.SubjectType {
-	case SubjectPartnerSponsorship:
-		_, err := s.PartnerSvc.Update(tx.SubjectExternalID, partner.UpdatePartnerRequest{
-			SponsorPaymentStatus: &paid,
-		})
-		if err == nil && s.EmailSvc != nil {
-			_ = s.EmailSvc.SendPaymentConfirmation(tx.SubjectExternalID, tx.SubjectExternalID, tx.Amount, tx.Currency)
-		}
-		return err
 	case SubjectAdCampaign:
 		_, err := s.AdCampaignSvc.Update(tx.SubjectExternalID, adcampaign.UpdateAdCampaignRequest{
 			PaymentStatus: &paid,

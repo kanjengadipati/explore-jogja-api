@@ -62,6 +62,19 @@ func (h *Handler) GetHouseAd(c *gin.Context) {
 	httpx.Success(c, 200, "House ad fetched", houseAd, nil)
 }
 
+// GetEcosystem serves the sponsored cards for the destination detail ecosystem
+// rails ("Rekomendasi Kebutuhan Traveler"), resolved from paid campaigns on
+// ecosystem_* placements. Public — no auth, no permission required.
+func (h *Handler) GetEcosystem(c *gin.Context) {
+	destinationID := c.Query("destination_id")
+	cards, err := h.Service.GetEcosystem(destinationID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Ecosystem placements fetched", cards, nil)
+}
+
 func (h *Handler) Create(c *gin.Context) {
 	var campaign AdCampaign
 	if err := c.ShouldBindJSON(&campaign); err != nil {

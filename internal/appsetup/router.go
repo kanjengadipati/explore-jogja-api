@@ -24,7 +24,6 @@ import (
 	"pleco-api/internal/modules/imagereport"
 	"pleco-api/internal/modules/listingclaim"
 	"pleco-api/internal/modules/notification"
-	"pleco-api/internal/modules/partner"
 	"pleco-api/internal/modules/payment"
 	"pleco-api/internal/modules/permission"
 	"pleco-api/internal/modules/promotion"
@@ -140,22 +139,16 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	notificationModule := notification.BuildModule(db)
 	notification.SetupRoutes(api, notificationModule.Handler, jwtService)
 
-	partnerModule := partner.BuildModule(db, permissionModule.Service, promotionModule.Service, reviewModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)
-	// partner.SetupRoutes(api, partnerModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc, rateStore)
-
-	businessModule := business.BuildModule(db, promotionModule.Service, reviewModule.Service, auditModule.Service, notificationModule.Service, partnerModule.Service, subscriptionModule.Service, adCampaignModule.Service, userModule.Service)
+	businessModule := business.BuildModule(db, promotionModule.Service, reviewModule.Service, auditModule.Service, notificationModule.Service, subscriptionModule.Service, adCampaignModule.Service, userModule.Service, emailSvc)
 	business.SetupRoutes(api, businessModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
-
-	// partnerApplicationModule := partnerapplication.BuildModule(db, partnerModule.Service, userModule.Service, auditModule.Service, notificationModule.Service)
-	// partnerapplication.SetupRoutes(api, partnerApplicationModule.Handler, jwtService, permissionModule.Service)
 
 	listingClaimModule := listingclaim.BuildModule(db, businessModule.Service.Repo)
 	listingclaim.SetupRoutes(api, listingClaimModule.Handler, jwtService, permissionModule.Service)
 
-	// Payment module — builds after partner and adcampaign so their services are available
+	// Payment module — builds after adcampaign so its services are available
 	webhooks := router.Group("/webhooks")
 	midtransClient := midtransprovider.New(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey, cfg.Midtrans.IsProduction)
-	paymentModule := payment.BuildModule(db, midtransClient, partnerModule.Service, adCampaignModule.Service, subscriptionModule.Service, auditModule.Service, emailSvc, businessModule.Repository)
+	paymentModule := payment.BuildModule(db, midtransClient, adCampaignModule.Service, subscriptionModule.Service, auditModule.Service, emailSvc, businessModule.Repository)
 	payment.SetupRoutes(api, webhooks, paymentModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)

@@ -14,6 +14,11 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	// Public name-dedup check — authenticated but no special permission needed
 	businesses.GET("/check-name", middleware.RequirePermission(permSvc, "business.create_own"), handler.CheckNameSimilar)
 
+	// Team invitation acceptance — authenticated, no special permission needed.
+	// The invite token itself authorizes the recipient.
+	businesses.GET("/invites/:token", handler.GetInvitePreview)
+	businesses.POST("/invites/:token/accept", handler.AcceptInvite)
+
 	// Self-service business dashboard
 	self := businesses.Group("/me")
 	self.POST("", middleware.RequirePermission(permSvc, "business.create_own"), handler.CreateMyBusiness)
@@ -28,6 +33,10 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	self.GET("/:id/members", middleware.RequirePermission(permSvc, "business.read_own"), handler.GetMyMembers)
 	self.POST("/:id/members/invite", middleware.RequirePermission(permSvc, "business.update_own"), handler.InviteMember)
 	self.DELETE("/:id/members/:userId", middleware.RequirePermission(permSvc, "business.update_own"), handler.RemoveMember)
+
+	// Pending team invitations (owner manages, owner+admin can view list)
+	self.GET("/:id/members/invites", middleware.RequirePermission(permSvc, "business.read_own"), handler.ListPendingInvites)
+	self.DELETE("/:id/members/invites/:inviteId", middleware.RequirePermission(permSvc, "business.update_own"), handler.RevokeInvite)
 
 	// Business promotions (require partner role for management)
 	self.GET("/:id/promotions", middleware.RequirePermission(permSvc, "business.read_own"), handler.ListMyPromotions)
@@ -46,7 +55,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	self.GET("/:id/ad-campaigns", middleware.RequirePermission(permSvc, "business.read_own"), handler.GetMyAdCampaigns)
 	self.POST("/:id/ad-campaigns", middleware.RequirePermission(permSvc, "business.update_own"), handler.CreateMyAdCampaign)
 
-	// Admin approval workflow — mirrors /auth/admin/partners
+	// Admin approval workflow for businesses
 	authAdmin := api.Group("/auth")
 	authAdmin.Use(middleware.AuthMiddleware(jwtService))
 	authAdmin.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))

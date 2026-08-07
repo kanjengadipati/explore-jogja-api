@@ -13,6 +13,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	ads := api.Group("/ads")
 	ads.GET("/banners", handler.GetBanner)
 	ads.GET("/house", handler.GetHouseAd)
+	ads.GET("/ecosystem", handler.GetEcosystem)
 
 	if rateStore == nil {
 		rateStore = middleware.NewInMemoryRateLimitStore()

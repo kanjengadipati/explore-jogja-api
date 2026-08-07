@@ -15,6 +15,10 @@ const (
 
 	RoleOwner = "owner"
 	RoleAdmin = "admin"
+
+	InviteStatusPending  = "pending"
+	InviteStatusAccepted = "accepted"
+	InviteStatusRevoked  = "revoked"
 )
 
 // Business is the identity of a business account (the Partner -> Business
@@ -56,7 +60,7 @@ type BusinessServiceArea struct {
 }
 
 // BusinessOwner links a user account to a business. The DB-side unique index
-// guarantees one row per (business, user). This table mirrors partners.owner_user_id.
+// guarantees one row per (business, user).
 type BusinessOwner struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	BusinessID uint      `gorm:"uniqueIndex:idx_business_owners_unique;not null" json:"business_id"`
@@ -64,6 +68,33 @@ type BusinessOwner struct {
 	Role       string    `gorm:"size:20;not null;default:owner" json:"role"`
 	InvitedBy  *uint     `json:"invited_by,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+// BusinessMemberInvite is a pending invitation for a person (who may not yet
+// have an account) to join a business team. TokenHash stores the SHA-256 of the
+// raw token that is handed to the inviter; the raw token is never persisted.
+type BusinessMemberInvite struct {
+	ID         uint       `gorm:"primaryKey" json:"id"`
+	BusinessID uint       `gorm:"not null;index" json:"business_id"`
+	Email      string     `gorm:"not null;index" json:"email"`
+	Role       string     `gorm:"size:20;not null;default:admin" json:"role"`
+	TokenHash  string     `gorm:"size:64;uniqueIndex;not null" json:"-"`
+	InvitedBy  *uint      `json:"invited_by,omitempty"`
+	Status     string     `gorm:"size:20;not null;default:pending" json:"status"`
+	ExpiresAt  time.Time  `gorm:"not null" json:"expires_at"`
+	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
+	AcceptedBy *uint      `json:"accepted_by,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
+
+func (BusinessMemberInvite) TableName() string {
+	return "business_member_invites"
+}
+
+// IsExpired reports whether a pending invite can no longer be accepted.
+func (i BusinessMemberInvite) IsExpired() bool {
+	return i.Status == InviteStatusPending && time.Now().After(i.ExpiresAt)
 }
 
 // OwnedListing is a lightweight projection of a listing claimed by a business,

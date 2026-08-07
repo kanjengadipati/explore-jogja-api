@@ -1,0 +1,3 @@
+-- Phase 8 rollback (stub note: stats data was only used by the retired
+-- partner module). To restore schema structure if needed:
+-- Re-run migration 000055.

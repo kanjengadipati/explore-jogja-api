@@ -1,16 +1,23 @@
 package adcampaign
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
 	"gorm.io/gorm"
+
+	"pleco-api/internal/utils"
 )
 
 type Repository interface {
 	FindAll() ([]AdCampaign, error)
 	FindByID(externalID string) (*AdCampaign, error)
 	FindActiveCandidates(placement, category string) ([]AdCampaign, error)
+	FindActiveEcosystemCandidates(destinationID string) ([]AdCampaign, error)
+	FindEcosystemListing(listingType, externalID string) (*EcosystemListing, error)
+	FindDestinationCoords(externalID string) (lat, lng float64, found bool)
+	ListingBelongsToBusiness(listingType, listingExternalID, businessExternalID string) (bool, error)
 	FindAllByBusinessExternalID(businessExternalID string) ([]AdCampaign, error)
 	BusinessExists(externalID string) (bool, error)
 	OwnerEmailsForBusiness(businessExternalID string) ([]string, error)
@@ -92,6 +99,173 @@ func (r *GormRepository) FindActiveCandidates(placement, category string) ([]AdC
 	var campaigns []AdCampaign
 	err := q.Scan(&campaigns).Error
 	return campaigns, err
+}
+
+// FindActiveEcosystemCandidates returns live paid campaigns on any ecosystem_*
+// placement that target the given destination (or all destinations when the
+// campaign's target_dest_ids is empty). Ordered by sort_order (lower first) so
+// the rail shows higher-paying listings on top.
+func (r *GormRepository) FindActiveEcosystemCandidates(destinationID string) ([]AdCampaign, error) {
+	now := time.Now()
+	zero := time.Time{}
+	q := r.db.Table("ad_campaigns").
+		Select("ad_campaigns.*, businesses.name AS business_name").
+		Joins("LEFT JOIN businesses ON businesses.external_id = ad_campaigns.business_external_id").
+		Where("ad_campaigns.placement IN ?", EcosystemPlacements).
+		Where("ad_campaigns.is_active = ?", true).
+		Where("ad_campaigns.payment_status = ?", "paid").
+		Where("(ad_campaigns.start_at IS NULL OR ad_campaigns.start_at = ? OR ad_campaigns.start_at <= ?)", zero, now).
+		Where("(ad_campaigns.end_at IS NULL OR ad_campaigns.end_at = ? OR ad_campaigns.end_at >= ?)", zero, now)
+
+	if destinationID != "" {
+		q = q.Where("ad_campaigns.target_dest_ids = '[]'::jsonb OR ad_campaigns.target_dest_ids @> ?", `["`+destinationID+`"]`)
+	}
+
+	var campaigns []AdCampaign
+	err := q.Order("ad_campaigns.sort_order ASC, ad_campaigns.id ASC").Scan(&campaigns).Error
+	return campaigns, err
+}
+
+// EcosystemListing is the denormalized listing card data used to enrich an
+// ecosystem campaign at serve time. It maps the heterogeneous listing tables
+// (hotels / restaurants / souvenirs / rentals / guides) onto one shape.
+type EcosystemListing struct {
+	Name        string
+	Description string
+	Address     string
+	Image       string
+	Rating      float64
+	Price       string
+	Phone       string
+	Website     string
+	Latitude    float64
+	Longitude   float64
+}
+
+// FindEcosystemListing loads the card fields for a listing promoted by an
+// ecosystem campaign. ListingType is one of hotel | restaurant | souvenir |
+// rental | guide (cafe maps to the restaurants table, transport to rentals).
+func (r *GormRepository) FindEcosystemListing(listingType, externalID string) (*EcosystemListing, error) {
+	type raw struct {
+		Name        string
+		Description string
+		Address     string
+		Image       string
+		Images      utils.JSONArr
+		Rating      float64
+		Price       string
+		Phone       string
+		Website     string
+		Latitude    float64
+		Longitude   float64
+	}
+
+	var row raw
+	var err error
+
+	switch listingType {
+	case "hotel":
+		err = r.db.Table("hotels").
+			Select("name, description, address, images, rating, price_per_night AS price, phone, website, latitude, longitude").
+			Where("external_id = ?", externalID).Limit(1).Scan(&row).Error
+	case "restaurant", "cafe":
+		err = r.db.Table("restaurants").
+			Select("name, description, address, images, rating, price_range AS price, phone, latitude, longitude").
+			Where("external_id = ?", externalID).Limit(1).Scan(&row).Error
+	case "souvenir":
+		err = r.db.Table("souvenirs").
+			Select("name, description, address, images, rating, price_range AS price, phone, latitude, longitude").
+			Where("external_id = ?", externalID).Limit(1).Scan(&row).Error
+	case "rental", "transport":
+		err = r.db.Table("rentals").
+			Select("name, description, address, images, rating, price_per_day AS price, phone, latitude, longitude").
+			Where("external_id = ?", externalID).Limit(1).Scan(&row).Error
+	case "guide":
+		err = r.db.Table("guides").
+			Select("name, bio AS description, avatar AS image, rating, price_per_day AS price, phone").
+			Where("external_id = ?", externalID).Limit(1).Scan(&row).Error
+	default:
+		return nil, fmt.Errorf("unsupported listing_type: %s", listingType)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	image := row.Image
+	if image == "" && len(row.Images) > 0 {
+		if s, ok := row.Images[0].(string); ok {
+			image = s
+		}
+	}
+
+	return &EcosystemListing{
+		Name:        row.Name,
+		Description: row.Description,
+		Address:     row.Address,
+		Image:       image,
+		Rating:      row.Rating,
+		Price:       row.Price,
+		Phone:       row.Phone,
+		Website:     row.Website,
+		Latitude:    row.Latitude,
+		Longitude:   row.Longitude,
+	}, nil
+}
+
+// FindDestinationCoords returns the lat/lng of a destination used to compute
+// the card's distance field. `found` is false when the destination is unknown.
+func (r *GormRepository) FindDestinationCoords(externalID string) (lat, lng float64, found bool) {
+	var row struct {
+		Latitude  float64
+		Longitude float64
+	}
+	err := r.db.Table("destinations").
+		Select("latitude, longitude").
+		Where("external_id = ?", externalID).
+		Limit(1).
+		Scan(&row).Error
+	if err != nil {
+		return 0, 0, false
+	}
+	return row.Latitude, row.Longitude, true
+}
+
+// listingTable maps an ecosystem listing_type to its DB table name.
+func listingTable(listingType string) string {
+	switch listingType {
+	case "hotel":
+		return "hotels"
+	case "restaurant", "cafe":
+		return "restaurants"
+	case "souvenir":
+		return "souvenirs"
+	case "rental", "transport":
+		return "rentals"
+	case "guide":
+		return "guides"
+	default:
+		return ""
+	}
+}
+
+// ListingBelongsToBusiness reports whether the listing exists AND is owned by
+// the given business (business_id FK set by the listing-claim approval flow).
+func (r *GormRepository) ListingBelongsToBusiness(listingType, listingExternalID, businessExternalID string) (bool, error) {
+	table := listingTable(listingType)
+	if table == "" {
+		return false, fmt.Errorf("unsupported listing_type: %s", listingType)
+	}
+	var count int64
+	err := r.db.Table(table).
+		Joins("JOIN businesses b ON b.id = "+table+".business_id").
+		Where(table+".external_id = ?", listingExternalID).
+		Where("b.external_id = ?", businessExternalID).
+		Where(table+".business_id IS NOT NULL").
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *GormRepository) BusinessExists(externalID string) (bool, error) {

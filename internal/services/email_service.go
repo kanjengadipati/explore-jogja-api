@@ -28,6 +28,8 @@ type EmailService interface {
 	SendPaymentConfirmation(toEmail, subjectName string, amount float64, currency string) error
 	SendAdCampaignApproved(toEmail, campaignName, placement string, startAt, endAt time.Time) error
 	SendAdCampaignRejected(toEmail, campaignName, placement, reason string) error
+	SendBusinessInvite(toEmail, inviteURL string) error
+	BusinessInviteURL(token string) string
 }
 
 type emailService struct {
@@ -189,6 +191,29 @@ func (s *emailService) SendAdCampaignRejected(toEmail, campaignName, placement, 
 	`, campaignName, placement, reasonText)
 
 	return s.sendEmail(toEmail, subject, plainText, htmlContent)
+}
+
+// BusinessInviteURL returns the web-portal link used to accept a team invite.
+func (s *emailService) BusinessInviteURL(token string) string {
+	base := firstNonEmpty(s.frontendURL, s.appBaseURL)
+	return fmt.Sprintf("%s/accept-invite?token=%s", trimTrailingSlash(base), token)
+}
+
+// SendBusinessInvite emails an invitation to join a business team.
+func (s *emailService) SendBusinessInvite(toEmail, inviteURL string) error {
+	plainText := fmt.Sprintf(
+		"Anda telah diundang untuk bergabung menjadi anggota tim bisnis di Jogjagem.\n\nUntuk menerima undangan, buka tautan berikut:\n%s\n\nTautan berlaku selama 7 hari. Jika Anda tidak mengharapkan undangan ini, abaikan email ini.",
+		inviteURL,
+	)
+	htmlContent := fmt.Sprintf(`
+		<strong>Undangan Bergabung Tim Bisnis</strong><br>
+		<p>Anda telah diundang untuk bergabung menjadi anggota tim bisnis di Jogjagem.</p>
+		<p>Untuk menerima undangan, klik tautan berikut:</p>
+		<p><a href="%s">Terima Undangan</a></p>
+		<p>Tautan berlaku selama 7 hari. Jika Anda tidak mengharapkan undangan ini, abaikan email ini.</p>
+	`, inviteURL)
+
+	return s.sendEmail(toEmail, "Undangan Tim Bisnis — Jogjagem", plainText, htmlContent)
 }
 
 func (s *emailService) sendEmail(toEmail, subject, plainText, htmlContent string) error {

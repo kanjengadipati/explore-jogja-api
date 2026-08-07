@@ -200,8 +200,8 @@ func ptrTime(t time.Time) *time.Time {
 
 // PromoteToPartnerRole upgrades a user's role string to "partner" and
 // bumps their access token version so old tokens are invalidated.
-// The caller (partner.Service.Apply) is responsible for running this
-// inside the same transaction that creates the partner listing.
+// The caller (business.Service) is responsible for running this
+// inside the same transaction that creates the business listing.
 func (s *Service) PromoteToPartnerRole(userID uint) error {
 	user, err := s.UserRepo.FindByID(userID)
 	if err != nil {
