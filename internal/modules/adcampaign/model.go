@@ -122,6 +122,44 @@ type HouseAd struct {
 	IsEnabled   bool   `gorm:"index" json:"is_enabled"`
 }
 
+// AdPlacementPrice is the admin-customizable price for a single sellable
+// placement (migration 000087). monthly_rate is the flat monthly rate; promo_pct
+// (> 0) applies a percentage discount within the optional promo window.
+type AdPlacementPrice struct {
+	Placement     string     `gorm:"primaryKey" json:"placement"`
+	MonthlyRate   float64    `json:"monthly_rate"`
+	Currency      string     `gorm:"default:IDR" json:"currency"`
+	PromoPct      float64    `gorm:"type:numeric(5,2);default:0" json:"promo_pct"`
+	PromoLabel    string     `gorm:"default:''" json:"promo_label"`
+	PromoStartAt  *time.Time `json:"promo_start_at"`
+	PromoEndAt    *time.Time `json:"promo_end_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// EffectiveMonthlyRate returns the monthly rate after applying an active promo.
+func (p *AdPlacementPrice) EffectiveMonthlyRate(now time.Time) float64 {
+	if !p.PromoActive(now) {
+		return p.MonthlyRate
+	}
+	return p.MonthlyRate * (1 - p.PromoPct/100)
+}
+
+// PromoActive reports whether a promo is configured and currently in effect.
+// A promo without a window is always active once promo_pct > 0.
+func (p *AdPlacementPrice) PromoActive(now time.Time) bool {
+	if p.PromoPct <= 0 {
+		return false
+	}
+	if p.PromoStartAt != nil && now.Before(*p.PromoStartAt) {
+		return false
+	}
+	if p.PromoEndAt != nil && now.After(*p.PromoEndAt) {
+		return false
+	}
+	return true
+}
+
 func (a *AdCampaign) IsLive(now time.Time) bool {
 	if !a.IsActive {
 		return false

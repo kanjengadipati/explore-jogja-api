@@ -14,6 +14,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	ads.GET("/banners", handler.GetBanner)
 	ads.GET("/house", handler.GetHouseAd)
 	ads.GET("/ecosystem", handler.GetEcosystem)
+	ads.GET("/pricing", handler.GetPricing)
 
 	if rateStore == nil {
 		rateStore = middleware.NewInMemoryRateLimitStore()
@@ -36,4 +37,5 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected.POST("/house-ads", handler.CreateHouseAd)
 	protected.PUT("/house-ads/:id", handler.UpdateHouseAd)
 	protected.DELETE("/house-ads/:id", handler.DeleteHouseAd)
+	protected.PUT("/pricing/:placement", handler.UpdatePricing)
 }

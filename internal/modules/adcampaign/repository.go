@@ -33,6 +33,9 @@ type Repository interface {
 	CreateHouseAd(houseAd *HouseAd) error
 	UpdateHouseAd(houseAd *HouseAd) error
 	DeleteHouseAd(externalID string) error
+	FindPlacementPrice(placement string) (*AdPlacementPrice, error)
+	FindAllPlacementPrices() ([]AdPlacementPrice, error)
+	UpsertPlacementPrice(price *AdPlacementPrice) error
 }
 
 type GormRepository struct {
@@ -370,6 +373,25 @@ func (r *GormRepository) UpdateHouseAd(houseAd *HouseAd) error {
 
 func (r *GormRepository) DeleteHouseAd(externalID string) error {
 	return r.db.Where("external_id = ?", externalID).Delete(&HouseAd{}).Error
+}
+
+func (r *GormRepository) FindPlacementPrice(placement string) (*AdPlacementPrice, error) {
+	var price AdPlacementPrice
+	err := r.db.Where("placement = ?", placement).First(&price).Error
+	if err != nil {
+		return nil, err
+	}
+	return &price, nil
+}
+
+func (r *GormRepository) FindAllPlacementPrices() ([]AdPlacementPrice, error) {
+	var prices []AdPlacementPrice
+	err := r.db.Order("placement ASC").Find(&prices).Error
+	return prices, err
+}
+
+func (r *GormRepository) UpsertPlacementPrice(price *AdPlacementPrice) error {
+	return r.db.Save(price).Error
 }
 
 func WeightedPick(candidates []AdCampaign) *AdCampaign {

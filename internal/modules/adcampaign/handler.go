@@ -1,6 +1,8 @@
 package adcampaign
 
 import (
+	"time"
+
 	"pleco-api/internal/httpx"
 
 	"github.com/gin-gonic/gin"
@@ -73,6 +75,49 @@ func (h *Handler) GetEcosystem(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "Ecosystem placements fetched", cards, nil)
+}
+
+// GetPricing returns the current pricing for every sellable placement including
+// any active promo and the tiered volume discounts. Public — the business portal
+// and public ads page display these rates, so no auth is required.
+func (h *Handler) GetPricing(c *gin.Context) {
+	prices, discounts := h.Service.GetPlacementPrices()
+	httpx.Success(c, 200, "Ad placement pricing fetched",
+		map[string]any{"placements": prices, "volume_discounts": discounts}, nil)
+}
+
+type updatePlacementPriceRequestBody struct {
+	MonthlyRate  *float64   `json:"monthly_rate"`
+	Currency     *string    `json:"currency"`
+	PromoPct     *float64   `json:"promo_pct"`
+	PromoLabel   *string    `json:"promo_label"`
+	PromoStartAt *time.Time `json:"promo_start_at"`
+	PromoEndAt   *time.Time `json:"promo_end_at"`
+}
+
+func (h *Handler) UpdatePricing(c *gin.Context) {
+	placement := c.Param("placement")
+
+	var body updatePlacementPriceRequestBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+
+	req := UpdatePlacementPriceRequest{
+		MonthlyRate:  body.MonthlyRate,
+		Currency:     body.Currency,
+		PromoPct:     body.PromoPct,
+		PromoLabel:   body.PromoLabel,
+		PromoStartAt: body.PromoStartAt,
+		PromoEndAt:   body.PromoEndAt,
+	}
+	price, err := h.Service.UpdatePlacementPrice(placement, req)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Ad placement pricing updated", price, nil)
 }
 
 func (h *Handler) Create(c *gin.Context) {

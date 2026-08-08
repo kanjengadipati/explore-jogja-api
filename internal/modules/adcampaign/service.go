@@ -178,7 +178,7 @@ func (s *Service) CreateSelfService(businessExternalID, partnerName string, req 
 		EndAt:              endAt,
 		Weight:             1,
 		IsActive:           true,
-		PriceAmount:        PriceFor(req.Placement, startAt, endAt),
+		PriceAmount:        s.PriceForPlacement(req.Placement, startAt, endAt),
 		PriceCurrency:      "IDR",
 		PaymentStatus:      InitialPaymentStatus(req.Placement),
 	}
@@ -514,4 +514,121 @@ func (s *Service) UpdateHouseAd(externalID string, req UpdateHouseAdRequest) (*H
 
 func (s *Service) DeleteHouseAd(externalID string) error {
 	return s.Repo.DeleteHouseAd(externalID)
+}
+
+// PlacementPriceView is the admin/API-facing representation of a placement's
+// pricing: the stored monthly rate, the effective rate after an active promo,
+// and the promo metadata.
+type PlacementPriceView struct {
+	Placement           string     `json:"placement"`
+	Name                string     `json:"name"`
+	MonthlyRate         float64    `json:"monthly_rate"`
+	EffectiveMonthlyRate float64   `json:"effective_monthly_rate"`
+	Currency            string     `json:"currency"`
+	PromoPct            float64    `json:"promo_pct"`
+	PromoLabel          string     `json:"promo_label"`
+	PromoActive         bool       `json:"promo_active"`
+	PromoStartAt        *time.Time `json:"promo_start_at,omitempty"`
+	PromoEndAt          *time.Time `json:"promo_end_at,omitempty"`
+}
+
+// GetPlacementPrices returns the pricing for every sellable placement, merging
+// the DB rows (customizable, migration 000087) with the code-map defaults as
+// fallback. VolumeDiscounts is included so clients can mirror the tiered
+// long-term discount without hardcoding it.
+func (s *Service) GetPlacementPrices() ([]PlacementPriceView, map[string]float64) {
+	rows, err := s.Repo.FindAllPlacementPrices()
+	if err != nil {
+		rows = nil
+	}
+	byPlacement := make(map[string]*AdPlacementPrice, len(rows))
+	for i := range rows {
+		byPlacement[rows[i].Placement] = &rows[i]
+	}
+
+	now := time.Now()
+	prices := make([]PlacementPriceView, 0, len(MonthlyPrices))
+	for placement := range MonthlyPrices {
+		view := PlacementPriceView{
+			Placement: placement,
+			Name:      PlacementName(placement),
+			Currency:  "IDR",
+		}
+		if row, ok := byPlacement[placement]; ok {
+			view.MonthlyRate = row.MonthlyRate
+			view.Currency = row.Currency
+			view.PromoPct = row.PromoPct
+			view.PromoLabel = row.PromoLabel
+			view.PromoStartAt = row.PromoStartAt
+			view.PromoEndAt = row.PromoEndAt
+			view.PromoActive = row.PromoActive(now)
+			view.EffectiveMonthlyRate = row.EffectiveMonthlyRate(now)
+		} else {
+			view.MonthlyRate = MonthlyPrices[placement]
+			view.EffectiveMonthlyRate = view.MonthlyRate
+		}
+		prices = append(prices, view)
+	}
+
+	discounts := make(map[string]float64, len(VolumeDiscounts))
+	for months, pct := range VolumeDiscounts {
+		discounts[fmt.Sprintf("%d", months)] = pct
+	}
+	return prices, discounts
+}
+
+// UpdatePlacementPriceRequest is the admin payload for customizing a placement's
+// monthly rate and/or promo. All fields optional; nil fields keep current value.
+type UpdatePlacementPriceRequest struct {
+	MonthlyRate  *float64   `json:"monthly_rate"`
+	Currency     *string    `json:"currency"`
+	PromoPct     *float64   `json:"promo_pct"`
+	PromoLabel   *string    `json:"promo_label"`
+	PromoStartAt *time.Time `json:"promo_start_at"`
+	PromoEndAt   *time.Time `json:"promo_end_at"`
+}
+
+// UpdatePlacementPrice upserts the price row for a placement. It refuses
+// unknown (non-sellable) placements so the table can't drift from the code map.
+func (s *Service) UpdatePlacementPrice(placement string, req UpdatePlacementPriceRequest) (*AdPlacementPrice, error) {
+	if !IsSellablePlacement(placement) {
+		return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+			"unknown or non-sellable placement", nil)
+	}
+
+	price, err := s.Repo.FindPlacementPrice(placement)
+	if err != nil {
+		price = &AdPlacementPrice{Placement: placement, MonthlyRate: MonthlyPrices[placement], Currency: "IDR"}
+	}
+	if req.MonthlyRate != nil {
+		if *req.MonthlyRate < 0 {
+			return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+				"monthly_rate cannot be negative", nil)
+		}
+		price.MonthlyRate = *req.MonthlyRate
+	}
+	if req.Currency != nil {
+		price.Currency = *req.Currency
+	}
+	if req.PromoPct != nil {
+		if *req.PromoPct < 0 || *req.PromoPct > 100 {
+			return nil, domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed,
+				"promo_pct must be between 0 and 100", nil)
+		}
+		price.PromoPct = *req.PromoPct
+	}
+	if req.PromoLabel != nil {
+		price.PromoLabel = *req.PromoLabel
+	}
+	if req.PromoStartAt != nil {
+		price.PromoStartAt = req.PromoStartAt
+	}
+	if req.PromoEndAt != nil {
+		price.PromoEndAt = req.PromoEndAt
+	}
+
+	if err := s.Repo.UpsertPlacementPrice(price); err != nil {
+		return nil, err
+	}
+	return price, nil
 }
