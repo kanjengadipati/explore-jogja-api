@@ -43,6 +43,8 @@ type ListingClaim struct {
 
 	Status          string `gorm:"size:20;not null;default:pending;index" json:"status"`
 	RejectionReason string `gorm:"type:text" json:"rejection_reason"`
+	Role            string `gorm:"size:30;not null;default:owner" json:"role"`
+	EvidenceURL     string `gorm:"type:text" json:"evidence_url"`
 
 	SubmittedAt *time.Time `json:"submitted_at"`
 	ReviewedAt  *time.Time `json:"reviewed_at"`

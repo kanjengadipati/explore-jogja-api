@@ -25,6 +25,8 @@ type SubmitRequest struct {
 	BusinessExternalID string `json:"business_external_id" binding:"required"`
 	ListingType        string `json:"listing_type" binding:"required"`
 	ListingExternalID  string `json:"listing_external_id" binding:"required"`
+	Role               string `json:"role"`
+	EvidenceURL        string `json:"evidence_url"`
 }
 
 func (s *Service) Submit(req SubmitRequest, ownerUserID uint) (*ListingClaim, error) {
@@ -66,6 +68,8 @@ func (s *Service) Submit(req SubmitRequest, ownerUserID uint) (*ListingClaim, er
 		ListingType:       req.ListingType,
 		ListingExternalID: req.ListingExternalID,
 		Status:            StatusPending,
+		Role:              req.Role,
+		EvidenceURL:       req.EvidenceURL,
 		SubmittedAt:       &now,
 	}
 	if err := s.Repo.Create(&claim); err != nil {
