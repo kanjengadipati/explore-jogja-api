@@ -71,7 +71,7 @@ func (s *Service) recordOnboarding(salesUserID, tenantUserID uint) error {
 	b := &SalesBonus{
 		SalesUserID:  salesUserID,
 		Type:         BonusTypeOnboarding,
-		TenantUserID: &tenantUserID,
+		PartnerUserID: &tenantUserID,
 		Amount:       rule.Amount,
 		Status:       StatusPending,
 	}

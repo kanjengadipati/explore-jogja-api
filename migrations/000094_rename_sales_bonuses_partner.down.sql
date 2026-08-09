@@ -1,0 +1,2 @@
+ALTER TABLE sales_bonuses RENAME COLUMN partner_user_id TO tenant_user_id;
+ALTER INDEX IF EXISTS idx_sales_bonuses_onboarding_partner RENAME TO idx_sales_bonuses_onboarding_tenant;

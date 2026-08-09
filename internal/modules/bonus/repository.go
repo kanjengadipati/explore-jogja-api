@@ -12,9 +12,9 @@ type Repository interface {
 	CreateBonus(b *SalesBonus) error
 	FindByID(id uint) (*SalesBonus, error)
 	UpdateStatus(id uint, status Status) error
-	FindOnboardingByTenant(salesUserID, tenantUserID uint) (*SalesBonus, error)
+	FindOnboardingByTenant(salesUserID, partnerUserID uint) (*SalesBonus, error)
 	FindMilestoneTier(salesUserID uint, period string, metric BonusMetric, tier int) (*SalesBonus, error)
-	VoidOnboardingForTenant(salesUserID, tenantUserID uint) error
+	VoidOnboardingForTenant(salesUserID, partnerUserID uint) error
 	ListBySales(salesUserID uint, limit, offset int) ([]SalesBonus, int64, error)
 	ListAll(limit, offset int) ([]SalesBonus, int64, error)
 	ListSalesUsers(salesUserIDs []uint) (map[uint]SalesUserInfo, error)
@@ -57,10 +57,10 @@ func (r *repository) UpdateStatus(id uint, status Status) error {
 	return r.db.Model(&SalesBonus{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (r *repository) FindOnboardingByTenant(salesUserID, tenantUserID uint) (*SalesBonus, error) {
+func (r *repository) FindOnboardingByTenant(salesUserID, partnerUserID uint) (*SalesBonus, error) {
 	var b SalesBonus
-	err := r.db.Where("sales_user_id = ? AND tenant_user_id = ? AND type = ?",
-		salesUserID, tenantUserID, BonusTypeOnboarding).First(&b).Error
+	err := r.db.Where("sales_user_id = ? AND partner_user_id = ? AND type = ?",
+		salesUserID, partnerUserID, BonusTypeOnboarding).First(&b).Error
 	if err != nil {
 		return nil, err
 	}
@@ -77,10 +77,10 @@ func (r *repository) FindMilestoneTier(salesUserID uint, period string, metric B
 	return &b, nil
 }
 
-func (r *repository) VoidOnboardingForTenant(salesUserID, tenantUserID uint) error {
+func (r *repository) VoidOnboardingForTenant(salesUserID, partnerUserID uint) error {
 	return r.db.Model(&SalesBonus{}).
-		Where("sales_user_id = ? AND tenant_user_id = ? AND type = ? AND status != ?",
-			salesUserID, tenantUserID, BonusTypeOnboarding, StatusVoided).
+		Where("sales_user_id = ? AND partner_user_id = ? AND type = ? AND status != ?",
+			salesUserID, partnerUserID, BonusTypeOnboarding, StatusVoided).
 		Update("status", StatusVoided).Error
 }
 

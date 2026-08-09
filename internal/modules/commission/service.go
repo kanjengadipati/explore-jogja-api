@@ -1,6 +1,7 @@
 package commission
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -109,6 +110,25 @@ func (s *Service) RecordFromTransaction(payerUserID, paymentTransactionID uint, 
 	return s.repo.Create(c)
 }
 
+// MarkStatus is the admin payout action, symmetric with bonus.Service.MarkStatus.
+// Only a pending commission can be marked paid (money transferred) or voided
+// (payout cancelled). Paid/voided are final.
+func (s *Service) MarkStatus(id uint, status Status) (*CommissionResponse, error) {
+	c, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("commission not found")
+	}
+	if c.Status != StatusPending {
+		return nil, errors.New("only pending commissions can be marked as paid or voided")
+	}
+	if err := s.repo.UpdateStatus(id, status); err != nil {
+		return nil, err
+	}
+	c.Status = status
+	res := toCommissionResponse(c)
+	return &res, nil
+}
+
 // VoidFromTransaction voids a previously recorded commission. Not wired to
 // any trigger yet — jogjagem's payment module doesn't have a refund flow at
 // the moment — but ready for when one exists.
@@ -152,7 +172,7 @@ func (s *Service) GetSalesPerformanceReport() ([]SalesPerformanceItem, error) {
 		if err != nil {
 			return nil, err
 		}
-		totalVol, subVol, adVol, err := s.repo.SumVolumeBySales(su.ID)
+		totalVol, err := s.repo.SumVolumeBySales(su.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -170,8 +190,6 @@ func (s *Service) GetSalesPerformanceReport() ([]SalesPerformanceItem, error) {
 			TotalPartners:          partnerCount,
 			TotalTransactions:      txCount,
 			TotalVolume:            totalVol,
-			VolumeFromSubscription: subVol,
-			VolumeFromAdCampaign:   adVol,
 			PendingCommission:      pending,
 			PaidCommission:         paid,
 			TotalCommission:        pending + paid,

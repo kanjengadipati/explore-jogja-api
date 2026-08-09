@@ -1,6 +1,8 @@
 package commission
 
 import (
+	"strconv"
+
 	"pleco-api/internal/httpx"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +43,26 @@ func (h *Handler) GetSalesPerformanceReport(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "OK", report, nil)
+}
+
+// UpdateCommissionStatus — PUT /admin/commissions/:id/status (permission: commission:manage_payout)
+func (h *Handler) UpdateCommissionStatus(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		httpx.Error(c, 400, "Invalid commission id")
+		return
+	}
+	var req UpdateCommissionStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.Error(c, 400, "Invalid request body — status must be 'paid' or 'voided'")
+		return
+	}
+	commission, err := h.Service.MarkStatus(uint(id), req.Status)
+	if err != nil {
+		httpx.Error(c, 400, err.Error())
+		return
+	}
+	httpx.Success(c, 200, "Commission status updated", commission, nil)
 }
 
 // GetCommissionRate — GET /admin/sales-commission-rate (permission: commission:read_all)

@@ -37,8 +37,6 @@ type SalesPerformanceItem struct {
 	TotalPartners         int64   `json:"total_partners"`
 	TotalTransactions     int64   `json:"total_transactions"`
 	TotalVolume           float64 `json:"total_volume"`
-	VolumeFromSubscription float64 `json:"volume_from_subscription"`
-	VolumeFromAdCampaign   float64 `json:"volume_from_ad_campaign"`
 	PendingCommission     float64 `json:"pending_commission"`
 	PaidCommission        float64 `json:"paid_commission"`
 	TotalCommission       float64 `json:"total_commission_earned"`
@@ -48,4 +46,10 @@ type UpdateCommissionRateRequest struct {
 	// Rates as fractions, e.g. 0.20 for 20%.
 	Tier1Rate float64 `json:"tier1_rate" binding:"required,gt=0,lt=1"`
 	Tier2Rate float64 `json:"tier2_rate" binding:"required,gt=0,lt=1"`
+}
+
+type UpdateCommissionStatusRequest struct {
+	// Status must be 'paid' or 'voided'. Pending is set automatically at
+	// creation time and cannot be requested here.
+	Status Status `json:"status" binding:"required,oneof=paid voided"`
 }

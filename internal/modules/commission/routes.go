@@ -20,4 +20,5 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	admin.GET("/sales-performance", middleware.RequirePermission(permissionService, "commission:read_all"), handler.GetSalesPerformanceReport)
 	admin.GET("/sales-commission-rate", middleware.RequirePermission(permissionService, "commission:read_all"), handler.GetCommissionRate)
 	admin.PUT("/sales-commission-rate", middleware.RequirePermission(permissionService, "commission:manage_rate"), handler.UpdateCommissionRate)
+	admin.PUT("/commissions/:id/status", middleware.RequirePermission(permissionService, "commission:manage_payout"), handler.UpdateCommissionStatus)
 }

@@ -8,7 +8,7 @@ type BonusResponse struct {
 	SalesUserName  string  `json:"sales_user_name,omitempty"`
 	SalesUserEmail string  `json:"sales_user_email,omitempty"`
 	Type           string  `json:"type"`
-	TenantUserID   *uint   `json:"tenant_user_id,omitempty"`
+	PartnerUserID *uint   `json:"partner_user_id,omitempty"`
 	Period         *string `json:"period,omitempty"`
 	Metric         string  `json:"metric,omitempty"`
 	Tier           *int    `json:"tier,omitempty"`
@@ -22,7 +22,7 @@ func toBonusResponse(b *SalesBonus) BonusResponse {
 		ID:           b.ID,
 		SalesUserID:  b.SalesUserID,
 		Type:         string(b.Type),
-		TenantUserID: b.TenantUserID,
+		PartnerUserID: b.PartnerUserID,
 		Period:       b.Period,
 		Metric:       string(b.Metric),
 		Tier:         b.Tier,

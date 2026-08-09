@@ -29,16 +29,16 @@ const (
 )
 
 // SalesBonus is created per bonus event:
-//   - onboarding: one row per (sales_user_id, tenant_user_id), unique partial index.
+//   - onboarding: one row per (sales_user_id, partner_user_id), unique partial index.
 //   - milestone: one row per (sales_user_id, period, metric, tier), unique partial index.
 //
 // Status lifecycle: pending → paid (manual payout), or pending → voided (e.g. the
-// tenant's first transaction was refunded). Rows are never hard-deleted.
+// partner's first transaction was refunded). Rows are never hard-deleted.
 type SalesBonus struct {
 	gorm.Model
 	SalesUserID  uint        `gorm:"not null;index" json:"sales_user_id"`
 	Type         BonusType   `gorm:"size:20;not null;index" json:"type"`
-	TenantUserID *uint       `gorm:"index" json:"tenant_user_id,omitempty"`
+	PartnerUserID *uint      `gorm:"index" json:"partner_user_id,omitempty"`
 	Period       *string     `gorm:"size:7" json:"period,omitempty"`
 	Metric       BonusMetric `gorm:"size:20" json:"metric,omitempty"`
 	Tier         *int        `json:"tier,omitempty"`

@@ -13,6 +13,7 @@ INSERT INTO permissions (name) VALUES
     ('commission:read_own'),
     ('commission:read_all'),
     ('commission:manage_rate'),
+    ('commission:manage_payout'),
     ('bonus:read_own'),
     ('bonus:read_all'),
     ('bonus:manage_rules'),
@@ -34,7 +35,7 @@ INSERT INTO role_permissions (role_id, permission)
 SELECT r.id, p.name
 FROM roles r, permissions p
 WHERE r.name IN ('superadmin', 'admin')
-  AND p.name IN ('commission:read_all', 'commission:manage_rate', 'bonus:read_all', 'bonus:manage_rules', 'bonus:manage_payout')
+  AND p.name IN ('commission:read_all', 'commission:manage_rate', 'commission:manage_payout', 'bonus:read_all', 'bonus:manage_rules', 'bonus:manage_payout')
   AND NOT EXISTS (
       SELECT 1 FROM role_permissions rp
       WHERE rp.role_id = r.id AND rp.permission = p.name AND rp.deleted_at IS NULL

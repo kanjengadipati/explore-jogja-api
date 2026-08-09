@@ -5,12 +5,14 @@ import "gorm.io/gorm"
 type Repository interface {
 	Create(c *SalesCommission) error
 	GetByPaymentTransactionID(paymentTransactionID uint) (*SalesCommission, error)
+	FindByID(id uint) (*SalesCommission, error)
+	UpdateStatus(id uint, status Status) error
 	VoidByPaymentTransactionID(paymentTransactionID uint) error
 	ListBySales(salesUserID uint, limit, offset int) ([]SalesCommission, int64, error)
 	SumBySales(salesUserID uint) (pending float64, paid float64, err error)
 	CountBySales(salesUserID uint) (int64, error)
 	CountDistinctPartnersBySales(salesUserID uint) (int64, error)
-	SumVolumeBySales(salesUserID uint) (total, subscription, adCampaign float64, err error)
+	SumVolumeBySales(salesUserID uint) (total float64, err error)
 }
 
 type repository struct {
@@ -32,6 +34,19 @@ func (r *repository) GetByPaymentTransactionID(paymentTransactionID uint) (*Sale
 		return nil, err
 	}
 	return &c, nil
+}
+
+func (r *repository) FindByID(id uint) (*SalesCommission, error) {
+	var c SalesCommission
+	err := r.db.First(&c, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (r *repository) UpdateStatus(id uint, status Status) error {
+	return r.db.Model(&SalesCommission{}).Where("id = ?", id).Update("status", status).Error
 }
 
 func (r *repository) VoidByPaymentTransactionID(paymentTransactionID uint) error {
@@ -81,21 +96,10 @@ func (r *repository) CountDistinctPartnersBySales(salesUserID uint) (int64, erro
 	return count, err
 }
 
-func (r *repository) SumVolumeBySales(salesUserID uint) (float64, float64, float64, error) {
-	var total, sub, ad float64
-	base := r.db.Model(&SalesCommission{}).Where("sales_user_id = ? AND status != ?", salesUserID, StatusVoided)
-	if err := base.Select("COALESCE(SUM(gross_amount),0)").Scan(&total).Error; err != nil {
-		return 0, 0, 0, err
-	}
-	if err := r.db.Model(&SalesCommission{}).
-		Where("sales_user_id = ? AND status != ? AND subject_type = ?", salesUserID, StatusVoided, "subscription").
-		Select("COALESCE(SUM(gross_amount),0)").Scan(&sub).Error; err != nil {
-		return 0, 0, 0, err
-	}
-	if err := r.db.Model(&SalesCommission{}).
-		Where("sales_user_id = ? AND status != ? AND subject_type = ?", salesUserID, StatusVoided, "ad_campaign").
-		Select("COALESCE(SUM(gross_amount),0)").Scan(&ad).Error; err != nil {
-		return 0, 0, 0, err
-	}
-	return total, sub, ad, nil
+func (r *repository) SumVolumeBySales(salesUserID uint) (float64, error) {
+	var total float64
+	err := r.db.Model(&SalesCommission{}).
+		Where("sales_user_id = ? AND status != ?", salesUserID, StatusVoided).
+		Select("COALESCE(SUM(gross_amount),0)").Scan(&total).Error
+	return total, err
 }
