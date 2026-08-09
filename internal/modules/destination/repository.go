@@ -6,10 +6,12 @@ import (
 
 type Repository interface {
 	FindAll(status string) ([]Destination, error)
+	FindAllForCuration() ([]Destination, error)
 	FindByID(externalID string) (*Destination, error)
 	FindBySlug(slug string) (*Destination, error)
 	FindByCategory(category string) ([]Destination, error)
 	FindByRegion(region string, status string) ([]Destination, error)
+	FindByExternalIDs(ids []string) ([]Destination, error)
 	Search(query string) ([]Destination, error)
 	Create(dest *Destination) error
 	CreateBatch(dests []Destination) error
@@ -42,6 +44,31 @@ func (r *GormRepository) FindAll(status string) ([]Destination, error) {
 	return dests, err
 }
 
+// FindAllForCuration returns every destination row (all statuses, all content
+// states) so SelectHiddenGems can evaluate admin overrides and the full
+// candidate pool. The curation logic itself filters by status/content_status.
+func (r *GormRepository) FindAllForCuration() ([]Destination, error) {
+	var dests []Destination
+	err := r.db.Order("id ASC").Find(&dests).Error
+	return dests, err
+}
+
+// FindByExternalIDs fetches destinations whose external_id is in ids.
+// Includes rows with empty status (legacy/seed data) as well as 'published'.
+// Order is not guaranteed — callers should re-sort if needed.
+func (r *GormRepository) FindByExternalIDs(ids []string) ([]Destination, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var dests []Destination
+	err := r.db.
+		Where("external_id IN ?", ids).
+		Where("status = '' OR status = 'published'").
+		Where("content_status = '' OR content_status = 'published'").
+		Find(&dests).Error
+	return dests, err
+}
+
 func (r *GormRepository) FindByID(externalID string) (*Destination, error) {
 	var dest Destination
 	err := r.db.Where("external_id = ?", externalID).First(&dest).Error
@@ -71,8 +98,6 @@ func (r *GormRepository) FindByCategory(category string) ([]Destination, error) 
 	// safeContent is appended to all public queries to exclude AI drafts under review.
 	safeContent := "AND (content_status = '' OR content_status = 'published')"
 	switch category {
-	case "hidden-gem":
-		err = r.db.Where("status = ? AND rating >= ? AND review_count < ? "+safeContent, "published", 4.5, 2500).Order("rating DESC").Find(&dests).Error
 	case "sunset":
 		err = r.db.Where("status = ? AND (LOWER(best_time) LIKE ? OR LOWER(best_time) LIKE ?) "+safeContent, "published", "%sore%", "%sunset%").Order("rating DESC").Find(&dests).Error
 	case "sunrise":

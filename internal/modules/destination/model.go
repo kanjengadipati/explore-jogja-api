@@ -97,6 +97,15 @@ type Destination struct {
 	// Persisted so it can be used as a publish gate and displayed without recalculation.
 	ContentScore   int    `gorm:"default:0" json:"content_score"`
 	ContentVerdict string `gorm:"default:''" json:"content_verdict"` // EXCELLENT | GOOD | NEEDS WORK
+
+	// HiddenGemOverride lets an admin force a destination in/out of the weekly
+	// curated Hidden Gem selection regardless of the natural formula.
+	// "" = natural (formula decides), "pin" = always included, "exclude" = never selected.
+	HiddenGemOverride string `gorm:"default:''" json:"hidden_gem_override"`
+	// HiddenGemPinnedAt is set to now() when HiddenGemOverride becomes "pin".
+	// Used to break ties when more than HiddenGemCount destinations are pinned
+	// at once — earliest pin wins a slot first.
+	HiddenGemPinnedAt *time.Time `gorm:"default:null" json:"hidden_gem_pinned_at,omitempty"`
 	LastScrapedAt  time.Time `gorm:"column:last_scraped_at" json:"-"`
 
 	// English translations (_en columns)
@@ -173,9 +182,10 @@ type DestinationResponse struct {
 // ToResponse converts a Destination to DestinationResponse by computing its badges.
 // trendingIDs is a set of external-IDs that the AI trending endpoint has elected
 // as trending today.  Pass nil if the data is unavailable (no trending badge will be set).
-func (d *Destination) ToResponse(trendingIDs map[string]bool) DestinationResponse {
-	badges := ResolveBadges(*d, trendingIDs)
-	primary := PrimaryBadge(*d, trendingIDs)
+// hiddenGemIDs is the weekly-curated set from LoadHiddenGemIDs — pass nil when unavailable.
+func (d *Destination) ToResponse(trendingIDs, hiddenGemIDs map[string]bool) DestinationResponse {
+	badges := ResolveBadges(*d, trendingIDs, hiddenGemIDs)
+	primary := PrimaryBadge(*d, trendingIDs, hiddenGemIDs)
 	if badges == nil {
 		badges = []BadgeType{}
 	}
@@ -185,6 +195,6 @@ func (d *Destination) ToResponse(trendingIDs map[string]bool) DestinationRespons
 		Badges:           badges,
 		FactDensityScore: factDensityScore(d),
 		CreatedAt:        d.CreatedAt,
-		UpdatedAt:   d.UpdatedAt,
+		UpdatedAt:        d.UpdatedAt,
 	}
 }

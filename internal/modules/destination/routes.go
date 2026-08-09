@@ -11,6 +11,7 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	dest := api.Group("/destinations")
 	dest.GET("", handler.GetAll)
 	dest.GET("/search", handler.Search)
+	dest.GET("/hidden-gem", handler.GetHiddenGem)
 	dest.GET("/:id", handler.GetByID)
 	dest.GET("/category/:category", handler.GetByCategory)
 

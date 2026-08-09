@@ -48,6 +48,12 @@ func (h *Handler) loadTrendingIDs(locale string) map[string]bool {
 	return set
 }
 
+// loadHiddenGemIDs reads the weekly curated Hidden Gem IDs from cache,
+// computing and caching on first access. Returns an empty map on any error.
+func (h *Handler) loadHiddenGemIDs(ctx context.Context) map[string]bool {
+	return h.Service.LoadHiddenGemIDs(ctx, h.Cache)
+}
+
 func (h *Handler) GetAll(c *gin.Context) {
 	locale := resolveLocale(c)
 	cacheKey := cache.KeyDestinationsAllPrefix + locale
@@ -80,6 +86,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 	if !cacheHit {
 		trendingIDs := h.loadTrendingIDs(locale)
+		hiddenGemIDs := h.loadHiddenGemIDs(c.Request.Context())
 		var dests []Destination
 		var err error
 		if region != "" {
@@ -94,7 +101,7 @@ func (h *Handler) GetAll(c *gin.Context) {
 		allResponses = make([]DestinationResponse, len(dests))
 		for i, d := range dests {
 			localized := d.Localize(locale)
-			allResponses[i] = localized.ToResponse(trendingIDs)
+			allResponses[i] = localized.ToResponse(trendingIDs, hiddenGemIDs)
 		}
 
 		// Sort: trending first, then hidden_gem, then by rating DESC
@@ -147,13 +154,14 @@ func (h *Handler) GetByID(c *gin.Context) {
 	}
 
 	trendingIDs := h.loadTrendingIDs(locale)
+	hiddenGemIDs := h.loadHiddenGemIDs(c.Request.Context())
 	dest, err := h.Service.GetByID(id)
 	if err != nil {
 		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Destination not found")
 		return
 	}
 	localized := dest.Localize(locale)
-	response := localized.ToResponse(trendingIDs)
+	response := localized.ToResponse(trendingIDs, hiddenGemIDs)
 
 	_ = h.Cache.SetJSON(c.Request.Context(), cacheKey, response, cache.TTLDestinations)
 	httpx.Success(c, 200, "Destination fetched", response, nil)
@@ -171,6 +179,7 @@ func (h *Handler) GetByCategory(c *gin.Context) {
 	}
 
 	trendingIDs := h.loadTrendingIDs(locale)
+	hiddenGemIDs := h.loadHiddenGemIDs(c.Request.Context())
 	dests, err := h.Service.GetByCategory(category)
 	if err != nil {
 		httpx.HandleError(c, err)
@@ -179,7 +188,7 @@ func (h *Handler) GetByCategory(c *gin.Context) {
 	responses := make([]DestinationResponse, len(dests))
 	for i, d := range dests {
 		localized := d.Localize(locale)
-		responses[i] = localized.ToResponse(trendingIDs)
+		responses[i] = localized.ToResponse(trendingIDs, hiddenGemIDs)
 	}
 
 	_ = h.Cache.SetJSON(c.Request.Context(), cacheKey, responses, cache.TTLDestinations)
@@ -189,6 +198,7 @@ func (h *Handler) GetByCategory(c *gin.Context) {
 func (h *Handler) Search(c *gin.Context) {
 	locale := resolveLocale(c)
 	trendingIDs := h.loadTrendingIDs(locale)
+	hiddenGemIDs := h.loadHiddenGemIDs(c.Request.Context())
 	query := c.Query("q")
 	if query == "" {
 		httpx.ErrorWithCode(c, 400, "VALIDATION_FAILED", "Query parameter 'q' is required")
@@ -202,7 +212,7 @@ func (h *Handler) Search(c *gin.Context) {
 	responses := make([]DestinationResponse, len(dests))
 	for i, d := range dests {
 		localized := d.Localize(locale)
-		responses[i] = localized.ToResponse(trendingIDs)
+		responses[i] = localized.ToResponse(trendingIDs, hiddenGemIDs)
 	}
 	httpx.Success(c, 200, "Search results", responses, nil)
 }
@@ -220,10 +230,11 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// Invalidate list & category caches so the new destination appears.
+	// Invalidate list, category, and hidden gem caches so writes appear immediately.
 	ctx := c.Request.Context()
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsAllPrefix)
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsCategoryPrefix)
+	_ = h.Cache.Delete(ctx, cache.KeyHiddenGemIDs())
 
 	httpx.Success(c, 201, "Destination created", dest, nil)
 }
@@ -248,6 +259,7 @@ func (h *Handler) Update(c *gin.Context) {
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsAllPrefix)
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsCategoryPrefix)
 	_ = h.Cache.Delete(ctx, cache.KeyDestinationsIDPrefix+id+":id", cache.KeyDestinationsIDPrefix+id+":en")
+	_ = h.Cache.Delete(ctx, cache.KeyHiddenGemIDs())
 
 	httpx.Success(c, 200, "Destination updated", dest, nil)
 }
@@ -264,6 +276,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsAllPrefix)
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyDestinationsCategoryPrefix)
 	_ = h.Cache.Delete(ctx, cache.KeyDestinationsIDPrefix+id+":id", cache.KeyDestinationsIDPrefix+id+":en")
+	_ = h.Cache.Delete(ctx, cache.KeyHiddenGemIDs())
 
 	httpx.Success(c, 200, "Destination deleted", nil, nil)
 }
@@ -301,4 +314,40 @@ func (h *Handler) GetUserDestinations(c *gin.Context) {
 		return
 	}
 	httpx.Success(c, 200, "User destinations fetched", uds, nil)
+}
+
+// GetHiddenGem returns this week's curated Hidden Gem selection (max 15).
+// The list is loaded from cache (TTL 7 days) and computed lazily on first
+// access after expiry — no cron job required.
+// Results are ordered: pinned destinations first (by pin timestamp), then
+// natural candidates in the weekly-seeded shuffled order.
+func (h *Handler) GetHiddenGem(c *gin.Context) {
+	locale := resolveLocale(c)
+	ctx := c.Request.Context()
+
+	hiddenGemIDs := h.loadHiddenGemIDs(ctx)
+	if len(hiddenGemIDs) == 0 {
+		httpx.Success(c, 200, "Hidden Gem picks loaded", []DestinationResponse{}, nil)
+		return
+	}
+
+	ids := make([]string, 0, len(hiddenGemIDs))
+	for id := range hiddenGemIDs {
+		ids = append(ids, id)
+	}
+
+	dests, err := h.Service.Repo.FindByExternalIDs(ids)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+
+	trendingIDs := h.loadTrendingIDs(locale)
+	responses := make([]DestinationResponse, len(dests))
+	for i, d := range dests {
+		localized := d.Localize(locale)
+		responses[i] = localized.ToResponse(trendingIDs, hiddenGemIDs)
+	}
+
+	httpx.Success(c, 200, "Hidden Gem picks loaded", responses, nil)
 }

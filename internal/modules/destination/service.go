@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gosimple/slug"
 )
@@ -227,6 +228,7 @@ type UpdateDestinationRequest struct {
 	SeoDescription    *string         `json:"seo_description"`
 	OgImageUrl        *string         `json:"og_image_url"`
 	Status            *string         `json:"status"`
+	HiddenGemOverride *string         `json:"hidden_gem_override"`
 	// English translations
 	NameEn           *string  `json:"name_en"`
 	TaglineEn        *string  `json:"tagline_en"`
@@ -340,6 +342,23 @@ func (s *Service) Update(externalID string, req UpdateDestinationRequest) (*Dest
 			}
 		}
 		dest.Status = *req.Status
+	}
+	if req.HiddenGemOverride != nil {
+		val := strings.TrimSpace(*req.HiddenGemOverride)
+		// Validate allowed values.
+		if val != "" && val != "pin" && val != "exclude" {
+			return nil, fmt.Errorf("hidden_gem_override must be '', 'pin', or 'exclude'")
+		}
+		// Set pinned timestamp when admin pins for the first time or re-pins.
+		if val == "pin" && dest.HiddenGemOverride != "pin" {
+			now := time.Now()
+			dest.HiddenGemPinnedAt = &now
+		}
+		// Clear timestamp when unpinning.
+		if val != "pin" {
+			dest.HiddenGemPinnedAt = nil
+		}
+		dest.HiddenGemOverride = val
 	}
 	if req.NameEn != nil {
 		dest.NameEn = *req.NameEn

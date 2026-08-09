@@ -51,6 +51,22 @@ func KeyEventsID(locale, id string) string {
 // list. Used to invalidate the whole list on writes.
 const KeyEventsAllPrefix = "events:all:"
 
+// KeyHiddenGemIDs returns the cache key for the weekly-curated set of
+// external-IDs elected as Hidden Gem. Not locale-scoped — selection is
+// language-independent (based on rating/review_count/admin override).
+func KeyHiddenGemIDs() string {
+	return "curated:hidden_gem:destination_ids"
+}
+
+const (
+	// TTLHiddenGem is 7 days — same pattern as TTLAITrending.
+	// Cache resets automatically each week without a separate cron job.
+	TTLHiddenGem = 7 * 24 * time.Hour
+
+	// HiddenGemCount is the maximum number of destinations in the curated list.
+	HiddenGemCount = 15
+)
+
 // KeyEventsIDAllPrefix is the prefix for every locale variant of the single
 // event cache. Used to invalidate event-by-ID caches on writes.
 const KeyEventsIDAllPrefix = "events:id:"

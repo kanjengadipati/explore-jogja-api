@@ -29,7 +29,10 @@ const (
 // trendingIDs is a set of destination external-IDs that the AI Trending
 // endpoint has elected as trending today.  Pass nil or empty map when the
 // value is unavailable (badge will simply not be assigned).
-func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
+//
+// hiddenGemIDs is the weekly-curated set from Service.LoadHiddenGemIDs.
+// Pass nil or empty map when unavailable.
+func ResolveBadges(d Destination, trendingIDs, hiddenGemIDs map[string]bool) []BadgeType {
 	var badges []BadgeType
 
 	cat := strings.ToLower(strings.TrimSpace(d.Category))
@@ -63,8 +66,8 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeWaterfall)
 	}
 
-	// Instagramable: Category hidden-gem atau beach + rating >= 4.4
-	if (cat == "hidden-gem" || cat == "beach") && d.Rating >= 4.4 {
+	// Instagramable: Category beach + rating >= 4.4
+	if cat == "beach" && d.Rating >= 4.4 {
 		badges = append(badges, BadgeInstagramable)
 	}
 
@@ -98,8 +101,12 @@ func ResolveBadges(d Destination, trendingIDs map[string]bool) []BadgeType {
 		badges = append(badges, BadgeAdventure)
 	}
 
-	// Hidden Gem: Rating >= 4.5 + review_count < 2500 (after category-specific badges)
-	if d.Rating >= 4.5 && d.ReviewCount < 2500 {
+	// Hidden Gem: membership in the weekly-curated set (max 15, selected by
+	// Service.LoadHiddenGemIDs). The formula that was here before (rating >= 4.5
+	// && review_count < 2500) was too broad — it tagged every decent
+	// under-reviewed destination across all categories. Badge is now authoritative
+	// only when the destination is part of the curated selection.
+	if hiddenGemIDs[d.ExternalID] {
 		badges = append(badges, BadgeHiddenGem)
 	}
 
@@ -154,8 +161,8 @@ var badgePriority = []BadgeType{
 
 // PrimaryBadge returns the single highest-priority badge for card overlay display.
 // Returns empty string if no badge applies.
-func PrimaryBadge(d Destination, trendingIDs map[string]bool) BadgeType {
-	all := ResolveBadges(d, trendingIDs)
+func PrimaryBadge(d Destination, trendingIDs, hiddenGemIDs map[string]bool) BadgeType {
+	all := ResolveBadges(d, trendingIDs, hiddenGemIDs)
 	if len(all) == 0 {
 		return ""
 	}

@@ -127,12 +127,13 @@ func (h *LocationHandler) GetByRegion(c *gin.Context) {
 	}
 
 	trendingIDs := h.DestHandler.loadTrendingIDs(locale)
+	hiddenGemIDs := h.DestHandler.loadHiddenGemIDs(c.Request.Context())
 	catCounts := make(map[string]int)
 	responses := make([]DestinationResponse, 0, len(dests))
 
 	for _, d := range dests {
 		localized := d.Localize(locale)
-		responses = append(responses, localized.ToResponse(trendingIDs))
+		responses = append(responses, localized.ToResponse(trendingIDs, hiddenGemIDs))
 		catCounts[d.Category]++
 	}
 
