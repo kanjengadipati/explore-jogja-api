@@ -19,6 +19,11 @@ func NewService(repo Repository) *Service {
 // business. Implemented by user.Service.
 type PartnerPromoter interface {
 	PromoteToPartnerRole(userID uint) error
+	// GetIDByReferralCode and SetReferredBySales support the optional sales
+	// referral flow — a business can still be created fine if the code is
+	// empty or unknown (see CreateOwned).
+	GetIDByReferralCode(code string) (uint, error)
+	SetReferredBySales(userID, salesUserID uint) error
 }
 
 // --- Self-service dashboard ---
@@ -57,6 +62,10 @@ type CreateBusinessRequest struct {
 	Email       string   `json:"email"`
 	Website     string   `json:"website"`
 	AvatarURL   string   `json:"avatar_url"`
+	// ReferralCode is optional — set when the partner signed up through a
+	// sales referral link/code. An unknown or invalid code is ignored on
+	// purpose so a typo never blocks registration.
+	ReferralCode string `json:"referral_code,omitempty"`
 }
 
 func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business, error) {
@@ -95,6 +104,13 @@ func (s *Service) CreateOwned(userID uint, req CreateBusinessRequest) (*Business
 	if s.UserSvc != nil {
 		if err := s.UserSvc.PromoteToPartnerRole(userID); err != nil {
 			return nil, err
+		}
+		if req.ReferralCode != "" {
+			if salesID, err := s.UserSvc.GetIDByReferralCode(req.ReferralCode); err == nil {
+				// Best-effort — an unknown/invalid code should never block
+				// business creation, so any error here is swallowed.
+				_ = s.UserSvc.SetReferredBySales(userID, salesID)
+			}
 		}
 	}
 
