@@ -2,15 +2,22 @@ package commission
 
 import (
 	"strconv"
+	"time"
 
 	"pleco-api/internal/modules/config"
 	"pleco-api/internal/modules/user"
 )
 
-// ConfigRateKey is where the admin-editable commission rate lives in the
-// generic SiteConfig key/value store (category "sales"). Value is a plain
-// decimal string, e.g. "0.20" for 20%.
-const ConfigRateKey = "sales_commission_rate"
+// Config keys untuk 2 tier — keduanya bisa diubah admin lewat
+// GET/PUT /admin/sales-commission-rate.
+const (
+	ConfigRateTier1Key = "sales_commission_rate_tier1" // TierThresholdMonths pertama
+	ConfigRateTier2Key = "sales_commission_rate_tier2" // setelah itu, recurring
+)
+
+// TierThresholdMonths — lama tier 1 berlaku, dihitung dari User.ReferredAt.
+// Setelah ini, tier 2 berlaku seumur hidup partner.
+const TierThresholdMonths = 12
 
 type Service struct {
 	repo      Repository
@@ -22,30 +29,54 @@ func NewService(repo Repository, configSvc *config.Service, userSvc *user.Servic
 	return &Service{repo: repo, configSvc: configSvc, userSvc: userSvc}
 }
 
-// GetCommissionRate returns the current admin-configured rate, falling back
-// to DefaultRate if it was never set or fails to parse.
-func (s *Service) GetCommissionRate() float64 {
-	cfg, err := s.configSvc.GetByKey(ConfigRateKey)
+// GetCommissionRates mengembalikan rate tier 1 & tier 2 yang aktif saat ini,
+// fallback ke default kalau belum pernah di-set admin / gagal parse.
+func (s *Service) GetCommissionRates() (tier1, tier2 float64) {
+	tier1 = s.readRate(ConfigRateTier1Key, DefaultRateTier1)
+	tier2 = s.readRate(ConfigRateTier2Key, DefaultRateTier2)
+	return tier1, tier2
+}
+
+func (s *Service) readRate(key string, fallback float64) float64 {
+	cfg, err := s.configSvc.GetByKey(key)
 	if err != nil || cfg.Value == "" {
-		return DefaultRate
+		return fallback
 	}
 	rate, err := strconv.ParseFloat(cfg.Value, 64)
 	if err != nil || rate <= 0 || rate >= 1 {
-		return DefaultRate
+		return fallback
 	}
 	return rate
 }
 
-// SetCommissionRate updates the admin-configured rate (fraction, e.g. 0.20).
-// Only affects commissions recorded after this call — past rows keep their
-// own snapshot rate.
-func (s *Service) SetCommissionRate(rate float64) error {
+// SetCommissionRates meng-update kedua rate tier (fraction, mis. 0.20).
+// Hanya berlaku untuk komisi yang direcord SETELAH pemanggilan ini — baris
+// lama tetap simpan snapshot rate-nya sendiri.
+func (s *Service) SetCommissionRates(tier1, tier2 float64) error {
+	if _, err := s.configSvc.Update(config.UpdateSiteConfigRequest{
+		Key: ConfigRateTier1Key, Value: strconv.FormatFloat(tier1, 'f', 4, 64), Category: "sales",
+	}); err != nil {
+		return err
+	}
 	_, err := s.configSvc.Update(config.UpdateSiteConfigRequest{
-		Key:      ConfigRateKey,
-		Value:    strconv.FormatFloat(rate, 'f', 4, 64),
-		Category: "sales",
+		Key: ConfigRateTier2Key, Value: strconv.FormatFloat(tier2, 'f', 4, 64), Category: "sales",
 	})
 	return err
+}
+
+// rateForReferral menentukan tier 1 atau tier 2 berdasarkan sudah berapa
+// lama partner direferensikan. referredAt nil (seharusnya tidak terjadi,
+// selalu diisi bersamaan ReferredBySalesID) fallback ke tier 1.
+func (s *Service) rateForReferral(referredAt *time.Time) (rate float64, tier int) {
+	tier1, tier2 := s.GetCommissionRates()
+	if referredAt == nil {
+		return tier1, 1
+	}
+	threshold := referredAt.AddDate(0, TierThresholdMonths, 0)
+	if time.Now().Before(threshold) {
+		return tier1, 1
+	}
+	return tier2, 2
 }
 
 // RecordFromTransaction creates a commission row for a paid transaction, if
@@ -62,13 +93,14 @@ func (s *Service) RecordFromTransaction(payerUserID, paymentTransactionID uint, 
 		return nil // payer not found, or not referred by anyone — no commission owed
 	}
 
-	rate := s.GetCommissionRate()
+	rate, tier := s.rateForReferral(payer.ReferredAt)
 	c := &SalesCommission{
 		SalesUserID:          *payer.ReferredBySalesID,
 		PartnerUserID:        payerUserID,
 		PaymentTransactionID: paymentTransactionID,
 		OrderID:              orderID,
 		SubjectType:          subjectType,
+		Tier:                 tier,
 		GrossAmount:          grossAmount,
 		CommissionRate:       rate,
 		CommissionAmount:     grossAmount * rate,

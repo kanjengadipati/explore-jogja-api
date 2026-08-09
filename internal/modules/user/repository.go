@@ -92,6 +92,7 @@ func (r *GormRepository) Update(user *User) error {
 		"cover_image_url":      user.CoverImageURL,
 		"referral_code":        user.ReferralCode,
 		"referred_by_sales_id": user.ReferredBySalesID,
+		"referred_at":          user.ReferredAt,
 	}
 	if user.Password != "" {
 		updates["password"] = user.Password

@@ -298,7 +298,9 @@ func (s *Service) SetReferredBySales(userID, salesUserID uint) error {
 	if u.ReferredBySalesID != nil {
 		return nil
 	}
+	now := time.Now()
 	u.ReferredBySalesID = &salesUserID
+	u.ReferredAt = &now
 	return s.UserRepo.Update(u)
 }
 

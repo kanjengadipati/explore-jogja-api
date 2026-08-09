@@ -14,9 +14,13 @@ const (
 	StatusVoided  Status = "voided" // reserved for a future refund flow
 )
 
-// DefaultRate is used only if no admin-configured rate exists yet (see
-// config.SiteConfig key "sales_commission_rate").
-const DefaultRate = 0.20
+// DefaultRateTier1 / DefaultRateTier2 are used only if no admin-configured
+// rate exists yet (see config.SiteConfig keys "sales_commission_rate_tier1"
+// and "sales_commission_rate_tier2").
+const (
+	DefaultRateTier1 = 0.20
+	DefaultRateTier2 = 0.10
+)
 
 // SalesCommission is created once per paid PaymentTransaction whose payer
 // (CreatedByUserID) was referred by a sales user. SalesUserID is a snapshot:
@@ -29,6 +33,7 @@ type SalesCommission struct {
 	PaymentTransactionID uint      `gorm:"not null;uniqueIndex" json:"payment_transaction_id"`
 	OrderID              string    `gorm:"size:100;not null" json:"order_id"`
 	SubjectType           string    `gorm:"size:50;not null;index" json:"subject_type"` // subscription | ad_campaign
+	Tier                 int       `gorm:"not null;default:1;index" json:"tier"`        // 1 atau 2 — lihat TierThresholdMonths
 	GrossAmount          float64   `gorm:"not null" json:"gross_amount"`
 	CommissionRate       float64   `gorm:"not null" json:"commission_rate"`
 	CommissionAmount     float64   `gorm:"not null" json:"commission_amount"`

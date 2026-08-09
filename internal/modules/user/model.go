@@ -33,4 +33,8 @@ type User struct {
 	// rows keep their own SalesUserID snapshot too, so this can be reassigned
 	// later without rewriting past commissions.
 	ReferredBySalesID *uint `gorm:"index" json:"referred_by_sales_id,omitempty"`
+	// ReferredAt is when ReferredBySalesID was set — used to compute which
+	// commission tier a payment falls into (see commission.Service). Existing
+	// partners backfilled from created_at by migration 000092.
+	ReferredAt *time.Time `json:"referred_at,omitempty"`
 }

@@ -5,6 +5,7 @@ type CommissionResponse struct {
 	PartnerUserID     uint    `json:"partner_user_id"`
 	OrderID           string  `json:"order_id"`
 	SubjectType       string  `json:"subject_type"`
+	Tier              int     `json:"tier"`
 	GrossAmount       float64 `json:"gross_amount"`
 	CommissionRate    float64 `json:"commission_rate"`
 	CommissionAmount  float64 `json:"commission_amount"`
@@ -18,6 +19,7 @@ func toCommissionResponse(c *SalesCommission) CommissionResponse {
 		PartnerUserID:    c.PartnerUserID,
 		OrderID:          c.OrderID,
 		SubjectType:      c.SubjectType,
+		Tier:             c.Tier,
 		GrossAmount:      c.GrossAmount,
 		CommissionRate:   c.CommissionRate,
 		CommissionAmount: c.CommissionAmount,
@@ -43,6 +45,7 @@ type SalesPerformanceItem struct {
 }
 
 type UpdateCommissionRateRequest struct {
-	// Rate as a fraction, e.g. 0.20 for 20%.
-	Rate float64 `json:"rate" binding:"required,gt=0,lt=1"`
+	// Rates as fractions, e.g. 0.20 for 20%.
+	Tier1Rate float64 `json:"tier1_rate" binding:"required,gt=0,lt=1"`
+	Tier2Rate float64 `json:"tier2_rate" binding:"required,gt=0,lt=1"`
 }
