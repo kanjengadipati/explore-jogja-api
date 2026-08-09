@@ -15,7 +15,9 @@ import (
 	"pleco-api/internal/modules/article"
 	"pleco-api/internal/modules/audit"
 	"pleco-api/internal/modules/auth"
+	"pleco-api/internal/modules/bonus"
 	"pleco-api/internal/modules/business"
+	"pleco-api/internal/modules/commission"
 	configmodule "pleco-api/internal/modules/config"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
@@ -86,6 +88,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	tokenVersionSrc := accessTokenVersionAdapter{repo: userModule.Repository}
 	auth.SetupRoutes(api, authModule.Handler, jwtService, rateStore, tokenVersionSrc, cfg)
 	user.SetupRoutes(api, userModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
+	user.SetupReferralRoutes(api, userModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	audit.SetupRoutes(api, auditModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
@@ -98,6 +101,9 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 
 	configModule := configmodule.BuildModule(db)
 	configmodule.SetupRoutes(api, configModule.Handler)
+
+	commissionModule := commission.BuildModule(db, configModule.Service, userModule.Service)
+	bonusModule := bonus.BuildModule(db, configModule.Service, userModule.Service)
 
 	eventModule := event.BuildModule(db, cacheStore)
 	event.SetupRoutes(api, eventModule.Handler, jwtService, permissionModule.Service)
@@ -149,7 +155,11 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	webhooks := router.Group("/webhooks")
 	midtransClient := midtransprovider.New(cfg.Midtrans.ServerKey, cfg.Midtrans.ClientKey, cfg.Midtrans.IsProduction)
 	paymentModule := payment.BuildModule(db, midtransClient, adCampaignModule.Service, subscriptionModule.Service, auditModule.Service, emailSvc, businessModule.Repository)
+	paymentModule.Service.CommissionSvc = commissionModule.Service
+	paymentModule.Service.BonusSvc = bonusModule.Service
 	payment.SetupRoutes(api, webhooks, paymentModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
+	commission.SetupRoutes(api, commissionModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
+	bonus.SetupRoutes(api, bonusModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
 	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
 	tourist.SetupRoutes(api, touristModule.Handler)

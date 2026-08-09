@@ -26,4 +26,11 @@ type User struct {
 	LastLoginAt        *time.Time `json:"last_login_at,omitempty"`
 	LastPasswordChange *time.Time `json:"last_password_change_at,omitempty"`
 	AccessTokenVersion uint       `gorm:"default:0" json:"-"`
+	// ReferralCode is only meaningful for Role=="sales" — their referral link/code.
+	ReferralCode *string `gorm:"size:20;uniqueIndex" json:"referral_code,omitempty"`
+	// ReferredBySalesID is set once, when a partner signs up (or creates their
+	// first business) through a sales referral code. It's a snapshot — commission
+	// rows keep their own SalesUserID snapshot too, so this can be reassigned
+	// later without rewriting past commissions.
+	ReferredBySalesID *uint `gorm:"index" json:"referred_by_sales_id,omitempty"`
 }

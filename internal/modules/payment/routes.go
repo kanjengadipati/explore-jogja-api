@@ -20,6 +20,8 @@ func SetupRoutes(api *gin.RouterGroup, webhookGroup *gin.RouterGroup, handler *H
 	self.Use(middleware.AuthMiddleware(jwtService))
 	self.Use(middleware.RequireAccessTokenVersion(tokenVersionSrc))
 	self.POST("/me/:id/subscription/upgrade", middleware.RequirePermission(permSvc, "business.update_own"), handler.CreateSubscriptionUpgrade)
+	self.POST("/me/:id/ad-campaigns/:campaignId/invoice", middleware.RequirePermission(permSvc, "business.update_own"), handler.CreateAdCampaignInvoice)
+	self.GET("/me/:id/ad-campaigns/:campaignId/payments", middleware.RequirePermission(permSvc, "business.read_own"), handler.ListAdCampaignPayments)
 
 	// Webhook: NO AuthMiddleware — Midtrans doesn't send our JWT.
 	// Security is enforced solely via HMAC-SHA512 signature verification in HandleNotification.

@@ -22,6 +22,20 @@ type MidtransClient interface {
 	GetTransactionStatus(orderID string) (string, error)
 }
 
+// CommissionRecorder is notified when a payment is marked paid, so the
+// commission module can record the sales commission for it (if the payer was
+// referred by a sales user). Optional — nil simply skips commission tracking.
+type CommissionRecorder interface {
+	RecordFromTransaction(payerUserID, paymentTransactionID uint, orderID, subjectType string, grossAmount float64) error
+}
+
+// BonusRecorder is notified when a payment is marked paid, so the bonus module
+// can record onboarding (first payment) and milestone bonuses. Optional — nil
+// simply skips bonus tracking.
+type BonusRecorder interface {
+	RecordFromTransaction(payerUserID, paymentTransactionID uint, paidAt time.Time) error
+}
+
 type Service struct {
 	Repo            Repository
 	Midtrans        MidtransClient
@@ -30,6 +44,11 @@ type Service struct {
 	AuditSvc        *audit.Service
 	EmailSvc        services.EmailService
 	BizRepo         business.Repository
+	// CommissionSvc is wired in after construction (see appsetup/router.go) —
+	// keeps this module's constructor signature/call order unaffected.
+	CommissionSvc CommissionRecorder
+	// BonusSvc is wired in after construction, same as CommissionSvc.
+	BonusSvc BonusRecorder
 }
 
 func NewService(repo Repository, midtrans MidtransClient, adCampaignSvc *adcampaign.Service, subscriptionSvc *subscription.Service, auditSvc *audit.Service, emailSvc services.EmailService, bizRepo business.Repository) *Service {
@@ -152,6 +171,23 @@ func (s *Service) HandleNotification(payload map[string]any) error {
 	})
 
 	if newStatus == StatusPaid {
+		if s.CommissionSvc != nil && tx.CreatedByUserID != nil {
+			if err := s.CommissionSvc.RecordFromTransaction(*tx.CreatedByUserID, tx.ID, tx.OrderID, tx.SubjectType, tx.Amount); err != nil {
+				// Commission tracking is secondary to the payment itself succeeding —
+				// log-and-continue rather than fail the whole webhook over it.
+				fmt.Printf("failed to record sales commission for order %s: %v\n", tx.OrderID, err)
+			}
+		}
+		if s.BonusSvc != nil && tx.CreatedByUserID != nil {
+			paidAt := time.Now()
+			if tx.PaidAt != nil {
+				paidAt = *tx.PaidAt
+			}
+			if err := s.BonusSvc.RecordFromTransaction(*tx.CreatedByUserID, tx.ID, paidAt); err != nil {
+				// Same log-and-continue policy as commissions.
+				fmt.Printf("failed to record sales bonus for order %s: %v\n", tx.OrderID, err)
+			}
+		}
 		return s.propagatePaidStatus(tx)
 	}
 	return nil

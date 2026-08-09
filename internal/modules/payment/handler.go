@@ -83,6 +83,75 @@ func (h *Handler) CreateSubscriptionUpgrade(c *gin.Context) {
 	}, nil)
 }
 
+func (h *Handler) CreateAdCampaignInvoice(c *gin.Context) {
+	var req CreateTransactionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.ValidationError(c, err)
+		return
+	}
+
+	userID, _ := httpx.GetUserIDFromContext(c)
+
+	// Resolve the caller's own business so the invoice is always created
+	// against their own ad campaign, never someone else's.
+	b, err := h.Service.BizRepo.FindByIDAndOwner(c.Param("id"), userID)
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Business not found or not owned")
+		return
+	}
+
+	campaign, err := h.Service.AdCampaignSvc.GetByID(c.Param("campaignId"))
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Ad campaign not found")
+		return
+	}
+	if campaign.BusinessExternalID == nil || *campaign.BusinessExternalID != b.ExternalID {
+		httpx.ErrorWithCode(c, 403, "FORBIDDEN", "Ad campaign does not belong to this business")
+		return
+	}
+
+	req.SubjectType = SubjectAdCampaign
+	req.SubjectExternalID = campaign.ExternalID
+
+	tx, redirectURL, err := h.Service.CreateTransaction(req, &userID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 201, "Invoice created", CreateTransactionResponse{
+		OrderID:     tx.OrderID,
+		SnapToken:   tx.MidtransToken,
+		RedirectURL: redirectURL,
+	}, nil)
+}
+
+func (h *Handler) ListAdCampaignPayments(c *gin.Context) {
+	userID, _ := httpx.GetUserIDFromContext(c)
+
+	b, err := h.Service.BizRepo.FindByIDAndOwner(c.Param("id"), userID)
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Business not found or not owned")
+		return
+	}
+
+	campaign, err := h.Service.AdCampaignSvc.GetByID(c.Param("campaignId"))
+	if err != nil {
+		httpx.ErrorWithCode(c, 404, "NOT_FOUND", "Ad campaign not found")
+		return
+	}
+	if campaign.BusinessExternalID == nil || *campaign.BusinessExternalID != b.ExternalID {
+		httpx.ErrorWithCode(c, 403, "FORBIDDEN", "Ad campaign does not belong to this business")
+		return
+	}
+
+	txs, err := h.Service.GetBySubject(SubjectAdCampaign, campaign.ExternalID)
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Payments fetched", txs, nil)
+}
+
 func (h *Handler) HandleNotification(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {

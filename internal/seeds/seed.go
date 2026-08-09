@@ -23,7 +23,7 @@ func mustHaveDB(db *gorm.DB) {
 func SeedRoles(db *gorm.DB) map[string]roleModule.Role {
 	mustHaveDB(db)
 
-	roleNames := []string{"superadmin", "admin", "user", "partner"}
+	roleNames := []string{"superadmin", "admin", "user", "partner", "sales"}
 	roleMap := make(map[string]roleModule.Role)
 
 	for _, name := range roleNames {
@@ -86,6 +86,15 @@ func SeedPermissions(db *gorm.DB) map[string]permissionModule.Permission {
 		"listing_claim.approve",
 		"listing_claim.reject",
 		"event.manage",
+		// Sales team permissions
+		"sales:manage-referral",
+		"commission:read_own",
+		"commission:read_all",
+		"commission:manage_rate",
+		"bonus:read_own",
+		"bonus:read_all",
+		"bonus:manage_rules",
+		"bonus:manage_payout",
 	}
 	permMap := make(map[string]permissionModule.Permission)
 
@@ -151,6 +160,11 @@ func SeedRolePermissions(db *gorm.DB) {
 			"listing_claim.approve",
 			"listing_claim.reject",
 			"event.manage",
+			"commission:read_all",
+			"commission:manage_rate",
+			"bonus:read_all",
+			"bonus:manage_rules",
+			"bonus:manage_payout",
 		},
 		"admin": {
 			"dashboard.view",
@@ -184,6 +198,11 @@ func SeedRolePermissions(db *gorm.DB) {
 			"listing_claim.approve",
 			"listing_claim.reject",
 			"event.manage",
+			"commission:read_all",
+			"commission:manage_rate",
+			"bonus:read_all",
+			"bonus:manage_rules",
+			"bonus:manage_payout",
 		},
 		"user": {
 			"dashboard.view",
@@ -211,6 +230,13 @@ func SeedRolePermissions(db *gorm.DB) {
 			"business.delete_own",
 			"listing_claim.submit_own",
 			"listing_claim.read_own",
+		},
+		"sales": {
+			"dashboard.view",
+			"session.read",
+			"sales:manage-referral",
+			"commission:read_own",
+			"bonus:read_own",
 		},
 	}
 

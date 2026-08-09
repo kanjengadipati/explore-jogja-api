@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"pleco-api/internal/cache"
@@ -17,6 +18,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+var errNotSalesUser = errors.New("only users with the sales role have a referral code")
 
 var errUnsupportedRole = errors.New("unsupported role")
 
@@ -231,6 +234,88 @@ func (s *Service) PromoteToPartnerRole(userID uint) error {
 	return nil
 }
 
+// --- Sales referral (used by the commission feature) ---
+
+// GetOrCreateReferralCode returns the sales user's referral code, generating
+// one on first use. Only users with Role == "sales" have a code.
+func (s *Service) GetOrCreateReferralCode(userID uint) (string, error) {
+	u, err := s.UserRepo.FindByID(userID)
+	if err != nil {
+		return "", err
+	}
+	if u.Role != "sales" {
+		return "", errNotSalesUser
+	}
+	if u.ReferralCode != nil && *u.ReferralCode != "" {
+		return *u.ReferralCode, nil
+	}
+	return s.assignFreshReferralCode(u)
+}
+
+// RegenerateReferralCode issues a new code, invalidating the old one for
+// future signups. Partners already linked keep their ReferredBySalesID.
+func (s *Service) RegenerateReferralCode(userID uint) (string, error) {
+	u, err := s.UserRepo.FindByID(userID)
+	if err != nil {
+		return "", err
+	}
+	if u.Role != "sales" {
+		return "", errNotSalesUser
+	}
+	return s.assignFreshReferralCode(u)
+}
+
+func (s *Service) assignFreshReferralCode(u *User) (string, error) {
+	for attempt := 0; attempt < 5; attempt++ {
+		code := generateReferralCode(u.Name, u.ID, attempt)
+		u.ReferralCode = &code
+		if err := s.UserRepo.Update(u); err != nil {
+			continue // likely a rare unique-index clash on the suffix — retry
+		}
+		return code, nil
+	}
+	return "", errors.New("failed to generate a unique referral code, please try again")
+}
+
+// GetIDByReferralCode resolves a referral code to its owning sales user's ID.
+// Used by business.Service when a partner signs up through a referral link.
+func (s *Service) GetIDByReferralCode(code string) (uint, error) {
+	var u User
+	if err := s.DB.Where("referral_code = ? AND role = ?", code, "sales").First(&u).Error; err != nil {
+		return 0, err
+	}
+	return u.ID, nil
+}
+
+// SetReferredBySales stamps a user (partner) with the sales user who referred
+// them. No-op if already set — first referral wins, later signup attempts
+// with a different code never overwrite it.
+func (s *Service) SetReferredBySales(userID, salesUserID uint) error {
+	u, err := s.UserRepo.FindByID(userID)
+	if err != nil {
+		return err
+	}
+	if u.ReferredBySalesID != nil {
+		return nil
+	}
+	u.ReferredBySalesID = &salesUserID
+	return s.UserRepo.Update(u)
+}
+
+func generateReferralCode(name string, userID uint, attempt int) string {
+	base := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(name), " ", ""))
+	if len(base) > 6 {
+		base = base[:6]
+	}
+	if base == "" {
+		base = "SALES"
+	}
+	if attempt == 0 {
+		return fmt.Sprintf("%s%d", base, userID)
+	}
+	return fmt.Sprintf("%s%d%d", base, userID, attempt)
+}
+
 func (s *Service) DeleteUser(id uint, callerRole string, callerID uint) error {
 	if id == callerID {
 		return errors.New("cannot delete yourself")
@@ -280,7 +365,7 @@ func (s *Service) runInTx(fn func(userRepo Repository, refreshRepo tokenModule.R
 
 func isAssignableRole(role string) bool {
 	switch role {
-	case "admin", "user", "partner":
+	case "admin", "user", "partner", "sales":
 		return true
 	default:
 		return false
