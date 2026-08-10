@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strconv"
@@ -475,6 +476,9 @@ func (h *Handler) Query(c *gin.Context) {
 
 	destContext := destinationsContextJSON(dests)
 	eventContext := eventsContextJSON(eventsData)
+
+	log.Printf("[AI Query] user_query=%q total_destinations=%d total_events_in_context=%d",
+		req.Query, len(dests), min(len(eventsData), 30))
 
 	systemInstruction := fmt.Sprintf(`You are a warm, highly knowledgeable, and deeply hospitable local guide from Yogyakarta, Indonesia.
 Your task is to act as a "knowledgeable local friend" helping tourists discover destinations and events in Yogyakarta.
