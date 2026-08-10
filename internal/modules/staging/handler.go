@@ -33,11 +33,12 @@ func (h *Handler) AIReviewDestinations(c *gin.Context) {
 		return
 	}
 
-	if err := h.Service.ReviewDestinations(c.Request.Context(), input.IDs); err != nil {
+	results, err := h.Service.ReviewDestinations(c.Request.Context(), input.IDs)
+	if err != nil {
 		httpx.Error(c, http.StatusInternalServerError, "AI review failed")
 		return
 	}
-	httpx.Success(c, http.StatusOK, "AI review completed", nil, nil)
+	httpx.Success(c, http.StatusOK, "AI review completed", results, nil)
 }
 
 func (h *Handler) ApproveDestinations(c *gin.Context) {

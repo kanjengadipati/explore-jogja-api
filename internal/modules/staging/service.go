@@ -17,18 +17,18 @@ func NewService(repo Repository, aiService *ai.Service) *Service {
 }
 
 type AIReviewResult struct {
+	ID       uint   `json:"id"`
 	Approved bool   `json:"approved"`
 	Reason   string `json:"reason"`
 }
 
-func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) error {
+func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) ([]AIReviewResult, error) {
 	dests, err := s.Repo.FindPendingDestinations()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	approvedIDs := []uint{}
-	rejectedIDs := []uint{}
+	results := []AIReviewResult{}
 
 	for _, dest := range dests {
 		shouldProcess := false
@@ -42,32 +42,30 @@ func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) error {
 			continue
 		}
 
-		// Perform AI review
-		prompt := fmt.Sprintf("Analyze this destination data for quality and appropriateness:\n%s\n\nReturn JSON: {\"approved\": boolean, \"reason\": string}", dest.RawData)
+		prompt := fmt.Sprintf("Analyze this destination data for quality and appropriateness for a Yogyakarta tourism platform:\n%s\n\nReturn JSON only: {\"approved\": boolean, \"reason\": string}", dest.RawData)
 		resp, err := s.AIService.Generate(ctx, ai.GenerateInput{
-			SystemPrompt: "You are a data quality reviewer for tourism destinations. Analyze the provided data and return a JSON object with 'approved' (boolean) and 'reason' (string).",
+			SystemPrompt: "You are a data quality reviewer for tourism destinations. Analyze the provided data and return a JSON object with 'approved' (boolean) and 'reason' (string explaining your recommendation briefly).",
 			UserPrompt:   prompt,
-			Temperature: 0.3,
+			Temperature:  0.3,
 		})
-		
-		var result AIReviewResult
+
+		var parsed struct {
+			Approved bool   `json:"approved"`
+			Reason   string `json:"reason"`
+		}
 		if err == nil {
-			err = json.Unmarshal([]byte(resp.Text), &result)
-		}
-
-		if err == nil && result.Approved {
-			approvedIDs = append(approvedIDs, dest.ID)
+			_ = json.Unmarshal([]byte(resp.Text), &parsed)
 		} else {
-			rejectedIDs = append(rejectedIDs, dest.ID)
+			parsed.Approved = false
+			parsed.Reason = "AI unavailable"
 		}
+
+		results = append(results, AIReviewResult{
+			ID:       dest.ID,
+			Approved: parsed.Approved,
+			Reason:   parsed.Reason,
+		})
 	}
 
-	if len(approvedIDs) > 0 {
-		s.Repo.ApproveMultipleDestinations(approvedIDs)
-	}
-	if len(rejectedIDs) > 0 {
-		s.Repo.RejectMultipleDestinations(rejectedIDs)
-	}
-
-	return nil
+	return results, nil
 }
