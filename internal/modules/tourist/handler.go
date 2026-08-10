@@ -478,7 +478,14 @@ func (h *Handler) Query(c *gin.Context) {
 	eventContext := eventsContextJSON(eventsData)
 
 	log.Printf("[AI Query] user_query=%q total_destinations=%d total_events_in_context=%d",
-		req.Query, len(dests), min(len(eventsData), 30))
+		req.Query, len(dests), len(eventsData))
+
+	// Log event titles sent to AI context for debugging
+	eventTitles := make([]string, len(eventsData))
+	for i, e := range eventsData {
+		eventTitles[i] = fmt.Sprintf("%s(%s)", e.ExternalID, e.StartDate)
+	}
+	log.Printf("[AI Query] events_in_context=%v", eventTitles)
 
 	systemInstruction := fmt.Sprintf(`You are a warm, highly knowledgeable, and deeply hospitable local guide from Yogyakarta, Indonesia.
 Your task is to act as a "knowledgeable local friend" helping tourists discover destinations and events in Yogyakarta.
@@ -757,13 +764,8 @@ func eventsContextJSON(events []event.Event) string {
 		EndDate   string `json:"endDate"`
 		Status    string `json:"status"`
 	}
-	limit := len(events)
-	if limit > 30 {
-		limit = 30
-	}
-	summaries := make([]eventSummary, limit)
-	for i := 0; i < limit; i++ {
-		e := events[i]
+	summaries := make([]eventSummary, len(events))
+	for i, e := range events {
 		summaries[i] = eventSummary{
 			ID: e.ExternalID, Title: e.Title, Category: e.Category,
 			Location: e.Location, StartDate: e.StartDate, EndDate: e.EndDate,
