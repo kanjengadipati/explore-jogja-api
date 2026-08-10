@@ -477,15 +477,17 @@ func (h *Handler) Query(c *gin.Context) {
 	destContext := destinationsContextJSON(dests)
 	eventContext := eventsContextJSON(eventsData)
 
-	log.Printf("[AI Query] user_query=%q total_destinations=%d total_events_in_context=%d",
-		req.Query, len(dests), len(eventsData))
-
-	// Log event titles sent to AI context for debugging
-	eventTitles := make([]string, len(eventsData))
-	for i, e := range eventsData {
-		eventTitles[i] = fmt.Sprintf("%s(%s)", e.ExternalID, e.StartDate)
+	// Pre-query: find events matching the user's query keywords directly from DB.
+	// This gives AI a strong hint so it prioritises events over destinations
+	// when the query clearly refers to a named event or festival.
+	preMatchedEvents, _ := h.EventRepo.Search(req.Query)
+	var preMatchedEventIDs []string
+	for _, e := range preMatchedEvents {
+		preMatchedEventIDs = append(preMatchedEventIDs, e.ExternalID)
 	}
-	log.Printf("[AI Query] events_in_context=%v", eventTitles)
+
+	log.Printf("[AI Query] user_query=%q total_destinations=%d total_events=%d pre_matched_events=%v",
+		req.Query, len(dests), len(eventsData), preMatchedEventIDs)
 
 	systemInstruction := fmt.Sprintf(`You are a warm, highly knowledgeable, and deeply hospitable local guide from Yogyakarta, Indonesia.
 Your task is to act as a "knowledgeable local friend" helping tourists discover destinations and events in Yogyakarta.
@@ -500,6 +502,7 @@ CRITICAL RULES:
 5. matchedEventIds must never be empty if an event matching the query exists in the catalog.
 6. For destination questions, include relevant destination IDs in matchedDestinationIds.
 7. NEVER mention the catalog, database, data list, or any internal system to the user. Never say phrases like "tidak terdaftar dalam katalog", "tidak ada dalam daftar", "not in our list", "not in the catalog", or any variation. If you don't find something, simply answer warmly based on your knowledge of Yogyakarta without referencing internal data.
+8. If PRE-MATCHED EVENT IDs are provided in the user prompt, those events are the highest-priority results — always include ALL of them in matchedEventIds and feature them prominently in the reply.
 
 Here is the exact catalog of Yogyakarta destinations you can recommend. Do NOT invent new places:
 %s
@@ -515,6 +518,9 @@ Respond ONLY with valid JSON matching this schema:
 }`, destContext, eventContext)
 
 	userPrompt := buildUserPrompt(req.Query, req.History)
+	if len(preMatchedEventIDs) > 0 {
+		userPrompt += fmt.Sprintf("\n\nPRE-MATCHED EVENT IDs (found by direct keyword search — include ALL in matchedEventIds): %v", preMatchedEventIDs)
+	}
 
 	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
 		SystemPrompt: systemInstruction,
@@ -532,6 +538,9 @@ Respond ONLY with valid JSON matching this schema:
 		httpx.Success(c, 200, "Query processed (offline)", h.offlineQueryResponse(req.Query), nil)
 		return
 	}
+
+	log.Printf("[AI Query] result query=%q matched_destinations=%v matched_events=%v",
+		req.Query, parsed.MatchedDestinationIDs, parsed.MatchedEventIDs)
 
 	httpx.Success(c, 200, "Query processed", parsed, nil)
 }
