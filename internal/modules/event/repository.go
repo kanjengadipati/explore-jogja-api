@@ -25,7 +25,7 @@ func NewRepository(db *gorm.DB) Repository {
 
 func (r *GormRepository) FindAll() ([]Event, error) {
 	var events []Event
-	err := r.db.Order("id ASC").Find(&events).Error
+	err := r.db.Order("start_date ASC").Find(&events).Error
 	return events, err
 }
 

@@ -48,6 +48,7 @@ type AIQueryRequest struct {
 type AIQueryResponse struct {
 	Reply                 string   `json:"reply"`
 	MatchedDestinationIDs []string `json:"matchedDestinationIds"`
+	MatchedEventIDs       []string `json:"matchedEventIds"`
 }
 
 type AIRecommendResponse struct {
@@ -480,7 +481,7 @@ Your task is to act as a "knowledgeable local friend" helping tourists discover 
 Adopt a premium, elegant, yet warm and conversational tone.
 Occasionally use gentle Javanese greetings (like 'Sugeng rawuh' for Welcome, 'Matur nuwun' for Thank you, 'Monggo' for Please proceed).
 Answer inquiries thoroughly and recommend specific places from the list of actual destinations provided.
-If the user asks about events or festivals, refer to the UPCOMING EVENTS catalog.
+If the user asks about events or festivals, refer to the UPCOMING EVENTS catalog and include their IDs in matchedEventIds.
 
 Here is the exact catalog of Yogyakarta destinations you can recommend. Do NOT invent new places; map the user's request intelligently to these options:
 %s
@@ -491,7 +492,8 @@ UPCOMING EVENTS & FESTIVALS:
 Respond ONLY with valid JSON matching this schema:
 {
   "reply": "Your friendly narrative advice, 3-5 sentences.",
-  "matchedDestinationIds": ["array of destination IDs from the catalog that are relevant"]
+  "matchedDestinationIds": ["array of destination IDs from the catalog that are relevant, empty array if none"],
+  "matchedEventIds": ["array of event IDs from the UPCOMING EVENTS catalog that are relevant, empty array if none"]
 }`, destContext, eventContext)
 
 	userPrompt := buildUserPrompt(req.Query, req.History)
@@ -745,8 +747,8 @@ func eventsContextJSON(events []event.Event) string {
 		Status    string `json:"status"`
 	}
 	limit := len(events)
-	if limit > 15 {
-		limit = 15
+	if limit > 30 {
+		limit = 30
 	}
 	summaries := make([]eventSummary, limit)
 	for i := 0; i < limit; i++ {
