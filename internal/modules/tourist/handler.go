@@ -1004,9 +1004,11 @@ func (h *Handler) GenerateEvent(c *gin.Context) {
 		return
 	}
 
-	systemInstruction := `You are an expert event content writer for Yogyakarta tourism.
+	systemInstruction := fmt.Sprintf(`You are an expert event content writer for Yogyakarta tourism.
 Your task is to generate compelling, accurate, and editorial-quality content for the given event in both Indonesian and English.
+Today's date is %s. Use this as reference when determining event dates.
 Research the event's practical details: real start/end dates (YYYY-MM-DD format), venue coordinates, and estimated max attendees. Use empty strings when a value cannot be determined.
+If the event is an annual recurring event (like Sekaten, Grebeg, jazz festival, etc.), generate dates for the CURRENT or NEXT upcoming occurrence based on today's date — not past dates.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -1016,8 +1018,8 @@ Return ONLY valid JSON matching this schema:
   "description_en": "English version of the description",
   "organizer": "Organizer name",
   "ticket_price": "Ticket price information",
-  "start_date": "Start date in YYYY-MM-DD format",
-  "end_date": "End date in YYYY-MM-DD format",
+  "start_date": "Start date in YYYY-MM-DD format — must be %s or later",
+  "end_date": "End date in YYYY-MM-DD format — must be on or after start_date",
   "max_attendees": "Estimated max attendees as a plain number string (e.g. '500')",
   "latitude": "Decimal latitude coordinate of the venue",
   "longitude": "Decimal longitude coordinate of the venue",
@@ -1027,7 +1029,7 @@ Return ONLY valid JSON matching this schema:
   "seo_description_en": "Meta description in English (max 160 chars)",
   "seo_keywords": "Comma-separated keywords in Indonesian",
   "seo_keywords_en": "Comma-separated keywords in English"
-}`
+}`, time.Now().Format("2006-01-02"), time.Now().Format("2006-01-02"))
 
 	userPrompt := fmt.Sprintf(
 		"Research and generate comprehensive event content for '%s' in %s, category: %s.",
