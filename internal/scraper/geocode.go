@@ -15,6 +15,18 @@ var geocodeCache = struct {
 	m map[string]geoResult
 }{m: make(map[string]geoResult)}
 
+// Nominatim's usage policy allows ~1 request per second. The ticker paces
+// cache-miss lookups so a large scrape never bursts past the limit.
+var geocodeLimiter = time.NewTicker(1100 * time.Millisecond)
+
+// jogjaRegionViewbox bounds the area this platform publishes content for:
+// DI Yogyakarta plus the immediately adjacent Magelang/Borobudur corridor
+// (the injourney scraper deliberately includes Borobudur, which sits just
+// outside DIY proper). Combined with bounded=1, Nominatim only returns
+// results inside it, so an ambiguous location string can never resolve to
+// coordinates in a far-away province.
+const jogjaRegionViewbox = "109.85,-7.4,110.9,-8.3"
+
 type geoResult struct {
 	lat float64
 	lng float64
@@ -35,7 +47,11 @@ func geocode(location string) (lat, lng float64, ok bool) {
 	}
 	geocodeCache.Unlock()
 
-	req, err := http.NewRequest("GET", "https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+url.QueryEscape(loc), nil)
+	<-geocodeLimiter.C
+
+	reqURL := "https://nominatim.openstreetmap.org/search?format=json&limit=1&bounded=1&viewbox=" +
+		jogjaRegionViewbox + "&q=" + url.QueryEscape(loc)
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return 0, 0, false
 	}

@@ -1,6 +1,7 @@
 package review
 
 import (
+	"errors"
 	"fmt"
 	"pleco-api/internal/httpx"
 
@@ -14,6 +15,15 @@ type Handler struct {
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{Service: service}
+}
+
+func (h *Handler) callerIdentity(c *gin.Context) (userID string, isAdmin bool) {
+	uid, _ := httpx.GetUserIDFromContext(c)
+	userID = fmt.Sprintf("%v", uid)
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	isAdmin = roleStr == "admin" || roleStr == "superadmin"
+	return userID, isAdmin
 }
 
 func (h *Handler) GetAll(c *gin.Context) {
@@ -36,6 +46,15 @@ func (h *Handler) GetAll(c *gin.Context) {
 		return
 	}
 	reviews, err := h.Service.GetAll()
+	if err != nil {
+		httpx.HandleError(c, err)
+		return
+	}
+	httpx.Success(c, 200, "Reviews fetched", reviews, nil)
+}
+
+func (h *Handler) GetAllAdmin(c *gin.Context) {
+	reviews, err := h.Service.GetAllAdmin()
 	if err != nil {
 		httpx.HandleError(c, err)
 		return
@@ -105,8 +124,13 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	review, err := h.Service.Update(id, req)
+	callerID, isAdmin := h.callerIdentity(c)
+	review, err := h.Service.Update(id, callerID, isAdmin, req)
 	if err != nil {
+		if errors.Is(err, ErrForbidden) {
+			httpx.ErrorWithCode(c, 403, "FORBIDDEN", "You can only edit your own review")
+			return
+		}
 		httpx.HandleError(c, err)
 		return
 	}
@@ -115,7 +139,12 @@ func (h *Handler) Update(c *gin.Context) {
 
 func (h *Handler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.Service.Delete(id); err != nil {
+	callerID, isAdmin := h.callerIdentity(c)
+	if err := h.Service.Delete(id, callerID, isAdmin); err != nil {
+		if errors.Is(err, ErrForbidden) {
+			httpx.ErrorWithCode(c, 403, "FORBIDDEN", "You can only delete your own review")
+			return
+		}
 		httpx.HandleError(c, err)
 		return
 	}

@@ -96,6 +96,9 @@ func SeedPermissions(db *gorm.DB) map[string]permissionModule.Permission {
 		"bonus:read_all",
 		"bonus:manage_rules",
 		"bonus:manage_payout",
+		"staging.review",
+		"scraper.run",
+		"review.manage",
 	}
 	permMap := make(map[string]permissionModule.Permission)
 
@@ -167,6 +170,9 @@ func SeedRolePermissions(db *gorm.DB) {
 			"bonus:read_all",
 			"bonus:manage_rules",
 			"bonus:manage_payout",
+			"staging.review",
+			"scraper.run",
+			"review.manage",
 		},
 		"admin": {
 			"dashboard.view",
@@ -206,6 +212,9 @@ func SeedRolePermissions(db *gorm.DB) {
 			"bonus:read_all",
 			"bonus:manage_rules",
 			"bonus:manage_payout",
+			"staging.review",
+			"scraper.run",
+			"review.manage",
 		},
 		"user": {
 			"dashboard.view",

@@ -4,6 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"pleco-api/internal/ai"
+	"pleco-api/internal/middleware"
+	"pleco-api/internal/modules/permission"
+	"pleco-api/internal/services"
 )
 
 type Module struct {
@@ -17,8 +20,10 @@ func BuildModule(db *gorm.DB, aiService *ai.Service) *Module {
 	return &Module{Handler: handler}
 }
 
-func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
+func (m *Module) RegisterRoutes(rg *gin.RouterGroup, jwtService *services.JWTService, permissionService *permission.Service) {
 	staging := rg.Group("/admin/staging")
+	staging.Use(middleware.AuthMiddleware(jwtService))
+	staging.Use(middleware.RequirePermission(permissionService, "staging.review"))
 
 	staging.GET("/destinations", m.Handler.GetPendingDestinations)
 	staging.POST("/destinations/ai-review", m.Handler.AIReviewDestinations)

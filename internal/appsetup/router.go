@@ -131,7 +131,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	rental.SetupRoutes(api, rentalModule.Handler, jwtService)
 
 	reviewModule := review.BuildModule(db)
-	review.SetupRoutes(api, reviewModule.Handler, jwtService)
+	review.SetupRoutes(api, reviewModule.Handler, jwtService, permissionModule.Service)
 
 	storyModule := story.BuildModule(db)
 	story.SetupRoutes(api, storyModule.Handler, jwtService)
@@ -168,7 +168,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	trips.SetupRoutes(api, tripsModule.Handler, jwtService)
 
 	stagingModule := staging.BuildModule(db, aiService)
-	stagingModule.RegisterRoutes(api)
+	stagingModule.RegisterRoutes(api, jwtService, permissionModule.Service)
 
 	imageReportModule := imagereport.BuildModule(db)
 	imageReportModule.RegisterPublicRoutes(api.Group("destinations"))
@@ -181,8 +181,11 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		httpx.Success(c, 200, "Health check ok", gin.H{"status": "ok"}, nil)
 	})
 
-	// Manual scraper trigger endpoints (for testing)
-	router.GET("/admin/scrape", func(c *gin.Context) {
+	// Manual scraper trigger endpoints (admin only, require "scraper.run")
+	adminScrape := router.Group("/admin/scrape")
+	adminScrape.Use(middleware.AuthMiddleware(jwtService))
+	adminScrape.Use(middleware.RequirePermission(permissionModule.Service, "scraper.run"))
+	adminScrape.POST("", func(c *gin.Context) {
 		if !scrapeAllRunning.CompareAndSwap(false, true) {
 			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "A scrape is already in progress")
 			return
@@ -200,7 +203,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		}()
 		httpx.Success(c, 202, "Scrape started in background", nil, nil)
 	})
-	router.GET("/admin/scrape/destinations", func(c *gin.Context) {
+	adminScrape.POST("/destinations", func(c *gin.Context) {
 		if !scrapeDestRunning.CompareAndSwap(false, true) {
 			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "A destination scrape is already in progress")
 			return
@@ -213,7 +216,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		}()
 		httpx.Success(c, 202, "Destination scrape started in background", nil, nil)
 	})
-	router.GET("/admin/scrape/events", func(c *gin.Context) {
+	adminScrape.POST("/events", func(c *gin.Context) {
 		if !scrapeEventsRunning.CompareAndSwap(false, true) {
 			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "An event scrape is already in progress")
 			return

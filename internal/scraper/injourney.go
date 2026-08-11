@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -187,11 +188,7 @@ func injourneyLocationFor(slug string) (location, subRegion string) {
 	return "", ""
 }
 
-func injourneyFallbackLocation() (string, string) {
-	return "Yogyakarta", "Yogyakarta"
-}
-
-func injourneyEventLocation(title string) (location, subRegion string) {
+func injourneyEventLocationStrict(title string) (location, subRegion string) {
 	lower := strings.ToLower(title)
 	switch {
 	case strings.Contains(lower, "borobudur"):
@@ -201,7 +198,7 @@ func injourneyEventLocation(title string) (location, subRegion string) {
 	case strings.Contains(lower, "prambanan") || strings.Contains(lower, "ramayana"):
 		return "Prambanan, Sleman", "Sleman"
 	}
-	return injourneyFallbackLocation()
+	return "", ""
 }
 
 var (
@@ -323,6 +320,7 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 	cats, _ := s.fetchCategories()
 
 	var dests []ScrapedDestination
+	var skipped int
 	for _, p := range posts {
 		title := strings.TrimSpace(p.Title.Rendered)
 		if title == "" {
@@ -337,7 +335,12 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			}
 		}
 		if subRegion == "" {
-			location, subRegion = injourneyEventLocation(title)
+			location, subRegion = injourneyEventLocationStrict(title)
+		}
+		if subRegion == "" {
+			// No verifiable DIY/heritage-site location — don't guess, skip it.
+			skipped++
+			continue
 		}
 
 		img := s.fetchMedia(p.FeaturedMedia)
@@ -356,6 +359,9 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 			Source:      "injourney",
 		})
 	}
+	if skipped > 0 {
+		log.Printf("[scraper] injourney: skipped %d destination(s) with no verifiable DIY location", skipped)
+	}
 
 	return dests, nil
 }
@@ -367,15 +373,22 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 	}
 
 	var events []ScrapedEvent
+	var skipped int
 	for _, p := range posts {
 		title := strings.TrimSpace(p.Title.Rendered)
 		if title == "" {
 			continue
 		}
 
+		location, subRegion := injourneyEventLocationStrict(title)
+		if subRegion == "" {
+			// No verifiable DIY/heritage-site location — don't guess, skip it.
+			skipped++
+			continue
+		}
+
 		img := s.fetchMedia(p.FeaturedMedia)
 		desc := postDescription(p.Excerpt.Rendered, p.Content.Rendered)
-		location, _ := injourneyEventLocation(title)
 		startDate, endDate := parseInjourneyEventDates(title, p.Content.Rendered, p.Date)
 
 		events = append(events, ScrapedEvent{
@@ -391,6 +404,9 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 			Organizer:   "InJourney Destination Management",
 			Source:      "injourney",
 		})
+	}
+	if skipped > 0 {
+		log.Printf("[scraper] injourney: skipped %d event(s) with no verifiable DIY location", skipped)
 	}
 
 	return events, nil

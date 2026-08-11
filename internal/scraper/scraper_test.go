@@ -1,6 +1,9 @@
 package scraper
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParseInjourneyEventDates(t *testing.T) {
 	cases := []struct {
@@ -48,6 +51,28 @@ func TestMatchFromDestMap(t *testing.T) {
 		got := matchFromDestMap(m, c.title, c.location)
 		if got != c.want {
 			t.Errorf("matchFromDestMap(%q,%q) = %q, want %q", c.title, c.location, got, c.want)
+		}
+	}
+}
+
+func TestIsStaleEvent(t *testing.T) {
+	longAgo := time.Now().AddDate(0, 0, -40).Format("2006-01-02")
+	recent := time.Now().AddDate(0, 0, -5).Format("2006-01-02")
+
+	cases := []struct {
+		name      string
+		item      ScrapedEvent
+		wantStale bool
+	}{
+		{"old end date", ScrapedEvent{StartDate: longAgo, EndDate: longAgo}, true},
+		{"recent end date", ScrapedEvent{StartDate: recent, EndDate: recent}, false},
+		{"old start, no end", ScrapedEvent{StartDate: longAgo}, true},
+		{"no dates", ScrapedEvent{}, false},
+		{"unparseable date", ScrapedEvent{EndDate: "not-a-date"}, false},
+	}
+	for _, c := range cases {
+		if got := isStaleEvent(c.item); got != c.wantStale {
+			t.Errorf("%s: isStaleEvent(%+v) = %v, want %v", c.name, c.item, got, c.wantStale)
 		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 type Repository interface {
 	FindAll() ([]Review, error)
+	FindAllAdmin() ([]Review, error)
 	FindByDestinationID(destinationID string) ([]Review, error)
 	FindByUserID(userID string) ([]Review, error)
 	FindByID(externalID string) (*Review, error)
@@ -29,6 +30,12 @@ func NewRepository(db *gorm.DB) Repository {
 
 func (r *GormRepository) FindAll() ([]Review, error) {
 	var reviews []Review
+	err := r.db.Where("status = ?", "published").Order("id ASC").Find(&reviews).Error
+	return reviews, err
+}
+
+func (r *GormRepository) FindAllAdmin() ([]Review, error) {
+	var reviews []Review
 	err := r.db.Order("id ASC").Find(&reviews).Error
 	return reviews, err
 }
@@ -42,7 +49,7 @@ func (r *GormRepository) FindByDestinationID(destinationID string) ([]Review, er
 
 func (r *GormRepository) FindByUserID(userID string) ([]Review, error) {
 	var reviews []Review
-	err := r.db.Where("user_id = ?", userID).
+	err := r.db.Where("user_id = ? AND status = ?", userID, "published").
 		Order("created_at DESC").Find(&reviews).Error
 	return reviews, err
 }
@@ -59,10 +66,11 @@ func (r *GormRepository) FindByID(externalID string) (*Review, error) {
 func (r *GormRepository) Search(query string) ([]Review, error) {
 	var reviews []Review
 	like := "%" + query + "%"
-	err := r.db.Where(
-		r.db.Where("user_name ILIKE ?", like).
-			Or("comment ILIKE ?", like),
-	).Order("created_at DESC").Find(&reviews).Error
+	err := r.db.Where("status = ?", "published").
+		Where(
+			r.db.Where("user_name ILIKE ?", like).
+				Or("comment ILIKE ?", like),
+		).Order("created_at DESC").Find(&reviews).Error
 	return reviews, err
 }
 

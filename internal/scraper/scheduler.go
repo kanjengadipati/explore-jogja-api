@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -35,15 +36,14 @@ func StartScheduler(db *gorm.DB, schedule string) {
 	log.Printf("[scraper] scheduler started with schedule: %s", schedule)
 }
 
-// StartSplitScheduler starts two separate cron jobs:
+// StartSplitScheduler starts two separate jobs:
 //   - destinations: scrapes destinations only (default: 1st of every month at 01:00)
-//   - events: scrapes events only (default: every 3 days at 00:00)
+//   - events: scrapes events only on a rolling 3-day cadence (daily tick that
+//     runs at most once per 72 hours, avoiding the 1-day drift a "*/3"
+//     day-of-month cron would introduce at month boundaries)
 func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
 	if destSchedule == "" {
 		destSchedule = "0 0 1 * *" // 1st of every month at midnight
-	}
-	if eventSchedule == "" {
-		eventSchedule = "0 0 */3 * *" // every 3 days at midnight
 	}
 
 	c := cron.New()
@@ -62,20 +62,46 @@ func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
 		log.Fatalf("[scraper] failed to register destinations cron job: %v", err)
 	}
 
-	// Events cron
-	_, err = c.AddFunc(eventSchedule, func() {
-		log.Printf("[scraper] events scheduled run started at %s", time.Now().Format(time.RFC3339))
-		results := RunEventsOnly(db)
-		for _, r := range results {
-			log.Printf("[scraper] %s events complete: updated(%d) staged(%d) errors(%d)",
-				r.Source, r.EventsUpdated, r.EventsStaged, len(r.Errors))
+	// Events — daily tick gated by a rolling interval. A raw "*/3" day-of-month
+	// cron resets at each month boundary; this keeps a true 3-day spacing.
+	if eventSchedule != "" && eventSchedule != "0 0 */3 * *" {
+		_, err = c.AddFunc(eventSchedule, func() {
+			log.Printf("[scraper] events scheduled run started at %s", time.Now().Format(time.RFC3339))
+			results := RunEventsOnly(db)
+			for _, r := range results {
+				log.Printf("[scraper] %s events complete: updated(%d) staged(%d) errors(%d)",
+					r.Source, r.EventsUpdated, r.EventsStaged, len(r.Errors))
+			}
+			log.Printf("[scraper] events scheduled run finished at %s", time.Now().Format(time.RFC3339))
+		})
+		if err != nil {
+			log.Fatalf("[scraper] failed to register events cron job: %v", err)
 		}
-		log.Printf("[scraper] events scheduled run finished at %s", time.Now().Format(time.RFC3339))
-	})
-	if err != nil {
-		log.Fatalf("[scraper] failed to register events cron job: %v", err)
+	} else {
+		var (
+			lastEventRunMu sync.Mutex
+			lastEventRun   time.Time
+		)
+		_, err = c.AddFunc("0 0 * * *", func() {
+			lastEventRunMu.Lock()
+			defer lastEventRunMu.Unlock()
+			if !lastEventRun.IsZero() && time.Since(lastEventRun) < 3*24*time.Hour {
+				return
+			}
+			lastEventRun = time.Now()
+			log.Printf("[scraper] events scheduled run started at %s", time.Now().Format(time.RFC3339))
+			results := RunEventsOnly(db)
+			for _, r := range results {
+				log.Printf("[scraper] %s events complete: updated(%d) staged(%d) errors(%d)",
+					r.Source, r.EventsUpdated, r.EventsStaged, len(r.Errors))
+			}
+			log.Printf("[scraper] events scheduled run finished at %s", time.Now().Format(time.RFC3339))
+		})
+		if err != nil {
+			log.Fatalf("[scraper] failed to register events cron job: %v", err)
+		}
 	}
 
 	c.Start()
-	log.Printf("[scraper] split scheduler started — destinations: %s, events: %s", destSchedule, eventSchedule)
+	log.Printf("[scraper] split scheduler started — destinations: %s, events: rolling every 3 days", destSchedule)
 }

@@ -130,8 +130,8 @@ func pickBestVideo(client http.Client, apiKey string, videoIDs []string) string 
 		return videoIDs[0]
 	}
 
-	var best scored
-	for _, c := range candidates {
+	best := candidates[0]
+	for _, c := range candidates[1:] {
 		if c.score > best.score {
 			best = c
 		}

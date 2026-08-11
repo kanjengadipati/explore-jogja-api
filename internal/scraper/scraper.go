@@ -202,7 +202,15 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 
 		// Respect manual edits: if the record was updated by a human after the
 		// last scrape, don't overwrite it.
-		if !existing.LastScrapedAt.IsZero() && existing.UpdatedAt.After(existing.LastScrapedAt) {
+		if existing.LastScrapedAt.IsZero() {
+			// Never-before-scraped rows were created another way (seed, import,
+			// manual entry). The scraper must not silently claim them — route the
+			// incoming data through review so a human confirms the update.
+			log.Printf("[scraper] destination %s has no scrape history — queuing update for review", item.ExternalID)
+			stageDestination(db, item, source)
+			continue
+		}
+		if existing.UpdatedAt.After(existing.LastScrapedAt) {
 			log.Printf("[scraper] skipping destination %s: manually edited since last scrape", item.ExternalID)
 			continue
 		}
@@ -247,6 +255,11 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 			item.ExternalID = slug.Make(item.Title)
 		}
 
+		if isStaleEvent(item) {
+			log.Printf("[scraper] skipping stale event %s (end=%s)", item.ExternalID, item.EndDate)
+			continue
+		}
+
 		if item.Latitude == 0 && item.Longitude == 0 {
 			if lat, lng, ok := geocode(item.Location); ok {
 				item.Latitude, item.Longitude = lat, lng
@@ -269,7 +282,15 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 
 		// Respect manual edits: if the record was updated by a human after the
 		// last scrape, don't overwrite it.
-		if !existing.LastScrapedAt.IsZero() && existing.UpdatedAt.After(existing.LastScrapedAt) {
+		if existing.LastScrapedAt.IsZero() {
+			// Never-before-scraped rows were created another way (seed, import,
+			// manual entry). Route the incoming data through review instead of
+			// overwriting the live record silently.
+			log.Printf("[scraper] event %s has no scrape history — queuing update for review", item.ExternalID)
+			stageEvent(db, item, source)
+			continue
+		}
+		if existing.UpdatedAt.After(existing.LastScrapedAt) {
 			log.Printf("[scraper] skipping event %s: manually edited since last scrape", item.ExternalID)
 			continue
 		}
@@ -356,6 +377,11 @@ func stageDestination(db *gorm.DB, item ScrapedDestination, source string) {
 
 // stageEvent queues a brand-new event for human review.
 func stageEvent(db *gorm.DB, item ScrapedEvent, source string) {
+	if isStaleEvent(item) {
+		log.Printf("[scraper] skipping stale event %s (end=%s)", item.ExternalID, item.EndDate)
+		return
+	}
+
 	var existing staging.StagingEvent
 	err := db.Where("provider_id = ? AND source = ?", item.ExternalID, source).First(&existing).Error
 	if err == nil {
@@ -419,6 +445,31 @@ var scraperManagedEventStatuses = map[string]bool{
 	"active":    true,
 	"upcoming":  true,
 	"completed": true,
+}
+
+// maxEventAgeForStaging is how far in the past an event's end date can be
+// before the scraper treats it as noise and skips it instead of queuing it
+// for admin review. Historical/one-off events past this cutoff have no value
+// being re-surfaced.
+const maxEventAgeForStaging = 30 * 24 * time.Hour
+
+// isStaleEvent reports whether an event's end date (or start date, when no
+// end date was parsed) is far enough in the past to skip. Events with no
+// parseable date at all are not flagged here — that signal is ambiguous and
+// deserves explicit handling, not an assumption.
+func isStaleEvent(item ScrapedEvent) bool {
+	dateStr := item.EndDate
+	if dateStr == "" {
+		dateStr = item.StartDate
+	}
+	if dateStr == "" {
+		return false
+	}
+	d, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return false
+	}
+	return time.Since(d) > maxEventAgeForStaging
 }
 
 // resolveEventStatus determines the event status based on start/end dates.
