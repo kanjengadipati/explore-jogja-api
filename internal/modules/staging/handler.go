@@ -82,6 +82,23 @@ func (h *Handler) GetPendingEvents(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, "Pending events fetched", events, nil)
 }
 
+func (h *Handler) AIReviewEvents(c *gin.Context) {
+	var input struct {
+		IDs []uint `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httpx.ValidationError(c, httpx.FormatValidationError(err))
+		return
+	}
+
+	results, err := h.Service.ReviewEvents(c.Request.Context(), input.IDs)
+	if err != nil {
+		httpx.Error(c, http.StatusInternalServerError, "AI review failed")
+		return
+	}
+	httpx.Success(c, http.StatusOK, "AI review completed", results, nil)
+}
+
 func (h *Handler) ApproveEvents(c *gin.Context) {
 	var input struct {
 		IDs []uint `json:"ids"`

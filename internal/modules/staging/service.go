@@ -69,3 +69,51 @@ func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) ([]AIRevie
 
 	return results, nil
 }
+
+func (s *Service) ReviewEvents(ctx context.Context, ids []uint) ([]AIReviewResult, error) {
+	events, err := s.Repo.FindPendingEvents()
+	if err != nil {
+		return nil, err
+	}
+
+	results := []AIReviewResult{}
+
+	for _, ev := range events {
+		shouldProcess := false
+		for _, id := range ids {
+			if ev.ID == id {
+				shouldProcess = true
+				break
+			}
+		}
+		if !shouldProcess {
+			continue
+		}
+
+		prompt := fmt.Sprintf("Analyze this event data for quality and appropriateness for a Yogyakarta tourism platform:\n%s\n\nReturn JSON only: {\"approved\": boolean, \"reason\": string}", ev.RawData)
+		resp, err := s.AIService.Generate(ctx, ai.GenerateInput{
+			SystemPrompt: "You are a data quality reviewer for tourism events. Analyze the provided data and return a JSON object with 'approved' (boolean) and 'reason' (string explaining your recommendation briefly).",
+			UserPrompt:   prompt,
+			Temperature:  0.3,
+		})
+
+		var parsed struct {
+			Approved bool   `json:"approved"`
+			Reason   string `json:"reason"`
+		}
+		if err == nil {
+			_ = json.Unmarshal([]byte(resp.Text), &parsed)
+		} else {
+			parsed.Approved = false
+			parsed.Reason = "AI unavailable"
+		}
+
+		results = append(results, AIReviewResult{
+			ID:       ev.ID,
+			Approved: parsed.Approved,
+			Reason:   parsed.Reason,
+		})
+	}
+
+	return results, nil
+}
