@@ -60,4 +60,8 @@ type Event struct {
 	SeoKeywordsEn    string    `gorm:"type:text" json:"seo_keywords_en"`
 	OgImageUrl       string    `json:"og_image_url"`
 	LastScrapedAt    time.Time `gorm:"column:last_scraped_at" json:"-"`
+	// ContentScore is the deterministic rubric score (0–100) calculated from field
+	// completeness. Mirrors destination.ContentScore (see internal/modules/destination/quality.go).
+	ContentScore   int    `gorm:"default:0" json:"content_score"`
+	ContentVerdict string `gorm:"default:''" json:"content_verdict"` // EXCELLENT | GOOD | NEEDS WORK
 }

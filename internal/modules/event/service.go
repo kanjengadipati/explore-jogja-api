@@ -86,6 +86,7 @@ func (s *Service) Create(event *Event) error {
 	if !isValidDate(event.EndDate) {
 		return domain.NewAPIError(http.StatusBadRequest, domain.CodeValidationFailed, "Invalid end_date, expected YYYY-MM-DD", nil)
 	}
+	ApplyScoreToEvent(event)
 	return s.Repo.Create(event)
 }
 
@@ -194,6 +195,9 @@ func (s *Service) Update(externalID string, req UpdateEventRequest) (*Event, err
 	if req.OgImageUrl != nil {
 		event.OgImageUrl = *req.OgImageUrl
 	}
+
+	// Recalculate quality score before saving (mirrors destination.Service.Update)
+	ApplyScoreToEvent(event)
 
 	if err := s.Repo.Update(event); err != nil {
 		return nil, err
