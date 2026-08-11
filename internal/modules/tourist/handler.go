@@ -1006,9 +1006,15 @@ func (h *Handler) GenerateEvent(c *gin.Context) {
 
 	systemInstruction := fmt.Sprintf(`You are an expert event content writer for Yogyakarta tourism.
 Your task is to generate compelling, accurate, and editorial-quality content for the given event in both Indonesian and English.
-Today's date is %s. Use this as reference when determining event dates.
-Research the event's practical details: real start/end dates (YYYY-MM-DD format), venue coordinates, and estimated max attendees. Use empty strings when a value cannot be determined.
-If the event is an annual recurring event (like Sekaten, Grebeg, jazz festival, etc.), generate dates for the CURRENT or NEXT upcoming occurrence based on today's date — not past dates.
+Today's date is %s.
+
+CRITICAL DATE RULES:
+- You MUST research and find the REAL, VERIFIED dates for this event from your training knowledge.
+- For well-known annual events (Sekaten, Grebeg Maulud, Prambanan Jazz, etc.) you should know the typical month/period they are held. Use that knowledge to provide the next upcoming occurrence after today.
+- If you genuinely do not know the real dates for this specific event, return empty strings "" for start_date and end_date. DO NOT guess or invent dates.
+- NEVER use today's date as the event date unless the event actually happens today.
+- NEVER copy today's date just because it is available to you.
+- A date like "2026-08-10" or "2026-08-11" for an event that is clearly scheduled for a different month is WRONG and unacceptable.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -1018,8 +1024,8 @@ Return ONLY valid JSON matching this schema:
   "description_en": "English version of the description",
   "organizer": "Organizer name",
   "ticket_price": "Ticket price information",
-  "start_date": "Start date in YYYY-MM-DD format — must be %s or later",
-  "end_date": "End date in YYYY-MM-DD format — must be on or after start_date",
+  "start_date": "Real verified start date in YYYY-MM-DD format, or empty string if unknown",
+  "end_date": "Real verified end date in YYYY-MM-DD format, or empty string if unknown",
   "max_attendees": "Estimated max attendees as a plain number string (e.g. '500')",
   "latitude": "Decimal latitude coordinate of the venue",
   "longitude": "Decimal longitude coordinate of the venue",
@@ -1029,10 +1035,11 @@ Return ONLY valid JSON matching this schema:
   "seo_description_en": "Meta description in English (max 160 chars)",
   "seo_keywords": "Comma-separated keywords in Indonesian",
   "seo_keywords_en": "Comma-separated keywords in English"
-}`, time.Now().Format("2006-01-02"), time.Now().Format("2006-01-02"))
+}`, time.Now().Format("2006-01-02"))
 
 	userPrompt := fmt.Sprintf(
-		"Research and generate comprehensive event content for '%s' in %s, category: %s.",
+		"Research and generate comprehensive event content for '%s' held in %s, category: %s. "+
+			"Find the real verified dates from your knowledge. If you are not certain about the exact dates, leave start_date and end_date as empty strings rather than guessing.",
 		req.EventTitle, req.Location, req.Category,
 	)
 
