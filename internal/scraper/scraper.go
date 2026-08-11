@@ -184,6 +184,12 @@ func upsertDestinations(db *gorm.DB, items []ScrapedDestination, source string) 
 			item.ExternalID = slug.Make(item.Name)
 		}
 
+		if item.Latitude == 0 && item.Longitude == 0 {
+			if lat, lng, ok := geocode(item.Location); ok {
+				item.Latitude, item.Longitude = lat, lng
+			}
+		}
+
 		var existing destination.Destination
 		err := db.Where("external_id = ?", item.ExternalID).First(&existing).Error
 		if err != nil {
@@ -239,6 +245,12 @@ func upsertEvents(db *gorm.DB, items []ScrapedEvent, source string, destMap map[
 	for _, item := range items {
 		if item.ExternalID == "" {
 			item.ExternalID = slug.Make(item.Title)
+		}
+
+		if item.Latitude == 0 && item.Longitude == 0 {
+			if lat, lng, ok := geocode(item.Location); ok {
+				item.Latitude, item.Longitude = lat, lng
+			}
 		}
 
 		// auto-match destination if not already set

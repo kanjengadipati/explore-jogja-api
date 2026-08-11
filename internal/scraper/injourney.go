@@ -341,7 +341,7 @@ func (s *injourneyScraper) ScrapeDestinations() ([]ScrapedDestination, error) {
 		}
 
 		img := s.fetchMedia(p.FeaturedMedia)
-		desc := stripHTML(p.Excerpt.Rendered)
+		desc := postDescription(p.Excerpt.Rendered, p.Content.Rendered)
 
 		dests = append(dests, ScrapedDestination{
 			ExternalID:  slugify(title),
@@ -374,7 +374,7 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 		}
 
 		img := s.fetchMedia(p.FeaturedMedia)
-		desc := stripHTML(p.Excerpt.Rendered)
+		desc := postDescription(p.Excerpt.Rendered, p.Content.Rendered)
 		location, _ := injourneyEventLocation(title)
 		startDate, endDate := parseInjourneyEventDates(title, p.Content.Rendered, p.Date)
 
@@ -394,6 +394,17 @@ func (s *injourneyScraper) ScrapeEvents() ([]ScrapedEvent, error) {
 	}
 
 	return events, nil
+}
+
+// postDescription returns the best text for a post. The injourney WordPress
+// REST API does not expose an "excerpt" field, so the full content is used as
+// a fallback whenever the excerpt is empty.
+func postDescription(excerpt, content string) string {
+	desc := stripHTML(excerpt)
+	if desc == "" {
+		desc = stripHTML(content)
+	}
+	return desc
 }
 
 func stripHTML(s string) string {

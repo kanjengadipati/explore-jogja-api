@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"pleco-api/internal/ai"
 )
 
@@ -56,6 +57,7 @@ func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) ([]AIRevie
 		if err == nil {
 			_ = json.Unmarshal([]byte(resp.Text), &parsed)
 		} else {
+			log.Printf(`{"level":"error","message":"ai review failed","entity":"destination","id":%d,"error":%q}`, dest.ID, err.Error())
 			parsed.Approved = false
 			parsed.Reason = "AI unavailable"
 		}
@@ -104,6 +106,7 @@ func (s *Service) ReviewEvents(ctx context.Context, ids []uint) ([]AIReviewResul
 		if err == nil {
 			_ = json.Unmarshal([]byte(resp.Text), &parsed)
 		} else {
+			log.Printf(`{"level":"error","message":"ai review failed","entity":"event","id":%d,"error":%q}`, ev.ID, err.Error())
 			parsed.Approved = false
 			parsed.Reason = "AI unavailable"
 		}
