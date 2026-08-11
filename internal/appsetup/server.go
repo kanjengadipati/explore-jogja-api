@@ -39,10 +39,12 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 	if os.Getenv("SCRAPER_ENABLED") == "true" {
 		destSchedule := os.Getenv("SCRAPER_DEST_SCHEDULE")
 		eventSchedule := os.Getenv("SCRAPER_EVENT_SCHEDULE")
-		scraper.StartSplitScheduler(db, destSchedule, eventSchedule)
+		sources := os.Getenv("SCRAPER_SOURCES")
+		scraper.StartSplitScheduler(db, destSchedule, eventSchedule, sources)
 		slog.Info("Split scraper scheduler started",
 			"dest_schedule", destSchedule,
 			"event_schedule", eventSchedule,
+			"sources", sources,
 		)
 	}
 

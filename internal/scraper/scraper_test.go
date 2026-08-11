@@ -76,3 +76,26 @@ func TestIsStaleEvent(t *testing.T) {
 		}
 	}
 }
+
+func TestParseVisitingJogjaTitleDate(t *testing.T) {
+	cases := []struct {
+		title     string
+		wantStart string
+		wantEnd   string
+	}{
+		{"Menoreh Harmony Festival 2026 (8 Agustus 2026)", "2026-08-08", "2026-08-08"},
+		{"DJOGJANTIQUEDAY 10 GASSAWARSA (7–8 Agustus 2026)", "2026-08-07", "2026-08-08"},
+		{"Yogyakarta Gamelan Festival 2026 (21 Juli-2 Agustus 2026)", "2026-07-21", "2026-08-02"},
+		{"Yogyakarta Gamelan Festival 2026 (21 Juli - 2 Agustus 2026)", "2026-07-21", "2026-08-02"},
+		{"Jogja Fashion Week 2026 (13–16 August 2026)", "2026-08-13", "2026-08-16"},
+		{"Konser Tanpa Judul (no date here)", "", ""},
+		{"Sebuah Event Tanpa Kurung 2026", "", ""},
+	}
+	for _, c := range cases {
+		start, end := parseVisitingJogjaTitleDate(c.title)
+		if start != c.wantStart || end != c.wantEnd {
+			t.Errorf("parseVisitingJogjaTitleDate(%q) = (%q, %q), want (%q, %q)",
+				c.title, start, end, c.wantStart, c.wantEnd)
+		}
+	}
+}

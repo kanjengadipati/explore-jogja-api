@@ -2,12 +2,24 @@ package scraper
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
+
+// parseSources splits a comma-separated SCRAPER_SOURCES value into names.
+func parseSources(raw string) []string {
+	var out []string
+	for _, p := range strings.Split(raw, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // StartScheduler starts a cron job that runs all scrapers on the given schedule.
 // Deprecated: Use StartSplitScheduler for separate destination and event schedules.
@@ -41,17 +53,22 @@ func StartScheduler(db *gorm.DB, schedule string) {
 //   - events: scrapes events only on a rolling 3-day cadence (daily tick that
 //     runs at most once per 72 hours, avoiding the 1-day drift a "*/3"
 //     day-of-month cron would introduce at month boundaries)
-func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
+//
+// sources is a comma-separated list of scraper names to run (from the
+// SCRAPER_SOURCES env var); empty means run all registered scrapers.
+func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule, sources string) {
 	if destSchedule == "" {
 		destSchedule = "0 0 1 * *" // 1st of every month at midnight
 	}
+
+	srcs := parseSources(sources)
 
 	c := cron.New()
 
 	// Destinations cron
 	_, err := c.AddFunc(destSchedule, func() {
 		log.Printf("[scraper] destinations scheduled run started at %s", time.Now().Format(time.RFC3339))
-		results := RunDestinationsOnly(db)
+		results := RunDestinationsOnly(db, srcs...)
 		for _, r := range results {
 			log.Printf("[scraper] %s destinations complete: updated(%d) staged(%d) errors(%d)",
 				r.Source, r.DestinationsUpdated, r.DestinationsStaged, len(r.Errors))
@@ -67,7 +84,7 @@ func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
 	if eventSchedule != "" && eventSchedule != "0 0 */3 * *" {
 		_, err = c.AddFunc(eventSchedule, func() {
 			log.Printf("[scraper] events scheduled run started at %s", time.Now().Format(time.RFC3339))
-			results := RunEventsOnly(db)
+			results := RunEventsOnly(db, srcs...)
 			for _, r := range results {
 				log.Printf("[scraper] %s events complete: updated(%d) staged(%d) errors(%d)",
 					r.Source, r.EventsUpdated, r.EventsStaged, len(r.Errors))
@@ -90,7 +107,7 @@ func StartSplitScheduler(db *gorm.DB, destSchedule, eventSchedule string) {
 			}
 			lastEventRun = time.Now()
 			log.Printf("[scraper] events scheduled run started at %s", time.Now().Format(time.RFC3339))
-			results := RunEventsOnly(db)
+			results := RunEventsOnly(db, srcs...)
 			for _, r := range results {
 				log.Printf("[scraper] %s events complete: updated(%d) staged(%d) errors(%d)",
 					r.Source, r.EventsUpdated, r.EventsStaged, len(r.Errors))

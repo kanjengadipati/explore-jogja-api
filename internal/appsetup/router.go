@@ -3,6 +3,7 @@ package appsetup
 import (
 	"log"
 	"log/slog"
+	"strings"
 	"sync/atomic"
 
 	"pleco-api/internal/ai"
@@ -182,10 +183,38 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	})
 
 	// Manual scraper trigger endpoints (admin only, require "scraper.run")
+	// scrapeSourcesParam reads the optional ?source= query param (comma-separated
+	// scraper names). Empty means "all registered scrapers". Returns ok=false for
+	// any unknown source name so the handler can reject it with 400.
+	scrapeSourcesParam := func(c *gin.Context) ([]string, bool) {
+		raw := c.Query("source")
+		if raw == "" {
+			return nil, true
+		}
+		known := make(map[string]struct{}, len(scraper.SourceNames()))
+		for _, n := range scraper.SourceNames() {
+			known[n] = struct{}{}
+		}
+		var out []string
+		for _, p := range strings.Split(raw, ",") {
+			p = strings.TrimSpace(p)
+			if _, ok := known[p]; !ok {
+				return nil, false
+			}
+			out = append(out, p)
+		}
+		return out, true
+	}
+
 	adminScrape := router.Group("/admin/scrape")
 	adminScrape.Use(middleware.AuthMiddleware(jwtService))
 	adminScrape.Use(middleware.RequirePermission(permissionModule.Service, "scraper.run"))
 	adminScrape.POST("", func(c *gin.Context) {
+		sources, ok := scrapeSourcesParam(c)
+		if !ok {
+			httpx.Error(c, 400, "Invalid source. Allowed: "+strings.Join(scraper.SourceNames(), ", "))
+			return
+		}
 		if !scrapeAllRunning.CompareAndSwap(false, true) {
 			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "A scrape is already in progress")
 			return
@@ -193,7 +222,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		go func() {
 			defer scrapeAllRunning.Store(false)
 			log.Println("[scraper] manual run triggered via /admin/scrape")
-			results := scraper.RunAll(db)
+			results := scraper.RunAll(db, sources...)
 			for _, r := range results {
 				log.Printf("[scraper] %s: dest(upd=%d staged=%d) events(upd=%d staged=%d) errors(%d)",
 					r.Source, r.DestinationsUpdated, r.DestinationsStaged,
@@ -204,6 +233,11 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		httpx.Success(c, 202, "Scrape started in background", nil, nil)
 	})
 	adminScrape.POST("/destinations", func(c *gin.Context) {
+		sources, ok := scrapeSourcesParam(c)
+		if !ok {
+			httpx.Error(c, 400, "Invalid source. Allowed: "+strings.Join(scraper.SourceNames(), ", "))
+			return
+		}
 		if !scrapeDestRunning.CompareAndSwap(false, true) {
 			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "A destination scrape is already in progress")
 			return
@@ -211,12 +245,17 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		go func() {
 			defer scrapeDestRunning.Store(false)
 			log.Println("[scraper] manual destinations run triggered")
-			scraper.RunDestinationsOnly(db)
+			scraper.RunDestinationsOnly(db, sources...)
 			log.Println("[scraper] manual destinations run complete")
 		}()
 		httpx.Success(c, 202, "Destination scrape started in background", nil, nil)
 	})
 	adminScrape.POST("/events", func(c *gin.Context) {
+		sources, ok := scrapeSourcesParam(c)
+		if !ok {
+			httpx.Error(c, 400, "Invalid source. Allowed: "+strings.Join(scraper.SourceNames(), ", "))
+			return
+		}
 		if !scrapeEventsRunning.CompareAndSwap(false, true) {
 			httpx.ErrorWithCode(c, 409, "SCRAPE_RUNNING", "An event scrape is already in progress")
 			return
@@ -224,7 +263,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		go func() {
 			defer scrapeEventsRunning.Store(false)
 			log.Println("[scraper] manual events run triggered")
-			scraper.RunEventsOnly(db)
+			scraper.RunEventsOnly(db, sources...)
 			log.Println("[scraper] manual events run complete")
 		}()
 		httpx.Success(c, 202, "Event scrape started in background", nil, nil)

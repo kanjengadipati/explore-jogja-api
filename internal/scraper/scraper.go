@@ -24,11 +24,40 @@ func Register(s Scraper) {
 	scrapers = append(scrapers, s)
 }
 
-// RunAll runs all registered scrapers and persists results to the database.
-func RunAll(db *gorm.DB) []ScrapeResult {
+// SourceNames returns the name of every registered scraper.
+func SourceNames() []string {
+	names := make([]string, 0, len(scrapers))
+	for _, s := range scrapers {
+		names = append(names, s.Name())
+	}
+	return names
+}
+
+// filterScrapers returns the registered scrapers whose names are listed in
+// sources. An empty sources means "run everything".
+func filterScrapers(sources []string) []Scraper {
+	if len(sources) == 0 {
+		return scrapers
+	}
+	want := make(map[string]struct{}, len(sources))
+	for _, s := range sources {
+		want[s] = struct{}{}
+	}
+	var out []Scraper
+	for _, s := range scrapers {
+		if _, ok := want[s.Name()]; ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// RunAll runs all registered scrapers (or only the named sources) and persists
+// results to the database.
+func RunAll(db *gorm.DB, sources ...string) []ScrapeResult {
 	destMap := buildDestMap(db)
 	var results []ScrapeResult
-	for _, s := range scrapers {
+	for _, s := range filterScrapers(sources) {
 		log.Printf("[scraper] starting %s", s.Name())
 		result := ScrapeResult{Source: s.Name()}
 
@@ -67,9 +96,9 @@ func RunAll(db *gorm.DB) []ScrapeResult {
 }
 
 // RunDestinationsOnly runs only destination scrapers (for monthly schedule).
-func RunDestinationsOnly(db *gorm.DB) []ScrapeResult {
+func RunDestinationsOnly(db *gorm.DB, sources ...string) []ScrapeResult {
 	var results []ScrapeResult
-	for _, s := range scrapers {
+	for _, s := range filterScrapers(sources) {
 		log.Printf("[scraper] starting %s destinations", s.Name())
 		result := ScrapeResult{Source: s.Name()}
 
@@ -102,10 +131,10 @@ func RunDestinationsOnly(db *gorm.DB) []ScrapeResult {
 }
 
 // RunEventsOnly runs only event scrapers (for 3-day schedule).
-func RunEventsOnly(db *gorm.DB) []ScrapeResult {
+func RunEventsOnly(db *gorm.DB, sources ...string) []ScrapeResult {
 	destMap := buildDestMap(db)
 	var results []ScrapeResult
-	for _, s := range scrapers {
+	for _, s := range filterScrapers(sources) {
 		log.Printf("[scraper] starting %s events", s.Name())
 		result := ScrapeResult{Source: s.Name()}
 

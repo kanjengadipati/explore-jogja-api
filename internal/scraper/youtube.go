@@ -52,7 +52,7 @@ func FetchYouTubeVideoURL(query string) string {
 	}
 
 	client := http.Client{Timeout: 10 * time.Second}
-	
+
 	// 1. Search — use specific query without generic "wisata" suffix
 	q := url.Values{}
 	q.Set("part", "snippet")
@@ -83,7 +83,7 @@ func FetchYouTubeVideoURL(query string) string {
 	for i, item := range searchResp.Items {
 		videoIDs[i] = item.ID.VideoID
 	}
-	
+
 	videoID := pickBestVideo(client, apiKey, videoIDs)
 	if videoID == "" {
 		return ""
@@ -112,14 +112,19 @@ func pickBestVideo(client http.Client, apiKey string, videoIDs []string) string 
 		return videoIDs[0]
 	}
 
-	type scored struct { id string; score int }
+	type scored struct {
+		id    string
+		score int
+	}
 	var candidates []scored
 	for _, v := range videoResp.Items {
 		if isCompilationTitle(v.Title) {
 			continue
 		}
 		s := 0
-		if v.ContentDetails.Definition == "hd" { s += 100 }
+		if v.ContentDetails.Definition == "hd" {
+			s += 100
+		}
 		views := 0
 		fmt.Sscanf(v.Statistics.ViewCount, "%d", &views)
 		s += views / 10000
