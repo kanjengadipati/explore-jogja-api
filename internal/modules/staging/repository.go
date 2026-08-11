@@ -16,8 +16,8 @@ import (
 type Repository interface {
 	CreateDestination(dest *StagingDestination) error
 	CreateEvent(event *StagingEvent) error
-	FindPendingDestinations() ([]StagingDestination, error)
-	FindPendingEvents() ([]StagingEvent, error)
+	FindPendingDestinations(source string) ([]StagingDestination, error)
+	FindPendingEvents(source string) ([]StagingEvent, error)
 	ApproveDestination(id uint) error
 	RejectDestination(id uint) error
 	ApproveMultipleDestinations(ids []uint) error
@@ -42,15 +42,23 @@ func (r *gormRepository) CreateEvent(event *StagingEvent) error {
 	return r.db.Create(event).Error
 }
 
-func (r *gormRepository) FindPendingDestinations() ([]StagingDestination, error) {
+func (r *gormRepository) FindPendingDestinations(source string) ([]StagingDestination, error) {
 	var dests []StagingDestination
-	err := r.db.Where("status = ?", "pending").Find(&dests).Error
+	q := r.db.Where("status = ?", "pending")
+	if source != "" {
+		q = q.Where("source = ?", source)
+	}
+	err := q.Find(&dests).Error
 	return dests, err
 }
 
-func (r *gormRepository) FindPendingEvents() ([]StagingEvent, error) {
+func (r *gormRepository) FindPendingEvents(source string) ([]StagingEvent, error) {
 	var events []StagingEvent
-	err := r.db.Where("status = ?", "pending").Find(&events).Error
+	q := r.db.Where("status = ?", "pending")
+	if source != "" {
+		q = q.Where("source = ?", source)
+	}
+	err := q.Find(&events).Error
 	return events, err
 }
 

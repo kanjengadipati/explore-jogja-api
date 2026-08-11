@@ -16,7 +16,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) GetPendingDestinations(c *gin.Context) {
-	dests, err := h.Service.Repo.FindPendingDestinations()
+	dests, err := h.Service.Repo.FindPendingDestinations(c.Query("source"))
 	if err != nil {
 		httpx.Error(c, http.StatusInternalServerError, "Failed to fetch pending destinations")
 		return
@@ -74,7 +74,7 @@ func (h *Handler) RejectDestinations(c *gin.Context) {
 }
 
 func (h *Handler) GetPendingEvents(c *gin.Context) {
-	events, err := h.Service.Repo.FindPendingEvents()
+	events, err := h.Service.Repo.FindPendingEvents(c.Query("source"))
 	if err != nil {
 		httpx.Error(c, http.StatusInternalServerError, "Failed to fetch pending events")
 		return

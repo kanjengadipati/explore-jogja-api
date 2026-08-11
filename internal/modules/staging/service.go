@@ -24,7 +24,7 @@ type AIReviewResult struct {
 }
 
 func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) ([]AIReviewResult, error) {
-	dests, err := s.Repo.FindPendingDestinations()
+		dests, err := s.Repo.FindPendingDestinations("")
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s *Service) ReviewDestinations(ctx context.Context, ids []uint) ([]AIRevie
 }
 
 func (s *Service) ReviewEvents(ctx context.Context, ids []uint) ([]AIReviewResult, error) {
-	events, err := s.Repo.FindPendingEvents()
+	events, err := s.Repo.FindPendingEvents("")
 	if err != nil {
 		return nil, err
 	}
