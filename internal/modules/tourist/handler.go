@@ -155,6 +155,8 @@ type AIGenerateEventResponse struct {
 	// mirroring the destination fact-density gate so the event response is
 	// scored before it reaches the admin frontend for review.
 	FactDensityScore int `json:"fact_density_score"`
+	// Quality is the full 100-point rubric breakdown (categories + verdict).
+	Quality *event.QualityScore `json:"quality,omitempty"`
 }
 
 type AIImageSearchRequest struct {
@@ -1142,9 +1144,11 @@ Return ONLY valid JSON matching this schema:
 	// (root cause #3). Leave them empty so the quality gate can flag the item
 	// rather than silently publishing fabricated data.
 
-	// Compute fact-density score so the admin frontend can flag events that
-	// came back thin on grounded facts (mirrors destination content-gen scoring).
+	// Compute fact-density score + full quality breakdown so the admin
+	// frontend can flag events that came back thin on grounded facts
+	// (mirrors the destination content-gen scoring).
 	parsed.FactDensityScore = eventFactDensityScore(&parsed)
+	parsed.Quality = calculateEventQuality(&parsed)
 
 	httpx.Success(c, 200, "Event content generated", parsed, nil)
 }
@@ -1232,6 +1236,7 @@ func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventRes
 		SeoKeywordsEn:    title + ", jogja event, jogja tourism",
 	}
 	resp.FactDensityScore = eventFactDensityScore(resp)
+	resp.Quality = calculateEventQuality(resp)
 	return resp
 }
 
@@ -1280,6 +1285,98 @@ func eventFactDensityScore(e *AIGenerateEventResponse) int {
 		score++
 	}
 	return score
+}
+
+// calculateEventQuality computes the full 100-point quality rubric for an
+// AI-generated event response, reusing the event module's score types
+// (QualityScore, ScoreItem, ScoreCategory, verdict constants) so the admin
+// frontend gets the same structured breakdown as published Event models.
+//
+// The AI payload lacks media/og/video fields, so category weights mirror
+// event.CalculateScore but media is collapsed into the available fields
+// (identity, content, practical, SEO, rich content). This runs entirely on
+// the AI payload without needing to persist a *Event first.
+func calculateEventQuality(e *AIGenerateEventResponse) *event.QualityScore {
+	has := func(s string) bool { return strings.TrimSpace(s) != "" }
+	longEnough := func(s string, n int) bool { return len(strings.TrimSpace(s)) >= n }
+	boolPts := func(cond bool, pts int) int {
+		if cond {
+			return pts
+		}
+		return 0
+	}
+	finishCat := func(key, label string, max int, items []event.ScoreItem) event.ScoreCategory {
+		score := 0
+		for _, it := range items {
+			score += it.Points
+		}
+		return event.ScoreCategory{Key: key, Label: label, Score: score, Max: max, Items: items}
+	}
+	validCoord := func(s string) bool {
+		f, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+		return err == nil && f != 0 && !math.IsNaN(f) && !math.IsInf(f, 0)
+	}
+
+	var cats []event.ScoreCategory
+
+	// 1. Identity (10)
+	cats = append(cats, finishCat("identity", "Identity", 10, []event.ScoreItem{
+		{Label: "Title", Max: 2, Points: boolPts(has(e.Title), 2)},
+		{Label: "Title EN", Max: 2, Points: boolPts(has(e.TitleEn), 2)},
+		{Label: "Organizer", Max: 2, Points: boolPts(has(e.Organizer), 2)},
+		{Label: "Coordinates", Max: 2, Points: boolPts(validCoord(e.Latitude) && validCoord(e.Longitude), 2)},
+		{Label: "Start date", Max: 2, Points: boolPts(has(e.StartDate), 2)},
+	}))
+
+	// 2. Content (25)
+	cats = append(cats, finishCat("content", "Content", 25, []event.ScoreItem{
+		{Label: "Description (≥200 chars)", Max: 13, Points: boolPts(longEnough(e.Description, 200), 13)},
+		{Label: "Description EN (≥200 chars)", Max: 12, Points: boolPts(longEnough(e.DescriptionEn, 200), 12)},
+	}))
+
+	// 3. Practical Info (15)
+	cats = append(cats, finishCat("practical", "Practical Info", 15, []event.ScoreItem{
+		{Label: "Ticket price", Max: 5, Points: boolPts(has(e.TicketPrice), 5)},
+		{Label: "Start date", Max: 5, Points: boolPts(has(e.StartDate), 5)},
+		{Label: "End date", Max: 5, Points: boolPts(has(e.EndDate), 5)},
+	}))
+
+	// 4. SEO (15)
+	cats = append(cats, finishCat("seo", "SEO", 15, []event.ScoreItem{
+		{Label: "SEO title", Max: 3, Points: boolPts(has(e.SeoTitle), 3)},
+		{Label: "SEO title EN", Max: 2, Points: boolPts(has(e.SeoTitleEn), 2)},
+		{Label: "SEO description", Max: 3, Points: boolPts(has(e.SeoDescription), 3)},
+		{Label: "SEO description EN", Max: 2, Points: boolPts(has(e.SeoDescriptionEn), 2)},
+		{Label: "SEO keywords", Max: 3, Points: boolPts(has(e.SeoKeywords), 3)},
+		{Label: "SEO keywords EN", Max: 2, Points: boolPts(has(e.SeoKeywordsEn), 2)},
+	}))
+
+	// 5. Rich Content (15)
+	maxAttendees, _ := strconv.Atoi(strings.TrimSpace(e.MaxAttendees))
+	cats = append(cats, finishCat("rich", "Rich Content", 15, []event.ScoreItem{
+		{Label: "Max attendees", Max: 5, Points: boolPts(maxAttendees > 0, 5)},
+		{Label: "Ticket price populated", Max: 5, Points: boolPts(has(e.TicketPrice), 5)},
+		{Label: "Start/End dates", Max: 5, Points: boolPts(has(e.StartDate) && has(e.EndDate), 5)},
+	}))
+
+	total := 0
+	maxTotal := 0
+	for _, c := range cats {
+		total += c.Score
+		maxTotal += c.Max
+	}
+	verdict := event.VerdictNeedsWork
+	if total >= 80 {
+		verdict = event.VerdictExcellent
+	} else if total >= 60 {
+		verdict = event.VerdictGood
+	}
+	return &event.QualityScore{
+		Total:      total,
+		Max:        maxTotal,
+		Verdict:    verdict,
+		Categories: cats,
+	}
 }
 
 func (h *Handler) offlineGenerateDestinationResponse(name, category, region string) *AIGenerateDestinationResponse {
