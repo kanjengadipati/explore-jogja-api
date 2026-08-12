@@ -88,6 +88,11 @@ type AIGenerateDestinationRequest struct {
 	Region          string `json:"region"`
 }
 
+type AIFaq struct {
+	Q string `json:"q"`
+	A string `json:"a"`
+}
+
 type AIGenerateDestinationResponse struct {
 	Name             string   `json:"name"`
 	NameEn           string   `json:"name_en"`
@@ -112,6 +117,7 @@ type AIGenerateDestinationResponse struct {
 	FacilitiesEn     []string `json:"facilities_en"`
 	TravelTips       []string `json:"travel_tips"`
 	TravelTipsEn     []string `json:"travel_tips_en"`
+	Faqs             []AIFaq  `json:"faqs"`
 	SeoTitle         string   `json:"seo_title"`
 	SeoTitleEn       string   `json:"seo_title_en"`
 	SeoDescription   string   `json:"seo_description"`
@@ -928,6 +934,7 @@ LENGTH LIMITS (hard caps — never exceed these, they keep the JSON safe):
 - tagline / tagline_en: 5-8 words
 - facilities: 3-6 short items (1-3 words each)
 - travel_tips: 3-5 one-line tips
+- faqs: 3-5 FAQ items (question + 1-2 sentence answer, only facts from research or safe general knowledge)
 - seo_title: max 60 chars; seo_description: max 160 chars
 
 Return ONLY valid JSON matching this schema:
@@ -960,7 +967,8 @@ Return ONLY valid JSON matching this schema:
   "facilities": ["list of physical amenities in Indonesian (min 3, e.g. Parkir, Toilet, Mushola) — standard amenities of this type of site are fine, only omit if entirely unknown"],
   "facilities_en": ["same amenities in English"],
   "travel_tips": ["practical visitor tips in Indonesian (min 3, e.g. Datang pagi hari) — everyday visitor advice is fine, only omit if entirely unknown"],
-  "travel_tips_en": ["same tips in English"]
+  "travel_tips_en": ["same tips in English"],
+  "faqs": [{"q": "commonly asked question a visitor would search for, in Indonesian", "a": "concise, accurate answer in Indonesian (1-2 sentences)"}]
 }`
 
 	// Ground generation with a web search so the model reasons from real
@@ -1003,7 +1011,6 @@ Return ONLY valid JSON matching this schema:
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 			return
 		}
-
 		banned = contentquality.FindBanned(contentquality.Prose(
 			parsed.Description, parsed.DescriptionEn, parsed.Story, parsed.StoryEn,
 			parsed.Tagline, parsed.TaglineEn,
@@ -1134,13 +1141,16 @@ Return ONLY valid JSON matching this schema:
 }
 
 // parseDestinationPayload unmarshals AI destination JSON with a relaxed pass
-// that tolerates numeric strings for latitude/longitude/rating/review_count.
+// that tolerates numeric strings for latitude/longitude/rating/review_count,
+// raw control characters inside strings, and truncation that drops the final
+// closing brace.
 func parseDestinationPayload(text string, parsed *AIGenerateDestinationResponse) bool {
-	if err := ai.UnmarshalJSON(stripJSONFences(text), parsed); err == nil {
+	cleaned := ai.RepairUnterminatedJSON(ai.SanitizeJSONStrings(stripJSONFences(text)))
+	if err := ai.UnmarshalJSON(cleaned, parsed); err == nil {
 		return true
 	}
 	var raw map[string]interface{}
-	if err := ai.UnmarshalJSON(stripJSONFences(text), &raw); err != nil {
+	if err := ai.UnmarshalJSON(cleaned, &raw); err != nil {
 		return false
 	}
 	for _, key := range []string{"latitude", "longitude", "rating", "review_count"} {
