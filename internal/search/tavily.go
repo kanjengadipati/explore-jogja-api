@@ -18,6 +18,11 @@ type Result struct {
 	Title   string
 	URL     string
 	Content string // snippet
+
+	// RawContent holds the full page text when include_raw_content was
+	// requested ("" otherwise). It is preferred over Content when building
+	// the grounded research block so the model sees richer text.
+	RawContent string
 }
 
 // Client is a search/search-and-research client. It is intentionally
@@ -35,6 +40,10 @@ type Client struct {
 	maxResults int
 	httpClient *http.Client
 
+	searchDepth       string
+	includeAnswer     bool
+	includeRawContent bool
+
 	mu       sync.Mutex
 	keyIndex int
 }
@@ -47,6 +56,15 @@ type Config struct {
 	BaseURL        string
 	MaxResults     int
 	TimeoutSeconds int
+	// SearchDepth controls Tavily's search_depth ("basic" or "advanced").
+	// "basic" costs 1 credit/request, "advanced" 2. Empty defaults to "basic".
+	SearchDepth string
+	// IncludeAnswer asks Tavily to generate an LLM answer and costs extra
+	// credits per request. The answer is prepended to the research block.
+	IncludeAnswer bool
+	// IncludeRawContent requests the full page text per result (+2 credits)
+	// and is used as richer grounding when present.
+	IncludeRawContent bool
 }
 
 // NewClient constructs a Tavily search client. If Tavily is disabled or no API
@@ -72,12 +90,19 @@ func NewClient(cfg Config) *Client {
 	if max <= 0 {
 		max = 5
 	}
+	depth := strings.ToLower(strings.TrimSpace(cfg.SearchDepth))
+	if depth != "advanced" {
+		depth = "basic"
+	}
 	return &Client{
-		enabled:    true,
-		apiKeys:    keys,
-		baseURL:    base,
-		maxResults: max,
-		httpClient: &http.Client{Timeout: time.Duration(timeout) * time.Second},
+		enabled:           true,
+		apiKeys:           keys,
+		baseURL:           base,
+		maxResults:        max,
+		httpClient:        &http.Client{Timeout: time.Duration(timeout) * time.Second},
+		searchDepth:       depth,
+		includeAnswer:     cfg.IncludeAnswer,
+		includeRawContent: cfg.IncludeRawContent,
 	}
 }
 
@@ -170,10 +195,12 @@ func (c *Client) Search(ctx context.Context, query string) ([]Result, error) {
 // searchWithKey runs a single request using the supplied key.
 func (c *Client) searchWithKey(ctx context.Context, query string, key string) ([]Result, error) {
 	body, err := json.Marshal(map[string]any{
-		"api_key":      key,
-		"query":        query,
-		"max_results":  c.maxResults,
-		"search_depth": "basic",
+		"api_key":             key,
+		"query":               query,
+		"max_results":         c.maxResults,
+		"search_depth":        c.searchDepth,
+		"include_answer":      c.includeAnswer,
+		"include_raw_content": c.includeRawContent,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode tavily request: %w", err)
@@ -199,10 +226,12 @@ func (c *Client) searchWithKey(ctx context.Context, query string, key string) ([
 	}
 
 	var payload struct {
+		Answer  string `json:"answer"`
 		Results []struct {
-			Title   string `json:"title"`
-			URL     string `json:"url"`
-			Content string `json:"content"`
+			Title      string `json:"title"`
+			URL        string `json:"url"`
+			Content    string `json:"content"`
+			RawContent string `json:"raw_content"`
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
@@ -216,12 +245,21 @@ func (c *Client) searchWithKey(ctx context.Context, query string, key string) ([
 			continue
 		}
 		results = append(results, Result{
-			Title:   strings.TrimSpace(r.Title),
-			URL:     strings.TrimSpace(r.URL),
-			Content: strings.TrimSpace(r.Content),
+			Title:      strings.TrimSpace(r.Title),
+			URL:        strings.TrimSpace(r.URL),
+			Content:    strings.TrimSpace(r.Content),
+			RawContent: strings.TrimSpace(r.RawContent),
 		})
 	}
-	slog.DebugContext(ctx, "tavily search completed", "results", len(results), "query", query)
+	if answer := strings.TrimSpace(payload.Answer); answer != "" {
+		results = append([]Result{{Title: "Tavily Answer", Content: answer}}, results...)
+	}
+	slog.DebugContext(ctx, "tavily search completed",
+		"results", len(results), "query", query,
+		"depth", c.searchDepth,
+		"include_answer", c.includeAnswer,
+		"include_raw_content", c.includeRawContent,
+	)
 	return results, nil
 }
 
@@ -305,6 +343,9 @@ func FormatResultsForPrompt(query string, results []Result) string {
 			b.WriteString(fmt.Sprintf("Source: %s\n", r.URL))
 		}
 		content := r.Content
+		if r.RawContent != "" {
+			content = r.RawContent
+		}
 		if len([]rune(content)) > maxSnippetLen {
 			content = string([]rune(content)[:maxSnippetLen]) + "…"
 		}

@@ -70,11 +70,14 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 		return err
 	}
 	searchClient := search.NewClient(search.Config{
-		Enabled:        cfg.Search.Enabled,
-		APIKey:         cfg.Search.APIKey,
-		APIKeys:        cfg.Search.APIKeys,
-		MaxResults:     cfg.Search.MaxResults,
-		TimeoutSeconds: cfg.Search.TimeoutSeconds,
+		Enabled:           cfg.Search.Enabled,
+		APIKey:            cfg.Search.APIKey,
+		APIKeys:           cfg.Search.APIKeys,
+		MaxResults:        cfg.Search.MaxResults,
+		TimeoutSeconds:    cfg.Search.TimeoutSeconds,
+		SearchDepth:       cfg.Search.SearchDepth,
+		IncludeAnswer:     cfg.Search.IncludeAnswer,
+		IncludeRawContent: cfg.Search.IncludeRawContent,
 	})
 	if searchClient.Enabled() {
 		slog.Debug("tavily search client enabled", "keys", len(cfg.Search.APIKeys))

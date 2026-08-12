@@ -58,11 +58,14 @@ type AIConfig struct {
 }
 
 type SearchConfig struct {
-	Enabled        bool
-	APIKey         string
-	APIKeys        []string
-	MaxResults     int
-	TimeoutSeconds int
+	Enabled           bool
+	APIKey            string
+	APIKeys           []string
+	MaxResults        int
+	TimeoutSeconds    int
+	SearchDepth       string
+	IncludeAnswer     bool
+	IncludeRawContent bool
 }
 
 type OTPRateLimitConfig struct {
@@ -181,11 +184,14 @@ func LoadAppConfig() AppConfig {
 			FallbackAPIKey:   GetEnv("AI_ADMIN_FALLBACK_API_KEY", ""),
 		},
 		Search: SearchConfig{
-			Enabled:        envBool("TAVILY_ENABLED"),
-			APIKey:         firstNonEmptyEnv("TAVILY_API_KEY", "TAVILY_API_KEY_FALLBACK"),
-			APIKeys:        collectNonEmptyEnv("TAVILY_API_KEY", "TAVILY_API_KEY_FALLBACK"),
-			MaxResults:     envInt("TAVILY_MAX_RESULTS", 5),
-			TimeoutSeconds: envInt("TAVILY_TIMEOUT_SECONDS", 8),
+			Enabled:           envBool("TAVILY_ENABLED"),
+			APIKey:            firstNonEmptyEnv("TAVILY_API_KEY", "TAVILY_API_KEY_FALLBACK"),
+			APIKeys:           collectNonEmptyEnv("TAVILY_API_KEY", "TAVILY_API_KEY_FALLBACK"),
+			MaxResults:        envInt("TAVILY_MAX_RESULTS", 5),
+			TimeoutSeconds:    envInt("TAVILY_TIMEOUT_SECONDS", 8),
+			SearchDepth:       GetEnv("TAVILY_SEARCH_DEPTH", "basic"),
+			IncludeAnswer:     envBool("TAVILY_INCLUDE_ANSWER"),
+			IncludeRawContent: envBool("TAVILY_INCLUDE_RAW_CONTENT"),
 		},
 		OTPRateLimit: OTPRateLimitConfig{
 			Requests:              envInt("OTP_RATE_LIMIT_REQUESTS", 5),
