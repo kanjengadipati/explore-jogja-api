@@ -13,6 +13,7 @@ import (
 
 	"pleco-api/internal/ai"
 	"pleco-api/internal/cache"
+	"pleco-api/internal/contentquality"
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
@@ -898,6 +899,7 @@ Your task is to generate comprehensive, editorial-quality content for the given 
 
 GROUNDED RESEARCH:
 You may receive a "GROUNDED RESEARCH CONTEXT" block containing verified web-search findings about the destination. You MUST only treat as factual the information present in that context. You MUST NOT fabricate ticket prices, opening hours, coordinates, ratings, or review counts that are not stated there. For any fact not covered by the research context, omit it or leave the field empty rather than inventing it.
+If the research context states a ticket price or opening hours, ALWAYS copy that exact information into ticket_price / opening_hours — never leave those fields empty when the fact is present in the context.
 
 CONTENT QUALITY:
 - The "story" field should read like a feature article — evocative, narrative-driven, and persuasive
@@ -941,61 +943,62 @@ Return ONLY valid JSON matching this schema:
   "seo_description_en": "Meta description in English (max 160 chars)",
   "seo_keywords": "Comma-separated keywords in Indonesian",
   "seo_keywords_en": "Comma-separated keywords in English",
-  "facilities": ["list of physical amenities in Indonesian (min 3, e.g. Parkir, Toilet, Mushola)"],
+  "facilities": ["list of physical amenities in Indonesian (min 3, e.g. Parkir, Toilet, Mushola) — standard amenities of this type of site are fine, only omit if entirely unknown"],
   "facilities_en": ["same amenities in English"],
-  "travel_tips": ["practical visitor tips in Indonesian (min 3, e.g. Datang pagi hari)"],
+  "travel_tips": ["practical visitor tips in Indonesian (min 3, e.g. Datang pagi hari) — everyday visitor advice is fine, only omit if entirely unknown"],
   "travel_tips_en": ["same tips in English"]
 }`
 
 	// Ground generation with a web search so the model reasons from real
 	// findings instead of fabricating facts/prices/hours/ratings. Fail-open:
 	// a search error simply means the prompt is sent ungrounded.
-	researchQuery := req.DestinationName + " wisata Yogyakarta"
+	researchQuery := search.ResearchQuery(req.DestinationName, req.Region)
 	researchContext := search.GroundedContext(c.Request.Context(), h.SearchClient, researchQuery)
 
-	userPrompt := fmt.Sprintf(
+	baseUserPrompt := fmt.Sprintf(
 		"Generate comprehensive destination content for '%s' in Yogyakarta, Indonesia. "+
 			"Only use the grounded research context appended above if present; do not invent facts.",
 		req.DestinationName,
 	)
-	if researchContext != "" {
-		userPrompt = researchContext + "\n\n" + userPrompt
-	}
-
-	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
-		SystemPrompt: systemInstruction,
-		UserPrompt:   userPrompt,
-		Temperature:  0.7,
-		MaxTokens:    2000,
-	})
-	if err != nil {
-		log.Printf("[ai-fallback] GenerateDestination: AI error (%v) for '%s' — offline fallback", err, req.DestinationName)
-		httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
-		return
-	}
 
 	var parsed AIGenerateDestinationResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		// Relaxed parse: AI may return numbers for lat/lng/rating/review_count.
-		var raw map[string]interface{}
-		if uerr := json.Unmarshal([]byte(result.Text), &raw); uerr != nil {
+	var banned []string
+	for attempt := 0; attempt < contentquality.MaxAttempts; attempt++ {
+		userPrompt := baseUserPrompt
+		if researchContext != "" {
+			userPrompt = researchContext + "\n\n" + userPrompt
+		}
+		if len(banned) > 0 {
+			userPrompt = contentquality.Feedback(banned) + "\n\n" + userPrompt
+		}
+
+		result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+			SystemPrompt: systemInstruction,
+			UserPrompt:   userPrompt,
+			Temperature:  0.7,
+			MaxTokens:    2000,
+		})
+		if err != nil {
+			log.Printf("[ai-fallback] GenerateDestination: AI error (%v) for '%s' — offline fallback", err, req.DestinationName)
+			httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
+			return
+		}
+
+		if !parseDestinationPayload(result.Text, &parsed) {
 			log.Printf("[ai-fallback] GenerateDestination: parse failure for '%s' — offline fallback", req.DestinationName)
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 			return
 		}
-		for _, key := range []string{"latitude", "longitude", "rating", "review_count"} {
-			if v, ok := raw[key]; ok {
-				if n, ok := v.(float64); ok {
-					raw[key] = strconv.FormatFloat(n, 'f', -1, 64)
-				}
-			}
+
+		banned = contentquality.FindBanned(contentquality.Prose(
+			parsed.Description, parsed.DescriptionEn, parsed.Story, parsed.StoryEn,
+			parsed.Tagline, parsed.TaglineEn,
+			parsed.SeoTitle, parsed.SeoTitleEn, parsed.SeoDescription, parsed.SeoDescriptionEn,
+		))
+		if len(banned) == 0 {
+			break
 		}
-		norm, _ := json.Marshal(raw)
-		if uerr := json.Unmarshal(norm, &parsed); uerr != nil {
-			log.Printf("[ai-fallback] GenerateDestination: relaxed parse failure for '%s' — offline fallback", req.DestinationName)
-			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
-			return
-		}
+		log.Printf("[style-gate] GenerateDestination: clichéd phrase(s) %v for '%s' — regenerating (attempt %d)", banned, req.DestinationName, attempt+2)
 	}
 
 	// IMPORTANT: do NOT backfill missing coordinates / ratings from the offline
@@ -1020,9 +1023,10 @@ func (h *Handler) GenerateEvent(c *gin.Context) {
 		return
 	}
 
-  systemInstruction := fmt.Sprintf(`You are an expert event content writer for Yogyakarta tourism.
+	systemInstruction := fmt.Sprintf(`You are an expert event content writer for Yogyakarta tourism.
 Your task is to generate compelling, editorial-quality content for the given event in both Indonesian and English.
 You may receive a "GROUNDED RESEARCH CONTEXT" block. You MUST only treat as factual the information in that context. Do NOT invent dates, organizers, ticket prices, or capacity beyond what it states; if a fact is unknown, leave the field empty rather than guessing.
+If the research context states a date, organizer, or ticket price, use that exact information — never leave those fields empty when the fact is present in the context.
 Today's date is %s.
 
 CRITICAL DATE RULES:
@@ -1056,55 +1060,52 @@ Return ONLY valid JSON matching this schema:
 }`, time.Now().Format("2006-01-02"))
 
 	// Ground generation with a web search. Fail-open: empty context is fine.
-	researchQuery := req.EventTitle + " jogja"
-	if req.Location != "" {
-		researchQuery = req.EventTitle + " " + req.Location + " jogja"
-	}
+	researchQuery := search.ResearchQuery(req.EventTitle, req.Location)
 	researchContext := search.GroundedContext(c.Request.Context(), h.SearchClient, researchQuery)
 
-	userPrompt := fmt.Sprintf(
+	baseUserPrompt := fmt.Sprintf(
 		"Generate comprehensive event content for '%s' held in %s, category: %s. "+
 			"Use only the grounded research context above if present. For dates, use your training knowledge of well-known annual events; if uncertain, leave start_date and end_date as empty strings rather than guessing.",
 		req.EventTitle, req.Location, req.Category,
 	)
-	if researchContext != "" {
-		userPrompt = researchContext + "\n\n" + userPrompt
-	}
-
-	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
-		SystemPrompt: systemInstruction,
-		UserPrompt:   userPrompt,
-		Temperature:  0.7,
-		MaxTokens:    1000,
-	})
-	if err != nil {
-		log.Printf("[ai-fallback] GenerateEvent: AI error (%v) for '%s' — offline fallback", err, req.EventTitle)
-		httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
-		return
-	}
 
 	var parsed AIGenerateEventResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
-		// Relaxed parse: AI may return numbers for max_attendees/latitude/longitude.
-		var raw map[string]interface{}
-		if uerr := json.Unmarshal([]byte(result.Text), &raw); uerr != nil {
+	var banned []string
+	for attempt := 0; attempt < contentquality.MaxAttempts; attempt++ {
+		userPrompt := baseUserPrompt
+		if researchContext != "" {
+			userPrompt = researchContext + "\n\n" + userPrompt
+		}
+		if len(banned) > 0 {
+			userPrompt = contentquality.Feedback(banned) + "\n\n" + userPrompt
+		}
+
+		result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+			SystemPrompt: systemInstruction,
+			UserPrompt:   userPrompt,
+			Temperature:  0.7,
+			MaxTokens:    1000,
+		})
+		if err != nil {
+			log.Printf("[ai-fallback] GenerateEvent: AI error (%v) for '%s' — offline fallback", err, req.EventTitle)
+			httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
+			return
+		}
+
+		if !parseEventPayload(result.Text, &parsed) {
 			log.Printf("[ai-fallback] GenerateEvent: parse failure for '%s' — offline fallback", req.EventTitle)
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
 			return
 		}
-		for _, key := range []string{"max_attendees", "latitude", "longitude"} {
-			if v, ok := raw[key]; ok {
-				if n, ok := v.(float64); ok {
-					raw[key] = strconv.FormatFloat(n, 'f', -1, 64)
-				}
-			}
+
+		banned = contentquality.FindBanned(contentquality.Prose(
+			parsed.Description, parsed.DescriptionEn,
+			parsed.SeoTitle, parsed.SeoTitleEn, parsed.SeoDescription, parsed.SeoDescriptionEn,
+		))
+		if len(banned) == 0 {
+			break
 		}
-		norm, _ := json.Marshal(raw)
-		if uerr := json.Unmarshal(norm, &parsed); uerr != nil {
-			log.Printf("[ai-fallback] GenerateEvent: relaxed parse failure for '%s' — offline fallback", req.EventTitle)
-			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
-			return
-		}
+		log.Printf("[style-gate] GenerateEvent: clichéd phrase(s) %v for '%s' — regenerating (attempt %d)", banned, req.EventTitle, attempt+2)
 	}
 
 	// Do NOT backfill missing coordinates/max_attendees from the offline template
@@ -1114,12 +1115,54 @@ Return ONLY valid JSON matching this schema:
 	httpx.Success(c, 200, "Event content generated", parsed, nil)
 }
 
+// parseDestinationPayload unmarshals AI destination JSON with a relaxed pass
+// that tolerates numeric strings for latitude/longitude/rating/review_count.
+func parseDestinationPayload(text string, parsed *AIGenerateDestinationResponse) bool {
+	if err := json.Unmarshal([]byte(text), parsed); err == nil {
+		return true
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+		return false
+	}
+	for _, key := range []string{"latitude", "longitude", "rating", "review_count"} {
+		if v, ok := raw[key]; ok {
+			if n, ok := v.(float64); ok {
+				raw[key] = strconv.FormatFloat(n, 'f', -1, 64)
+			}
+		}
+	}
+	norm, _ := json.Marshal(raw)
+	return json.Unmarshal(norm, parsed) == nil
+}
+
+// parseEventPayload unmarshals AI event JSON with a relaxed pass that tolerates
+// numeric strings for max_attendees/latitude/longitude.
+func parseEventPayload(text string, parsed *AIGenerateEventResponse) bool {
+	if err := json.Unmarshal([]byte(text), parsed); err == nil {
+		return true
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+		return false
+	}
+	for _, key := range []string{"max_attendees", "latitude", "longitude"} {
+		if v, ok := raw[key]; ok {
+			if n, ok := v.(float64); ok {
+				raw[key] = strconv.FormatFloat(n, 'f', -1, 64)
+			}
+		}
+	}
+	norm, _ := json.Marshal(raw)
+	return json.Unmarshal(norm, parsed) == nil
+}
+
 func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventResponse {
 	return &AIGenerateEventResponse{
 		Title:            title,
 		TitleEn:          title,
-		Description:      fmt.Sprintf("Bergabunglah dalam event menarik '%s' yang akan diselenggarakan. Jangan lewatkan kesempatan untuk merasakan pengalaman tak terlupakan.", title),
-		DescriptionEn:    fmt.Sprintf("Join the exciting event '%s'. Don't miss out on an unforgettable experience.", title),
+		Description:      fmt.Sprintf("Event '%s' akan diselenggarakan di Yogyakarta. Simak jadwal, lokasi, dan informasi tiket melalui kanal resmi panitia.", title),
+		DescriptionEn:    fmt.Sprintf("The event '%s' will be held in Yogyakarta. Check the official organizer channels for schedule, venue, and ticket information.", title),
 		Organizer:        "Panitia Event",
 		TicketPrice:      "",
 		StartDate:        "",
@@ -1852,9 +1895,7 @@ func (h *Handler) GenerateArticle(c *gin.Context) {
 	  "seoKeywordsEn": "..."
 	}`
 
-
 	userPrompt := fmt.Sprintf("Write an article with the title: %s", req.Title)
-
 
 	result, err := h.AIService.Generate(c.Request.Context(), ai.GenerateInput{
 		SystemPrompt: systemPrompt,

@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-	"log/slog"
 )
 
 // Result is a single search result returned by a search provider.
@@ -30,13 +30,13 @@ type Result struct {
 // generation entirely.
 type Client struct {
 	enabled    bool
-	apiKeys     []string
+	apiKeys    []string
 	baseURL    string
 	maxResults int
 	httpClient *http.Client
 
-	mu        sync.Mutex
-	keyIndex  int
+	mu       sync.Mutex
+	keyIndex int
 }
 
 // Config configures a Client. A zero value produces a disabled client.
@@ -235,6 +235,24 @@ func GroundedContext(ctx context.Context, client *Client, query string) string {
 		return ""
 	}
 	return FormatResultsForPrompt(query, results)
+}
+
+// ResearchQuery builds a fact-oriented web-search query for grounding content
+// about a place. It biases the query toward extractable concrete facts (ticket
+// prices, opening hours, facilities, reviews) rather than generic tourist-guide
+// prose, so the grounded context the model receives is actually useful for
+// filling the factual fields instead of leaving them empty.
+func ResearchQuery(name, location string) string {
+	var b strings.Builder
+	if n := strings.TrimSpace(name); n != "" {
+		b.WriteString(n)
+	}
+	if loc := strings.TrimSpace(location); loc != "" {
+		b.WriteString(" ")
+		b.WriteString(loc)
+	}
+	b.WriteString(" Yogyakarta tiket masuk harga jam buka fasilitas rating")
+	return b.String()
 }
 
 type tavilyError struct {

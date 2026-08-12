@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"pleco-api/internal/ai"
+	"pleco-api/internal/contentquality"
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/search"
 
@@ -44,16 +46,36 @@ const (
 // fact_density_score so the frontend never needs to duplicate this logic.
 func factDensityScore(d *Destination) int {
 	score := 0
-	if strings.TrimSpace(d.TicketPrice) != ""  { score++ }
-	if strings.TrimSpace(d.OpeningHours) != "" { score++ }
-	if len(d.Facilities) > 0                   { score++ }
-	if len(d.TravelTips) > 0                   { score++ }
-	if strings.TrimSpace(d.BestTime) != ""     { score++ }
-	if d.Latitude != 0 && d.Longitude != 0    { score++ }
-	if d.Rating > 0                            { score++ }
-	if d.ReviewCount > 0                       { score++ }
-	if strings.TrimSpace(d.Description) != "" { score++ }
-	if strings.TrimSpace(d.Location) != ""    { score++ }
+	if strings.TrimSpace(d.TicketPrice) != "" {
+		score++
+	}
+	if strings.TrimSpace(d.OpeningHours) != "" {
+		score++
+	}
+	if len(d.Facilities) > 0 {
+		score++
+	}
+	if len(d.TravelTips) > 0 {
+		score++
+	}
+	if strings.TrimSpace(d.BestTime) != "" {
+		score++
+	}
+	if d.Latitude != 0 && d.Longitude != 0 {
+		score++
+	}
+	if d.Rating > 0 {
+		score++
+	}
+	if d.ReviewCount > 0 {
+		score++
+	}
+	if strings.TrimSpace(d.Description) != "" {
+		score++
+	}
+	if strings.TrimSpace(d.Location) != "" {
+		score++
+	}
 	return score
 }
 
@@ -147,25 +169,43 @@ func (s *ContentGenService) Generate(ctx context.Context, externalID string, var
 	// Ground generation with a web search so the model reasons from real
 	// findings instead of fabricating facts/prices/hours. Fail-open: if search
 	// is unavailable, we proceed with the prompt as-is — never block generation.
-	researchQuery := researchQuery(dest)
-	researchContext := search.GroundedContext(ctx, s.SearchClient, researchQuery)
+	researchContext := search.GroundedContext(ctx, s.SearchClient, search.ResearchQuery(dest.Name, dest.Location))
 	if researchContext != "" {
 		prompt.system += "\n\n" + researchContext
 	}
 
-	result, err := s.AIService.Generate(ctx, ai.GenerateInput{
-		SystemPrompt: prompt.system,
-		UserPrompt:   prompt.user,
-		Temperature:  0.7,
-		MaxTokens:    2500,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("AI generation failed: %w", err)
-	}
-
 	var generated map[string]interface{}
-	if err := json.Unmarshal([]byte(result.Text), &generated); err != nil {
-		return nil, fmt.Errorf("failed to parse AI response: %w", err)
+	var banned []string
+	for attempt := 0; attempt < contentquality.MaxAttempts; attempt++ {
+		userPrompt := prompt.user
+		if len(banned) > 0 {
+			userPrompt = contentquality.Feedback(banned) + "\n\n" + userPrompt
+		}
+		result, err := s.AIService.Generate(ctx, ai.GenerateInput{
+			SystemPrompt: prompt.system,
+			UserPrompt:   userPrompt,
+			Temperature:  0.7,
+			MaxTokens:    2500,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("AI generation failed: %w", err)
+		}
+
+		if err := json.Unmarshal([]byte(result.Text), &generated); err != nil {
+			return nil, fmt.Errorf("failed to parse AI response: %w", err)
+		}
+
+		banned = contentquality.FindBanned(contentquality.Prose(
+			str(generated, "description"), str(generated, "description_en"),
+			str(generated, "story"), str(generated, "story_en"),
+			str(generated, "tagline"), str(generated, "tagline_en"),
+			str(generated, "seo_title"), str(generated, "seo_title_en"),
+			str(generated, "seo_description"), str(generated, "seo_description_en"),
+		))
+		if len(banned) == 0 {
+			break
+		}
+		log.Printf("[style-gate] %s: clichéd phrase(s) %v detected — regenerating (attempt %d)", dest.Name, banned, attempt+2)
 	}
 
 	applyGeneratedContent(dest, generated)
@@ -253,7 +293,10 @@ func buildPrompt(d *Destination, variant string) builtPrompt {
 			"TONE & VARIETY:\n"+
 			"- Warm, conversational Indonesian — like a knowledgeable local friend giving a recommendation, not a government tourism brochure.\n"+
 			"- Avoid stiff formal phrases (\"menawarkan pengalaman tak terlupakan\", \"destinasi wisata yang menakjubkan\") unless earned by a specific concrete detail.\n"+
-			"- Do not open every destination with the same sentence pattern — vary: sometimes a fact, sometimes a sensory detail, sometimes a question.",
+			"- Do not open every destination with the same sentence pattern — vary: sometimes a fact, sometimes a sensory detail, sometimes a question.\n\n"+
+			"GROUNDED FACTS:\n"+
+			"- If the GROUNDED RESEARCH CONTEXT states a ticket price or opening hours, ALWAYS copy that exact information into the corresponding fields — never leave them empty when the fact is present in the context.\n"+
+			"- Never fabricate facts not present in the context.",
 		d.Name, d.Category, d.SubRegion, d.Rating, d.ReviewCount,
 		d.Description, d.TicketPrice, d.OpeningHours, d.BestTime,
 	)
@@ -273,9 +316,9 @@ seo_keywords (string, Indonesian, comma-separated),
 seo_keywords_en (string, English, comma-separated),
 best_time (string, Indonesian),
 best_time_en (string, English),
-facilities (array of strings, Indonesian, min 3 items — physical amenities present at the site),
+facilities (array of strings, Indonesian, min 3 items — physical amenities present at the site; standard amenities of this site type are acceptable),
 facilities_en (array of strings, English),
-travel_tips (array of strings, Indonesian, min 3 practical visitor tips),
+travel_tips (array of strings, Indonesian, min 3 practical visitor tips; everyday advice is acceptable),
 travel_tips_en (array of strings, English).`
 
 	var systemInstruction, userPrompt string
@@ -292,6 +335,14 @@ travel_tips_en (array of strings, English).`
 	}
 
 	return builtPrompt{system: systemInstruction, user: userPrompt}
+}
+
+// str extracts a string value from the generated payload ("" if absent).
+func str(generated map[string]interface{}, key string) string {
+	if v, ok := generated[key].(string); ok {
+		return v
+	}
+	return ""
 }
 
 // applyGeneratedContent merges AI-generated fields into the destination struct.
@@ -340,16 +391,6 @@ func applyGeneratedContent(d *Destination, generated map[string]interface{}) {
 
 	// Auto-fill GoogleMapsURL from coordinates if not already set
 	AutoFillGoogleMapsURL(d)
-}
-
-// researchQuery builds a web-search query that grounds generation for this destination.
-func researchQuery(d *Destination) string {
-	q := d.Name
-	if d.Location != "" {
-		q += " " + d.Location
-	}
-	q += " wisata Yogyakarta"
-	return q
 }
 
 // ─── HTTP handler methods ─────────────────────────────────────────────────────
