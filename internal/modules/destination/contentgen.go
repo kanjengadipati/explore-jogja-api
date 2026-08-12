@@ -2,7 +2,6 @@ package destination
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -185,13 +184,13 @@ func (s *ContentGenService) Generate(ctx context.Context, externalID string, var
 			SystemPrompt: prompt.system,
 			UserPrompt:   userPrompt,
 			Temperature:  0.7,
-			MaxTokens:    2500,
+			MaxTokens:    8000,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("AI generation failed: %w", err)
 		}
 
-		if err := json.Unmarshal([]byte(result.Text), &generated); err != nil {
+		if err := ai.UnmarshalJSON(result.Text, &generated); err != nil {
 			return nil, fmt.Errorf("failed to parse AI response: %w", err)
 		}
 
@@ -294,6 +293,13 @@ func buildPrompt(d *Destination, variant string) builtPrompt {
 			"- Warm, conversational Indonesian — like a knowledgeable local friend giving a recommendation, not a government tourism brochure.\n"+
 			"- Avoid stiff formal phrases (\"menawarkan pengalaman tak terlupakan\", \"destinasi wisata yang menakjubkan\") unless earned by a specific concrete detail.\n"+
 			"- Do not open every destination with the same sentence pattern — vary: sometimes a fact, sometimes a sensory detail, sometimes a question.\n\n"+
+			"LENGTH LIMITS (hard caps — never exceed these, they keep the JSON safe):\n"+
+			"- description / description_en: 150-250 words each\n"+
+			"- story / story_en: 200-320 words each (4-6 sentences)\n"+
+			"- tagline / tagline_en: 5-8 words\n"+
+			"- facilities: 3-6 short items (1-3 words each)\n"+
+			"- travel_tips: 3-5 one-line tips\n"+
+			"- seo_title: max 60 chars; seo_description: max 160 chars\n\n"+
 			"GROUNDED FACTS:\n"+
 			"- If the GROUNDED RESEARCH CONTEXT states a ticket price or opening hours, ALWAYS copy that exact information into the corresponding fields — never leave them empty when the fact is present in the context.\n"+
 			"- Never fabricate facts not present in the context.",
@@ -302,12 +308,12 @@ func buildPrompt(d *Destination, variant string) builtPrompt {
 	)
 
 	schema := `Return ONLY valid JSON with these fields:
-description (string, Indonesian, 2-3 paragraphs),
-description_en (string, English),
-story (string, Indonesian, editorial narrative ≥300 chars),
-story_en (string, English),
+description (string, Indonesian, 2-3 short paragraphs, max 250 words),
+description_en (string, English, max 250 words),
+story (string, Indonesian, editorial narrative, 200-320 words),
+story_en (string, English, 200-320 words),
 tagline (string, Indonesian, 5-8 words),
-tagline_en (string, English),
+tagline_en (string, English, 5-8 words),
 seo_title (string, Indonesian, max 60 chars),
 seo_title_en (string, English, max 60 chars),
 seo_description (string, Indonesian, max 160 chars),
@@ -316,9 +322,9 @@ seo_keywords (string, Indonesian, comma-separated),
 seo_keywords_en (string, English, comma-separated),
 best_time (string, Indonesian),
 best_time_en (string, English),
-facilities (array of strings, Indonesian, min 3 items — physical amenities present at the site; standard amenities of this site type are acceptable),
+facilities (array of strings, Indonesian, 3-6 short items — physical amenities present at the site; standard amenities of this site type are acceptable),
 facilities_en (array of strings, English),
-travel_tips (array of strings, Indonesian, min 3 practical visitor tips; everyday advice is acceptable),
+travel_tips (array of strings, Indonesian, 3-5 one-line practical visitor tips; everyday advice is acceptable),
 travel_tips_en (array of strings, English).`
 
 	var systemInstruction, userPrompt string

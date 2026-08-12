@@ -97,8 +97,12 @@ func RunAPI(registerDocs func(*gin.Engine)) error {
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		// Generous write budget: AI content generation can run 15-60s
+		// (multiple regeneration attempts). A 15s WriteTimeout silently cut
+		// the connection mid-response, so the client saw an empty reply while
+		// the handler still logged 200.
+		WriteTimeout: 180 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

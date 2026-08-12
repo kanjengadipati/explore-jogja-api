@@ -106,6 +106,7 @@ type AppConfig struct {
 	WhatsApp                 WhatsAppConfig
 	Social                   SocialConfig
 	AI                       AIConfig
+	AIAdmin                  AIConfig
 	Search                   SearchConfig
 	OTPRateLimit             OTPRateLimitConfig
 	AuthRateLimit            AuthRateLimitConfig
@@ -166,6 +167,18 @@ func LoadAppConfig() AppConfig {
 			FallbackModel:    GetEnv("AI_FALLBACK_MODEL", ""),
 			FallbackBaseURL:  GetEnv("AI_FALLBACK_BASE_URL", ""),
 			FallbackAPIKey:   GetEnv("AI_FALLBACK_API_KEY", ""),
+		},
+		AIAdmin: AIConfig{
+			Enabled:          envBool("AI_ADMIN_ENABLED") || envBool("AI_ENABLED"),
+			Provider:         strings.ToLower(GetEnv("AI_ADMIN_PROVIDER", "mock")),
+			Model:            GetEnv("AI_ADMIN_MODEL", "gemini-3.5-flash"),
+			BaseURL:          GetEnv("AI_ADMIN_BASE_URL", ""),
+			APIKey:           GetEnv("AI_ADMIN_API_KEY", ""),
+			TimeoutSeconds:   envInt("AI_ADMIN_TIMEOUT_SECONDS", 60),
+			FallbackProvider: strings.ToLower(GetEnv("AI_ADMIN_FALLBACK_PROVIDER", "")),
+			FallbackModel:    GetEnv("AI_ADMIN_FALLBACK_MODEL", ""),
+			FallbackBaseURL:  GetEnv("AI_ADMIN_FALLBACK_BASE_URL", ""),
+			FallbackAPIKey:   GetEnv("AI_ADMIN_FALLBACK_API_KEY", ""),
 		},
 		Search: SearchConfig{
 			Enabled:        envBool("TAVILY_ENABLED"),
@@ -319,50 +332,10 @@ func (c *AppConfig) Validate() error {
 	}
 
 	if c.AI.Enabled {
-		if c.AI.TimeoutSeconds < 1 {
-			problems = append(problems, "AI_TIMEOUT_SECONDS must be greater than 0 when AI is enabled")
-		}
-
-		switch c.AI.Provider {
-		case "mock":
-		case "ollama":
-			if c.AI.BaseURL == "" {
-				problems = append(problems, "AI_BASE_URL is required when AI_PROVIDER is ollama")
-			}
-			if c.AI.Model == "" {
-				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is ollama")
-			}
-		case "openai":
-			if c.AI.APIKey == "" {
-				problems = append(problems, "AI_API_KEY is required when AI_PROVIDER is openai")
-			}
-			if c.AI.Model == "" {
-				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is openai")
-			}
-		case "gemini":
-			if c.AI.APIKey == "" {
-				problems = append(problems, "AI_API_KEY is required when AI_PROVIDER is gemini")
-			}
-			if c.AI.Model == "" {
-				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is gemini")
-			}
-		case "anthropic":
-			if c.AI.APIKey == "" {
-				problems = append(problems, "AI_API_KEY is required when AI_PROVIDER is anthropic")
-			}
-			if c.AI.Model == "" {
-				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is anthropic")
-			}
-		case "groq":
-			if c.AI.APIKey == "" {
-				problems = append(problems, "AI_API_KEY is required when AI_PROVIDER is groq")
-			}
-			if c.AI.Model == "" {
-				problems = append(problems, "AI_MODEL is required when AI_PROVIDER is groq")
-			}
-		default:
-			problems = append(problems, "AI_PROVIDER must be one of: mock, ollama, openai, gemini, anthropic, groq")
-		}
+		validateAIConfig("AI", c.AI, &problems)
+	}
+	if c.AIAdmin.Enabled {
+		validateAIConfig("AI_ADMIN", c.AIAdmin, &problems)
 	}
 
 	if len(problems) > 0 {
@@ -370,6 +343,53 @@ func (c *AppConfig) Validate() error {
 	}
 
 	return nil
+}
+
+func validateAIConfig(label string, ai AIConfig, problems *[]string) {
+	if ai.TimeoutSeconds < 1 {
+		*problems = append(*problems, label+"_TIMEOUT_SECONDS must be greater than 0 when "+label+" is enabled")
+	}
+
+	switch ai.Provider {
+	case "mock":
+	case "ollama":
+		if ai.BaseURL == "" {
+			*problems = append(*problems, label+"_BASE_URL is required when "+label+"_PROVIDER is ollama")
+		}
+		if ai.Model == "" {
+			*problems = append(*problems, label+"_MODEL is required when "+label+"_PROVIDER is ollama")
+		}
+	case "openai":
+		if ai.APIKey == "" {
+			*problems = append(*problems, label+"_API_KEY is required when "+label+"_PROVIDER is openai")
+		}
+		if ai.Model == "" {
+			*problems = append(*problems, label+"_MODEL is required when "+label+"_PROVIDER is openai")
+		}
+	case "gemini":
+		if ai.APIKey == "" {
+			*problems = append(*problems, label+"_API_KEY is required when "+label+"_PROVIDER is gemini")
+		}
+		if ai.Model == "" {
+			*problems = append(*problems, label+"_MODEL is required when "+label+"_PROVIDER is gemini")
+		}
+	case "anthropic":
+		if ai.APIKey == "" {
+			*problems = append(*problems, label+"_API_KEY is required when "+label+"_PROVIDER is anthropic")
+		}
+		if ai.Model == "" {
+			*problems = append(*problems, label+"_MODEL is required when "+label+"_PROVIDER is anthropic")
+		}
+	case "groq":
+		if ai.APIKey == "" {
+			*problems = append(*problems, label+"_API_KEY is required when "+label+"_PROVIDER is groq")
+		}
+		if ai.Model == "" {
+			*problems = append(*problems, label+"_MODEL is required when "+label+"_PROVIDER is groq")
+		}
+	default:
+		*problems = append(*problems, label+"_PROVIDER must be one of: mock, ollama, openai, gemini, anthropic, groq")
+	}
 }
 
 func envBool(key string) bool {

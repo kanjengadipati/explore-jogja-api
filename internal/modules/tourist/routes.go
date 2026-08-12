@@ -29,7 +29,7 @@ type Module struct {
 	Handler *Handler
 }
 
-func BuildModule(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store, searchClient *search.Client) *Module {
-	handler := NewHandler(aiService, destRepo, eventRepo, cacheStore, searchClient)
+func BuildModule(aiService *ai.Service, adminAIService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store, searchClient *search.Client) *Module {
+	handler := NewHandler(aiService, adminAIService, destRepo, eventRepo, cacheStore, searchClient)
 	return &Module{Handler: handler}
 }

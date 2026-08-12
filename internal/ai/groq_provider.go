@@ -74,7 +74,11 @@ func (p *GroqProvider) Generate(ctx context.Context, input GenerateInput) (*Gene
 		Model:       input.Model,
 		Messages:    messages,
 		Temperature: input.Temperature,
-		MaxTokens:   input.MaxTokens,
+		// Cap output so a single fallback call stays well under Groq's free-tier
+		// TPM budget (12k/min): with the prompt, an unbounded max_tokens can
+		// consume the whole quota in one request and get rejected. The prompts
+		// carry explicit LENGTH LIMITS, so 4000 output tokens is ample.
+		MaxTokens: min(input.MaxTokens, 4000),
 	}
 
 	// Groq supports JSON mode if requested

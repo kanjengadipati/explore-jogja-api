@@ -16,13 +16,13 @@ type Module struct {
 	LocationHandler    *LocationHandler
 }
 
-func BuildModule(db *gorm.DB, cacheStore cache.Store, aiService *ai.Service, searchClient *search.Client) *Module {
+func BuildModule(db *gorm.DB, cacheStore cache.Store, contentAIService *ai.Service, searchClient *search.Client) *Module {
 	repository := NewRepository(db)
 	service := NewService(repository)
 	handler := NewHandler(service, cacheStore)
 
 	contentRepo := NewContentGenRepository(db)
-	contentSvc := NewContentGenService(repository, contentRepo, aiService, searchClient)
+	contentSvc := NewContentGenService(repository, contentRepo, contentAIService, searchClient)
 	contentHandler := NewContentGenHandler(contentSvc)
 
 	locationHandler := NewLocationHandler(handler, service, repository)

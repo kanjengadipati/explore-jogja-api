@@ -65,6 +65,10 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	if err != nil {
 		return err
 	}
+	aiAdminService, err := ai.NewService(cfg.AIAdmin)
+	if err != nil {
+		return err
+	}
 	searchClient := search.NewClient(search.Config{
 		Enabled:        cfg.Search.Enabled,
 		APIKey:         cfg.Search.APIKey,
@@ -106,7 +110,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	audit.SetupRoutes(api, auditModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
-	destinationModule := destination.BuildModule(db, cacheStore, aiService, searchClient)
+	destinationModule := destination.BuildModule(db, cacheStore, aiAdminService, searchClient)
 	// Wire YouTube fetcher — breaks import cycle between destination and scraper packages
 	destination.YouTubeFetcher = scraper.FetchYouTubeVideoURL
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService, permissionModule.Service)
@@ -175,7 +179,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	commission.SetupRoutes(api, commissionModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	bonus.SetupRoutes(api, bonusModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
-	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore, searchClient)
+	touristModule := tourist.BuildModule(aiService, aiAdminService, destinationModule.Repository, eventModule.Repository, cacheStore, searchClient)
 	tourist.SetupRoutes(api, touristModule.Handler)
 
 	tripsModule := trips.BuildModule(db)

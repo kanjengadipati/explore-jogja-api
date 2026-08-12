@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -38,10 +39,15 @@ type geminiPart struct {
 }
 
 type geminiGenerationConfig struct {
-	Temperature      *float64       `json:"temperature,omitempty"`
-	MaxOutputTokens  int            `json:"maxOutputTokens,omitempty"`
-	ResponseMimeType string         `json:"responseMimeType"`
-	ResponseSchema   map[string]any `json:"responseSchema"`
+	Temperature      *float64              `json:"temperature,omitempty"`
+	MaxOutputTokens  int                   `json:"maxOutputTokens,omitempty"`
+	ResponseMimeType string                `json:"responseMimeType"`
+	ResponseSchema   map[string]any        `json:"responseSchema"`
+	ThinkingConfig   *geminiThinkingConfig `json:"thinkingConfig,omitempty"`
+}
+
+type geminiThinkingConfig struct {
+	ThinkingBudget int `json:"thinkingBudget"`
 }
 
 type geminiGenerateResponse struct {
@@ -81,6 +87,12 @@ func (p *GeminiProvider) Generate(ctx context.Context, input GenerateInput) (*Ge
 			ResponseSchema:   input.ResponseSchema, // nil = free-form JSON; set schema for structured output
 			MaxOutputTokens:  input.MaxTokens,
 		},
+	}
+	// Disable thinking on models that support it (e.g. -flash / -pro): thinking
+	// consumes the output budget and truncates JSON mid-object. Lite models have
+	// no thinking and reject this field, so skip it for them.
+	if !strings.Contains(input.Model, "lite") {
+		reqBody.GenerationConfig.ThinkingConfig = &geminiThinkingConfig{ThinkingBudget: 0}
 	}
 	if strings.TrimSpace(input.SystemPrompt) != "" {
 		reqBody.SystemInstruction = &geminiContent{
@@ -131,8 +143,10 @@ func (p *GeminiProvider) Generate(ctx context.Context, input GenerateInput) (*Ge
 
 	if resp.StatusCode >= 400 {
 		if parsed.Error != nil && parsed.Error.Message != "" {
+			log.Printf("[gemini] HTTP %d for model %s: %s", resp.StatusCode, input.Model, parsed.Error.Message)
 			return nil, fmt.Errorf("gemini error: %s", parsed.Error.Message)
 		}
+		log.Printf("[gemini] HTTP %d for model %s (no error body)", resp.StatusCode, input.Model)
 		return nil, fmt.Errorf("gemini returned status %d", resp.StatusCode)
 	}
 

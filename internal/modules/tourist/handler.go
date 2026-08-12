@@ -24,18 +24,20 @@ import (
 
 type Handler struct {
 	AIService       *ai.Service
+	AdminAIService  *ai.Service
 	DestinationRepo destination.Repository
 	EventRepo       event.Repository
 	Cache           cache.Store
 	SearchClient    *search.Client
 }
 
-func NewHandler(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store, searchClient *search.Client) *Handler {
+func NewHandler(aiService *ai.Service, adminAIService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store, searchClient *search.Client) *Handler {
 	if searchClient == nil {
 		searchClient = &search.Client{}
 	}
 	return &Handler{
 		AIService:       aiService,
+		AdminAIService:  adminAIService,
 		DestinationRepo: destRepo,
 		EventRepo:       eventRepo,
 		Cache:           cacheStore,
@@ -254,7 +256,7 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, langInst
 	}
 
 	var parsed AITrendingResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+	if err := ai.UnmarshalJSON(result.Text, &parsed); err != nil {
 		httpx.Success(c, 200, "Trending picks loaded (offline)", h.offlineTrendingResponse(dests, events, isID), nil)
 		return
 	}
@@ -541,7 +543,7 @@ Respond ONLY with valid JSON matching this schema:
 	}
 
 	var parsed AIQueryResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+	if err := ai.UnmarshalJSON(result.Text, &parsed); err != nil {
 		httpx.Success(c, 200, "Query processed (offline)", h.offlineQueryResponse(req.Query), nil)
 		return
 	}
@@ -603,7 +605,7 @@ Respond ONLY with valid JSON matching this schema:
 	}
 
 	var parsed AIQueryResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+	if err := ai.UnmarshalJSON(result.Text, &parsed); err != nil {
 		httpx.Success(c, 200, "Image analyzed (offline)", &AIQueryResponse{
 			Reply:                 "Sugeng rawuh! Gambar yang menarik. Berikut beberapa destinasi Yogyakarta yang mungkin relevan.",
 			MatchedDestinationIDs: []string{"tamansari", "prambanan"},
@@ -852,7 +854,7 @@ Return ONLY valid JSON matching this schema:
 	}
 
 	var parsed AIJourneyResponse
-	if err := json.Unmarshal([]byte(result.Text), &parsed); err != nil {
+	if err := ai.UnmarshalJSON(result.Text, &parsed); err != nil {
 		httpx.Success(c, 200, "AI response parse failure, using offline journey fallback", h.offlineJourneyResponse(req.DestinationName), nil)
 		return
 	}
@@ -889,7 +891,7 @@ func (h *Handler) GenerateDestination(c *gin.Context) {
 		return
 	}
 
-	if !h.AIService.Enabled() {
+	if !h.AdminAIService.Enabled() {
 		httpx.Success(c, 200, "AI disabled, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 		return
 	}
@@ -915,6 +917,14 @@ TONE & VARIETY:
 - Avoid stiff formal phrases ("menawarkan pengalaman tak terlupakan", "destinasi wisata yang menakjubkan") unless earned by a specific concrete detail.
 - Do not open every destination with the same sentence pattern — vary: sometimes a fact, sometimes a sensory detail, sometimes a question.
 - For "story_en"/"description_en": same warmth in English, avoid stock phrases like "unforgettable experience" unless followed by a concrete detail.
+
+LENGTH LIMITS (hard caps — never exceed these, they keep the JSON safe):
+- description / description_en: 150-250 words each (2-3 short paragraphs)
+- story / story_en: 200-320 words each (4-6 sentences)
+- tagline / tagline_en: 5-8 words
+- facilities: 3-6 short items (1-3 words each)
+- travel_tips: 3-5 one-line tips
+- seo_title: max 60 chars; seo_description: max 160 chars
 
 Return ONLY valid JSON matching this schema:
 {
@@ -972,11 +982,11 @@ Return ONLY valid JSON matching this schema:
 			userPrompt = contentquality.Feedback(banned) + "\n\n" + userPrompt
 		}
 
-		result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		result, err := h.AdminAIService.Generate(context.Background(), ai.GenerateInput{
 			SystemPrompt: systemInstruction,
 			UserPrompt:   userPrompt,
 			Temperature:  0.7,
-			MaxTokens:    2000,
+			MaxTokens:    8000,
 		})
 		if err != nil {
 			log.Printf("[ai-fallback] GenerateDestination: AI error (%v) for '%s' — offline fallback", err, req.DestinationName)
@@ -985,7 +995,7 @@ Return ONLY valid JSON matching this schema:
 		}
 
 		if !parseDestinationPayload(result.Text, &parsed) {
-			log.Printf("[ai-fallback] GenerateDestination: parse failure for '%s' — offline fallback", req.DestinationName)
+			log.Printf("[ai-fallback] GenerateDestination: parse failure for '%s' — offline fallback. HEAD: %q TAIL: %q", req.DestinationName, result.Text[:min(len(result.Text), 200)], result.Text[max(0, len(result.Text)-200):])
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 			return
 		}
@@ -1018,7 +1028,7 @@ func (h *Handler) GenerateEvent(c *gin.Context) {
 		return
 	}
 
-	if !h.AIService.Enabled() {
+	if !h.AdminAIService.Enabled() {
 		httpx.Success(c, 200, "AI disabled, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
 		return
 	}
@@ -1037,6 +1047,10 @@ CRITICAL DATE RULES:
 
 CONTENT VARIETY:
 - Vary the structure and opening of each event description; avoid repeating the same template phrase across events.
+
+LENGTH LIMITS (hard caps — never exceed these):
+- description / description_en: 100-200 words each (1-2 short paragraphs)
+- seo_title: max 60 chars; seo_description: max 160 chars
 
 Return ONLY valid JSON matching this schema:
 {
@@ -1080,11 +1094,11 @@ Return ONLY valid JSON matching this schema:
 			userPrompt = contentquality.Feedback(banned) + "\n\n" + userPrompt
 		}
 
-		result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
+		result, err := h.AdminAIService.Generate(context.Background(), ai.GenerateInput{
 			SystemPrompt: systemInstruction,
 			UserPrompt:   userPrompt,
 			Temperature:  0.7,
-			MaxTokens:    1000,
+			MaxTokens:    4000,
 		})
 		if err != nil {
 			log.Printf("[ai-fallback] GenerateEvent: AI error (%v) for '%s' — offline fallback", err, req.EventTitle)
@@ -1118,11 +1132,11 @@ Return ONLY valid JSON matching this schema:
 // parseDestinationPayload unmarshals AI destination JSON with a relaxed pass
 // that tolerates numeric strings for latitude/longitude/rating/review_count.
 func parseDestinationPayload(text string, parsed *AIGenerateDestinationResponse) bool {
-	if err := json.Unmarshal([]byte(text), parsed); err == nil {
+	if err := ai.UnmarshalJSON(stripJSONFences(text), parsed); err == nil {
 		return true
 	}
 	var raw map[string]interface{}
-	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+	if err := ai.UnmarshalJSON(stripJSONFences(text), &raw); err != nil {
 		return false
 	}
 	for _, key := range []string{"latitude", "longitude", "rating", "review_count"} {
@@ -1136,14 +1150,31 @@ func parseDestinationPayload(text string, parsed *AIGenerateDestinationResponse)
 	return json.Unmarshal(norm, parsed) == nil
 }
 
+// stripJSONFences removes markdown code fences (```json ... ```) some models
+// wrap around JSON despite being asked for raw JSON.
+func stripJSONFences(text string) string {
+	t := strings.TrimSpace(text)
+	if strings.HasPrefix(t, "```") {
+		t = strings.TrimPrefix(t, "```")
+		if i := strings.IndexByte(t, '\n'); i >= 0 {
+			t = t[i+1:]
+		}
+		t = strings.TrimSpace(t)
+		if strings.HasSuffix(t, "```") {
+			t = t[:len(t)-3]
+		}
+	}
+	return strings.TrimSpace(t)
+}
+
 // parseEventPayload unmarshals AI event JSON with a relaxed pass that tolerates
 // numeric strings for max_attendees/latitude/longitude.
 func parseEventPayload(text string, parsed *AIGenerateEventResponse) bool {
-	if err := json.Unmarshal([]byte(text), parsed); err == nil {
+	if err := ai.UnmarshalJSON(stripJSONFences(text), parsed); err == nil {
 		return true
 	}
 	var raw map[string]interface{}
-	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+	if err := ai.UnmarshalJSON(stripJSONFences(text), &raw); err != nil {
 		return false
 	}
 	for _, key := range []string{"max_attendees", "latitude", "longitude"} {
@@ -1871,7 +1902,7 @@ func (h *Handler) GenerateArticle(c *gin.Context) {
 		return
 	}
 
-	if !h.AIService.Enabled() {
+	if !h.AdminAIService.Enabled() {
 		httpx.ErrorWithCode(c, 503, "AI_DISABLED", "AI service is currently disabled")
 		return
 	}
@@ -1897,7 +1928,7 @@ func (h *Handler) GenerateArticle(c *gin.Context) {
 
 	userPrompt := fmt.Sprintf("Write an article with the title: %s", req.Title)
 
-	result, err := h.AIService.Generate(c.Request.Context(), ai.GenerateInput{
+	result, err := h.AdminAIService.Generate(c.Request.Context(), ai.GenerateInput{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
 		Temperature:  0.7,
@@ -1910,7 +1941,7 @@ func (h *Handler) GenerateArticle(c *gin.Context) {
 
 	// Parse the JSON string from AI and return it directly
 	var aiResponse map[string]interface{}
-	if err := json.Unmarshal([]byte(result.Text), &aiResponse); err != nil {
+	if err := ai.UnmarshalJSON(result.Text, &aiResponse); err != nil {
 		httpx.ErrorWithCode(c, 500, "AI_PARSING_ERROR", "Failed to parse AI response")
 		return
 	}
