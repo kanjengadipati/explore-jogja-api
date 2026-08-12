@@ -11,6 +11,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// normalizeReviewCount forces ReviewCount to equal len(Reviews) so the displayed
+// review volume can never diverge from the actual seeded review array — a
+// mismatch here is the most common cause of "4.9 (3,840 reviews)" appearing
+// next to a 2-entry review list on the frontend. This also neutralizes the
+// historical pattern of hand-typed, inaccurate ReviewCount values.
+func normalizeReviewCount(d *destination.Destination) {
+	if d == nil {
+		return
+	}
+	d.ReviewCount = len(d.Reviews)
+}
+
+
 func SeedDestinations(db *gorm.DB) {
 	mustHaveDB(db)
 
@@ -27,6 +40,7 @@ func SeedDestinations(db *gorm.DB) {
 			inserted := 0
 			updated := 0
 			for _, d := range dests {
+				normalizeReviewCount(&d)
 				var existing destination.Destination
 				err := db.Where("external_id = ?", d.ExternalID).First(&existing).Error
 				if err != nil {
@@ -63,6 +77,9 @@ func SeedDestinations(db *gorm.DB) {
 	}
 
 	dests := getDestinationSeedData()
+	for i := range dests {
+		normalizeReviewCount(&dests[i])
+	}
 	if err := db.CreateInBatches(dests, 10).Error; err != nil {
 		log.Printf("Failed to seed destinations: %v", err)
 		return

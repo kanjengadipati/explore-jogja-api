@@ -57,6 +57,14 @@ type AIConfig struct {
 	FallbackAPIKey   string
 }
 
+type SearchConfig struct {
+	Enabled        bool
+	APIKey         string
+	APIKeys        []string
+	MaxResults     int
+	TimeoutSeconds int
+}
+
 type OTPRateLimitConfig struct {
 	Requests              int
 	WindowSeconds         int
@@ -98,6 +106,7 @@ type AppConfig struct {
 	WhatsApp                 WhatsAppConfig
 	Social                   SocialConfig
 	AI                       AIConfig
+	Search                   SearchConfig
 	OTPRateLimit             OTPRateLimitConfig
 	AuthRateLimit            AuthRateLimitConfig
 	Midtrans                 MidtransConfig
@@ -157,6 +166,13 @@ func LoadAppConfig() AppConfig {
 			FallbackModel:    GetEnv("AI_FALLBACK_MODEL", ""),
 			FallbackBaseURL:  GetEnv("AI_FALLBACK_BASE_URL", ""),
 			FallbackAPIKey:   GetEnv("AI_FALLBACK_API_KEY", ""),
+		},
+		Search: SearchConfig{
+			Enabled:        envBool("TAVILY_ENABLED"),
+			APIKey:         firstNonEmptyEnv("TAVILY_API_KEY", "TAVILY_API_KEY_FALLBACK"),
+			APIKeys:        collectNonEmptyEnv("TAVILY_API_KEY", "TAVILY_API_KEY_FALLBACK"),
+			MaxResults:     envInt("TAVILY_MAX_RESULTS", 5),
+			TimeoutSeconds: envInt("TAVILY_TIMEOUT_SECONDS", 8),
 		},
 		OTPRateLimit: OTPRateLimitConfig{
 			Requests:              envInt("OTP_RATE_LIMIT_REQUESTS", 5),
@@ -406,6 +422,29 @@ func firstNonEmptyEnv(keys ...string) string {
 		}
 	}
 	return last
+}
+
+// collectNonEmptyEnv gathers values for the given env keys (in order), skipping
+// blanks and duplicates. Used for prioritized credential fallback lists such as
+// a primary + reserve Tavily API key.
+func collectNonEmptyEnv(keys ...string) []string {
+	out := make([]string, 0, len(keys))
+	seen := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		if strings.Contains(key, "://") {
+			continue
+		}
+		v := strings.TrimSpace(GetEnv(key, ""))
+		if v == "" {
+			continue
+		}
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
 }
 
 func corsAllowedOrigins() []string {

@@ -5,6 +5,7 @@ import (
 	"pleco-api/internal/cache"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
+	"pleco-api/internal/search"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +29,7 @@ type Module struct {
 	Handler *Handler
 }
 
-func BuildModule(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store) *Module {
-	handler := NewHandler(aiService, destRepo, eventRepo, cacheStore)
+func BuildModule(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store, searchClient *search.Client) *Module {
+	handler := NewHandler(aiService, destRepo, eventRepo, cacheStore, searchClient)
 	return &Module{Handler: handler}
 }

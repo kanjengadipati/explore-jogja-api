@@ -44,6 +44,7 @@ import (
 	"pleco-api/internal/modules/user"
 	midtransprovider "pleco-api/internal/providers/payment/midtrans"
 	"pleco-api/internal/scraper"
+	"pleco-api/internal/search"
 	"pleco-api/internal/services"
 
 	"gorm.io/gorm"
@@ -64,6 +65,18 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	if err != nil {
 		return err
 	}
+	searchClient := search.NewClient(search.Config{
+		Enabled:        cfg.Search.Enabled,
+		APIKey:         cfg.Search.APIKey,
+		APIKeys:        cfg.Search.APIKeys,
+		MaxResults:     cfg.Search.MaxResults,
+		TimeoutSeconds: cfg.Search.TimeoutSeconds,
+	})
+	if searchClient.Enabled() {
+		slog.Debug("tavily search client enabled", "keys", len(cfg.Search.APIKeys))
+	}
+	_ = searchClient
+
 	permissionModule := permission.BuildModule(db, cacheStore)
 	auditModule := audit.BuildModule(db, aiService)
 	roleModule := role.BuildModule(db, auditModule.Service, cacheStore)
@@ -93,7 +106,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	audit.SetupRoutes(api, auditModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	role.SetupRoutes(api, roleModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
-	destinationModule := destination.BuildModule(db, cacheStore, aiService)
+	destinationModule := destination.BuildModule(db, cacheStore, aiService, searchClient)
 	// Wire YouTube fetcher — breaks import cycle between destination and scraper packages
 	destination.YouTubeFetcher = scraper.FetchYouTubeVideoURL
 	destination.SetupRoutes(api, destinationModule.Handler, jwtService, permissionModule.Service)
@@ -162,7 +175,7 @@ func RegisterRoutes(router *gin.Engine, db *gorm.DB, cfg config.AppConfig, jwtSe
 	commission.SetupRoutes(api, commissionModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 	bonus.SetupRoutes(api, bonusModule.Handler, jwtService, permissionModule.Service, tokenVersionSrc)
 
-	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore)
+	touristModule := tourist.BuildModule(aiService, destinationModule.Repository, eventModule.Repository, cacheStore, searchClient)
 	tourist.SetupRoutes(api, touristModule.Handler)
 
 	tripsModule := trips.BuildModule(db)

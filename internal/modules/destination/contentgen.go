@@ -10,6 +10,7 @@ import (
 
 	"pleco-api/internal/ai"
 	"pleco-api/internal/httpx"
+	"pleco-api/internal/search"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -114,14 +115,19 @@ type ContentGenService struct {
 	DestRepo            Repository
 	ContentRepo         ContentGenRepository
 	AIService           *ai.Service
+	SearchClient        *search.Client
 	SimilarityThreshold float64
 }
 
-func NewContentGenService(destRepo Repository, contentRepo ContentGenRepository, aiService *ai.Service) *ContentGenService {
+func NewContentGenService(destRepo Repository, contentRepo ContentGenRepository, aiService *ai.Service, searchClient *search.Client) *ContentGenService {
+	if searchClient == nil {
+		searchClient = &search.Client{}
+	}
 	return &ContentGenService{
 		DestRepo:            destRepo,
 		ContentRepo:         contentRepo,
 		AIService:           aiService,
+		SearchClient:        searchClient,
 		SimilarityThreshold: 0.6,
 	}
 }
@@ -137,6 +143,16 @@ func (s *ContentGenService) Generate(ctx context.Context, externalID string, var
 	}
 
 	prompt := buildPrompt(dest, variant)
+
+	// Ground generation with a web search so the model reasons from real
+	// findings instead of fabricating facts/prices/hours. Fail-open: if search
+	// is unavailable, we proceed with the prompt as-is — never block generation.
+	researchQuery := researchQuery(dest)
+	researchContext := search.GroundedContext(ctx, s.SearchClient, researchQuery)
+	if researchContext != "" {
+		prompt.system += "\n\n" + researchContext
+	}
+
 	result, err := s.AIService.Generate(ctx, ai.GenerateInput{
 		SystemPrompt: prompt.system,
 		UserPrompt:   prompt.user,
@@ -233,7 +249,11 @@ func buildPrompt(d *Destination, variant string) builtPrompt {
 		"You are an expert bilingual (Bahasa Indonesia + English) tourism content writer for Yogyakarta.\n"+
 			"Destination: %s | Category: %s | Region: %s | Rating: %.1f (%d reviews)\n"+
 			"Existing description: %s\n"+
-			"Ticket price: %s | Opening hours: %s | Best time: %s",
+			"Ticket price: %s | Opening hours: %s | Best time: %s\n\n"+
+			"TONE & VARIETY:\n"+
+			"- Warm, conversational Indonesian — like a knowledgeable local friend giving a recommendation, not a government tourism brochure.\n"+
+			"- Avoid stiff formal phrases (\"menawarkan pengalaman tak terlupakan\", \"destinasi wisata yang menakjubkan\") unless earned by a specific concrete detail.\n"+
+			"- Do not open every destination with the same sentence pattern — vary: sometimes a fact, sometimes a sensory detail, sometimes a question.",
 		d.Name, d.Category, d.SubRegion, d.Rating, d.ReviewCount,
 		d.Description, d.TicketPrice, d.OpeningHours, d.BestTime,
 	)
@@ -320,6 +340,16 @@ func applyGeneratedContent(d *Destination, generated map[string]interface{}) {
 
 	// Auto-fill GoogleMapsURL from coordinates if not already set
 	AutoFillGoogleMapsURL(d)
+}
+
+// researchQuery builds a web-search query that grounds generation for this destination.
+func researchQuery(d *Destination) string {
+	q := d.Name
+	if d.Location != "" {
+		q += " " + d.Location
+	}
+	q += " wisata Yogyakarta"
+	return q
 }
 
 // ─── HTTP handler methods ─────────────────────────────────────────────────────

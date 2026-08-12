@@ -3,6 +3,7 @@ package destination
 import (
 	"pleco-api/internal/ai"
 	"pleco-api/internal/cache"
+	"pleco-api/internal/search"
 
 	"gorm.io/gorm"
 )
@@ -15,13 +16,13 @@ type Module struct {
 	LocationHandler    *LocationHandler
 }
 
-func BuildModule(db *gorm.DB, cacheStore cache.Store, aiService *ai.Service) *Module {
+func BuildModule(db *gorm.DB, cacheStore cache.Store, aiService *ai.Service, searchClient *search.Client) *Module {
 	repository := NewRepository(db)
 	service := NewService(repository)
 	handler := NewHandler(service, cacheStore)
 
 	contentRepo := NewContentGenRepository(db)
-	contentSvc := NewContentGenService(repository, contentRepo, aiService)
+	contentSvc := NewContentGenService(repository, contentRepo, aiService, searchClient)
 	contentHandler := NewContentGenHandler(contentSvc)
 
 	locationHandler := NewLocationHandler(handler, service, repository)

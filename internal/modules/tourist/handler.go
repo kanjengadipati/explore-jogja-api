@@ -16,6 +16,7 @@ import (
 	"pleco-api/internal/httpx"
 	"pleco-api/internal/modules/destination"
 	"pleco-api/internal/modules/event"
+	"pleco-api/internal/search"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,14 +26,19 @@ type Handler struct {
 	DestinationRepo destination.Repository
 	EventRepo       event.Repository
 	Cache           cache.Store
+	SearchClient    *search.Client
 }
 
-func NewHandler(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store) *Handler {
+func NewHandler(aiService *ai.Service, destRepo destination.Repository, eventRepo event.Repository, cacheStore cache.Store, searchClient *search.Client) *Handler {
+	if searchClient == nil {
+		searchClient = &search.Client{}
+	}
 	return &Handler{
 		AIService:       aiService,
 		DestinationRepo: destRepo,
 		EventRepo:       eventRepo,
 		Cache:           cacheStore,
+		SearchClient:    searchClient,
 	}
 }
 
@@ -887,28 +893,33 @@ func (h *Handler) GenerateDestination(c *gin.Context) {
 		return
 	}
 
-	systemInstruction := `You are an expert tourism content writer and researcher for Yogyakarta, Indonesia.
-Your task is to research the given destination on the internet and generate comprehensive, accurate, and editorial-quality content. You must determine the correct category and region yourself through web research — do not rely on any user-provided values.
+	systemInstruction := `You are an expert tourism content writer for Yogyakarta, Indonesia.
+Your task is to generate comprehensive, editorial-quality content for the given destination.
 
-RESEARCH REQUIREMENTS:
-- Use web search to find accurate, up-to-date information about the destination
-- Verify ticket prices, opening hours, location, and coordinates
-- Determine the correct category from: Temple, Beach, Nature, Heritage, Cultural, Culinary, Shopping
-- Determine the correct administrative region. If the destination is inside DIY use: Sleman, Bantul, Yogyakarta, Gunungkidul, or Kulon Progo. If it's outside DIY (but still relevant to Yogya tourism, e.g. Borobudur in Magelang), use "Near Yogyakarta"
+GROUNDED RESEARCH:
+You may receive a "GROUNDED RESEARCH CONTEXT" block containing verified web-search findings about the destination. You MUST only treat as factual the information present in that context. You MUST NOT fabricate ticket prices, opening hours, coordinates, ratings, or review counts that are not stated there. For any fact not covered by the research context, omit it or leave the field empty rather than inventing it.
 
 CONTENT QUALITY:
-- Write compelling, editorial-quality promotional copy
 - The "story" field should read like a feature article — evocative, narrative-driven, and persuasive
 - The "tagline" must be a short, memorable phrase (5-8 words)
 - The "description" should be informative yet inviting (2-3 paragraphs)
+- Vary your opening sentence between destinations. Avoid generic template phrases.
 - Generate SEO-optimized titles, descriptions, and keywords for both Indonesian and English audiences
+- Determine the correct category from: Temple, Beach, Nature, Heritage, Cultural, Culinary, Shopping
+- Determine the correct administrative region: Sleman, Bantul, Yogyakarta, Gunungkidul, or Kulon Progo (or "Near Yogyakarta" for non-DIY areas like Borobudur)
+
+TONE & VARIETY:
+- Warm, conversational Indonesian — like a knowledgeable local friend giving a recommendation, not a government tourism brochure.
+- Avoid stiff formal phrases ("menawarkan pengalaman tak terlupakan", "destinasi wisata yang menakjubkan") unless earned by a specific concrete detail.
+- Do not open every destination with the same sentence pattern — vary: sometimes a fact, sometimes a sensory detail, sometimes a question.
+- For "story_en"/"description_en": same warmth in English, avoid stock phrases like "unforgettable experience" unless followed by a concrete detail.
 
 Return ONLY valid JSON matching this schema:
 {
   "name": "Corrected official destination name in Indonesian (use the name the user gave, only fix spelling if needed)",
   "name_en": "English version of the destination name",
   "category": "Factually correct category from: Temple, Beach, Nature, Heritage, Cultural, Culinary, Shopping",
-  "sub_region": "One of: Sleman, Bantul, Yogyakarta, Gunungkidul, Kulon Progo, or 'Near Yogyakarta' for non-DIY areas",
+  "sub_region": "One of: Sleman, Bantul, Yogyakarta, Gunungkidul, Kulon Progo, or 'Near Yogyakarta'",
   "tagline": "Short memorable promotional phrase in Indonesian (5-8 words)",
   "tagline_en": "English version of the tagline",
   "location": "Full street address or area description",
@@ -916,14 +927,14 @@ Return ONLY valid JSON matching this schema:
   "description_en": "English version of description",
   "story": "Editorial/feature article in Indonesian about the destination — evocative, narrative-driven, persuasive",
   "story_en": "English version of the editorial story",
-  "ticket_price": "Ticket price information with currency",
-  "opening_hours": "Opening hours",
+  "ticket_price": "Ticket price information with currency, or empty string if unknown",
+  "opening_hours": "Opening hours, or empty string if unknown",
   "best_time": "Best time to visit in Indonesian",
   "best_time_en": "Best time to visit in English",
-  "latitude": "Decimal latitude coordinate",
-  "longitude": "Decimal longitude coordinate",
-  "rating": "Average rating from Google Reviews (1.0-5.0, based on real data)",
-  "review_count": "Total number of Google Reviews (based on real data)",
+  "latitude": "Decimal latitude coordinate, or empty string if unknown",
+  "longitude": "Decimal longitude coordinate, or empty string if unknown",
+  "rating": "Average rating as a number string (e.g. '4.3'), or empty string if unknown — NOT invented",
+  "review_count": "Total number of reviews as a number string (e.g. '842'), or empty string if unknown — NOT invented",
   "seo_title": "SEO title in Indonesian (max 60 chars)",
   "seo_title_en": "SEO title in English (max 60 chars)",
   "seo_description": "Meta description in Indonesian (max 160 chars)",
@@ -936,10 +947,20 @@ Return ONLY valid JSON matching this schema:
   "travel_tips_en": ["same tips in English"]
 }`
 
+	// Ground generation with a web search so the model reasons from real
+	// findings instead of fabricating facts/prices/hours/ratings. Fail-open:
+	// a search error simply means the prompt is sent ungrounded.
+	researchQuery := req.DestinationName + " wisata Yogyakarta"
+	researchContext := search.GroundedContext(c.Request.Context(), h.SearchClient, researchQuery)
+
 	userPrompt := fmt.Sprintf(
-		"Research and generate comprehensive destination content for '%s' in Yogyakarta, Indonesia. Determine the correct category and region through web research. Use web search to find accurate practical information and write editorial-quality promotional content.",
+		"Generate comprehensive destination content for '%s' in Yogyakarta, Indonesia. "+
+			"Only use the grounded research context appended above if present; do not invent facts.",
 		req.DestinationName,
 	)
+	if researchContext != "" {
+		userPrompt = researchContext + "\n\n" + userPrompt
+	}
 
 	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
 		SystemPrompt: systemInstruction,
@@ -948,6 +969,7 @@ Return ONLY valid JSON matching this schema:
 		MaxTokens:    2000,
 	})
 	if err != nil {
+		log.Printf("[ai-fallback] GenerateDestination: AI error (%v) for '%s' — offline fallback", err, req.DestinationName)
 		httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 		return
 	}
@@ -957,6 +979,7 @@ Return ONLY valid JSON matching this schema:
 		// Relaxed parse: AI may return numbers for lat/lng/rating/review_count.
 		var raw map[string]interface{}
 		if uerr := json.Unmarshal([]byte(result.Text), &raw); uerr != nil {
+			log.Printf("[ai-fallback] GenerateDestination: parse failure for '%s' — offline fallback", req.DestinationName)
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 			return
 		}
@@ -969,25 +992,18 @@ Return ONLY valid JSON matching this schema:
 		}
 		norm, _ := json.Marshal(raw)
 		if uerr := json.Unmarshal(norm, &parsed); uerr != nil {
+			log.Printf("[ai-fallback] GenerateDestination: relaxed parse failure for '%s' — offline fallback", req.DestinationName)
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region), nil)
 			return
 		}
 	}
 
-	// Per-field fallback so coordinates (and social proof) are never left empty.
-	fb := h.offlineGenerateDestinationResponse(req.DestinationName, req.Category, req.Region)
-	if parsed.Latitude == "" {
-		parsed.Latitude = fb.Latitude
-	}
-	if parsed.Longitude == "" {
-		parsed.Longitude = fb.Longitude
-	}
-	if parsed.Rating == "" {
-		parsed.Rating = fb.Rating
-	}
-	if parsed.ReviewCount == "" {
-		parsed.ReviewCount = fb.ReviewCount
-	}
+	// IMPORTANT: do NOT backfill missing coordinates / ratings from the offline
+	// template (root cause #3 — hardcoded -7.7956,110.3695 for every destination,
+	// plus fake 4.5/1000). Those facts must come from real research or be filled
+	// manually by an admin before publishing. Leaving them empty lets the
+	// quality gate (factDensityScore) flag the destination instead of silently
+	// publishing fabricated data.
 
 	httpx.Success(c, 200, "Destination content generated", parsed, nil)
 }
@@ -1004,17 +1020,19 @@ func (h *Handler) GenerateEvent(c *gin.Context) {
 		return
 	}
 
-	systemInstruction := fmt.Sprintf(`You are an expert event content writer for Yogyakarta tourism.
-Your task is to generate compelling, accurate, and editorial-quality content for the given event in both Indonesian and English.
+  systemInstruction := fmt.Sprintf(`You are an expert event content writer for Yogyakarta tourism.
+Your task is to generate compelling, editorial-quality content for the given event in both Indonesian and English.
+You may receive a "GROUNDED RESEARCH CONTEXT" block. You MUST only treat as factual the information in that context. Do NOT invent dates, organizers, ticket prices, or capacity beyond what it states; if a fact is unknown, leave the field empty rather than guessing.
 Today's date is %s.
 
 CRITICAL DATE RULES:
-- You MUST research and find the REAL, VERIFIED dates for this event from your training knowledge.
-- For well-known annual events (Sekaten, Grebeg Maulud, Prambanan Jazz, etc.) you should know the typical month/period they are held. Use that knowledge to provide the next upcoming occurrence after today.
+- Use the next upcoming occurrence after today for well-known annual events (Sekaten, Grebeg Maulud, Prambanan Jazz, etc.).
 - If you genuinely do not know the real dates for this specific event, return empty strings "" for start_date and end_date. DO NOT guess or invent dates.
 - NEVER use today's date as the event date unless the event actually happens today.
-- NEVER copy today's date just because it is available to you.
-- A date like "2026-08-10" or "2026-08-11" for an event that is clearly scheduled for a different month is WRONG and unacceptable.
+- A date like "2026-08-10" for an event clearly scheduled for a different month is WRONG and unacceptable.
+
+CONTENT VARIETY:
+- Vary the structure and opening of each event description; avoid repeating the same template phrase across events.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -1022,13 +1040,13 @@ Return ONLY valid JSON matching this schema:
   "title_en": "English version of the event title",
   "description": "Editorial description in Indonesian (compelling, 1-2 paragraphs)",
   "description_en": "English version of the description",
-  "organizer": "Organizer name",
-  "ticket_price": "Ticket price information",
+  "organizer": "Organizer name, or empty string if unknown",
+  "ticket_price": "Ticket price information, or empty string if unknown",
   "start_date": "Real verified start date in YYYY-MM-DD format, or empty string if unknown",
   "end_date": "Real verified end date in YYYY-MM-DD format, or empty string if unknown",
-  "max_attendees": "Estimated max attendees as a plain number string (e.g. '500')",
-  "latitude": "Decimal latitude coordinate of the venue",
-  "longitude": "Decimal longitude coordinate of the venue",
+  "max_attendees": "Estimated max attendees as a plain number string (e.g. '500'), or empty string if unknown",
+  "latitude": "Decimal latitude coordinate of the venue, or empty string if unknown",
+  "longitude": "Decimal longitude coordinate of the venue, or empty string if unknown",
   "seo_title": "SEO title in Indonesian (max 60 chars)",
   "seo_title_en": "SEO title in English (max 60 chars)",
   "seo_description": "Meta description in Indonesian (max 160 chars)",
@@ -1037,11 +1055,21 @@ Return ONLY valid JSON matching this schema:
   "seo_keywords_en": "Comma-separated keywords in English"
 }`, time.Now().Format("2006-01-02"))
 
+	// Ground generation with a web search. Fail-open: empty context is fine.
+	researchQuery := req.EventTitle + " jogja"
+	if req.Location != "" {
+		researchQuery = req.EventTitle + " " + req.Location + " jogja"
+	}
+	researchContext := search.GroundedContext(c.Request.Context(), h.SearchClient, researchQuery)
+
 	userPrompt := fmt.Sprintf(
-		"Research and generate comprehensive event content for '%s' held in %s, category: %s. "+
-			"Find the real verified dates from your knowledge. If you are not certain about the exact dates, leave start_date and end_date as empty strings rather than guessing.",
+		"Generate comprehensive event content for '%s' held in %s, category: %s. "+
+			"Use only the grounded research context above if present. For dates, use your training knowledge of well-known annual events; if uncertain, leave start_date and end_date as empty strings rather than guessing.",
 		req.EventTitle, req.Location, req.Category,
 	)
+	if researchContext != "" {
+		userPrompt = researchContext + "\n\n" + userPrompt
+	}
 
 	result, err := h.AIService.Generate(context.Background(), ai.GenerateInput{
 		SystemPrompt: systemInstruction,
@@ -1050,6 +1078,7 @@ Return ONLY valid JSON matching this schema:
 		MaxTokens:    1000,
 	})
 	if err != nil {
+		log.Printf("[ai-fallback] GenerateEvent: AI error (%v) for '%s' — offline fallback", err, req.EventTitle)
 		httpx.Success(c, 200, "AI error, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
 		return
 	}
@@ -1059,6 +1088,7 @@ Return ONLY valid JSON matching this schema:
 		// Relaxed parse: AI may return numbers for max_attendees/latitude/longitude.
 		var raw map[string]interface{}
 		if uerr := json.Unmarshal([]byte(result.Text), &raw); uerr != nil {
+			log.Printf("[ai-fallback] GenerateEvent: parse failure for '%s' — offline fallback", req.EventTitle)
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
 			return
 		}
@@ -1071,10 +1101,15 @@ Return ONLY valid JSON matching this schema:
 		}
 		norm, _ := json.Marshal(raw)
 		if uerr := json.Unmarshal(norm, &parsed); uerr != nil {
+			log.Printf("[ai-fallback] GenerateEvent: relaxed parse failure for '%s' — offline fallback", req.EventTitle)
 			httpx.Success(c, 200, "AI response parse failure, using offline fallback", h.offlineGenerateEventResponse(req.EventTitle), nil)
 			return
 		}
 	}
+
+	// Do NOT backfill missing coordinates/max_attendees from the offline template
+	// (root cause #3). Leave them empty so the quality gate can flag the item
+	// rather than silently publishing fabricated data.
 
 	httpx.Success(c, 200, "Event content generated", parsed, nil)
 }
@@ -1086,12 +1121,12 @@ func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventRes
 		Description:      fmt.Sprintf("Bergabunglah dalam event menarik '%s' yang akan diselenggarakan. Jangan lewatkan kesempatan untuk merasakan pengalaman tak terlupakan.", title),
 		DescriptionEn:    fmt.Sprintf("Join the exciting event '%s'. Don't miss out on an unforgettable experience.", title),
 		Organizer:        "Panitia Event",
-		TicketPrice:      "Hubungi penyelenggara",
+		TicketPrice:      "",
 		StartDate:        "",
 		EndDate:          "",
-		MaxAttendees:     "500",
-		Latitude:         "-7.7956",
-		Longitude:        "110.3695",
+		MaxAttendees:     "",
+		Latitude:         "",
+		Longitude:        "",
 		SeoTitle:         title + " | JogjaGem",
 		SeoTitleEn:       title + " | JogjaGem",
 		SeoDescription:   "Informasi terbaru mengenai " + title + ". Dapatkan detail lokasi, jadwal, dan harga tiket di sini.",
@@ -1115,25 +1150,25 @@ func (h *Handler) offlineGenerateDestinationResponse(name, category, region stri
 		NameEn:           name,
 		Category:         cat,
 		SubRegion:        reg,
-		Tagline:          fmt.Sprintf("Discover the Beauty of %s", name),
+		Tagline:          fmt.Sprintf("Temukan Keindahan %s", name),
 		TaglineEn:        fmt.Sprintf("Discover the Beauty of %s", name),
 		Location:         fmt.Sprintf("%s, Daerah Istimewa Yogyakarta", name),
 		Description:      fmt.Sprintf("%s adalah destinasi wisata %s yang menakjubkan di %s, Yogyakarta. Tempat ini menawarkan pengalaman yang tak terlupakan bagi setiap pengunjung dengan keindahan alam dan nilai budayanya yang kaya.", name, cat, reg),
 		DescriptionEn:    fmt.Sprintf("%s is a breathtaking %s destination in %s, Yogyakarta. This place offers an unforgettable experience for every visitor with its natural beauty and rich cultural value.", name, cat, reg),
 		Story:            fmt.Sprintf("Terletak di %s yang asri, %s menyimpan pesona yang memikat hati setiap pengunjung. Saat pertama kali melangkah, Anda akan disambut oleh suasana yang tenang dan pemandangan yang memanjakan mata. Tempat ini bukan sekadar destinasi wisata, melainkan sebuah perjalanan yang membawa Anda lebih dekat dengan kekayaan budaya dan alam Yogyakarta.", reg, name),
 		StoryEn:          fmt.Sprintf("Nestled in the scenic %s, %s captivates the heart of every visitor. As you step in, you are greeted by a tranquil atmosphere and breathtaking views. This is not just a tourism destination, but a journey that brings you closer to Yogyakarta's rich culture and nature.", reg, name),
-		TicketPrice:      "Rp 50,000 – Rp 100,000",
-		OpeningHours:     "08:00 – 17:00",
+		TicketPrice:      "",
+		OpeningHours:     "",
 		BestTime:         "Pagi hari atau sore menjelang matahari terbenam",
 		BestTimeEn:       "Early morning or late afternoon near sunset",
-		Latitude:         "-7.7956",
-		Longitude:        "110.3695",
+		Latitude:         "",
+		Longitude:        "",
 		SeoTitle:         fmt.Sprintf("%s - Wisata %s di %s | Jogjagem", name, cat, reg),
 		SeoTitleEn:       fmt.Sprintf("%s - %s Tourism in %s | Jogjagem", name, cat, reg),
-		SeoDescription:   fmt.Sprintf("Kunjungi %s, destinasi %s terbaik di %s. Nikmati pengalaman wisata yang tak terlupakan dengan harga tiket terjangkau.", name, cat, reg),
-		SeoDescriptionEn: fmt.Sprintf("Visit %s, the best %s destination in %s. Enjoy an unforgettable tourism experience with affordable ticket prices.", name, cat, reg),
-		Rating:           "4.5",
-		ReviewCount:      "1000",
+		SeoDescription:   fmt.Sprintf("Kunjungi %s, destinasi %s terbaik di %s. Nikmati pengalaman wisata yang tak terlupakan.", name, cat, reg),
+		SeoDescriptionEn: fmt.Sprintf("Visit %s, the best %s destination in %s. Enjoy an unforgettable tourism experience.", name, cat, reg),
+		Rating:           "",
+		ReviewCount:      "",
 		SeoKeywords:      fmt.Sprintf("%s, %s, %s, Wisata Jogja, Destinasi Wisata", name, cat, reg),
 		SeoKeywordsEn:    fmt.Sprintf("%s, %s, %s, Jogja Tourism, Tourist Destination", name, cat, reg),
 	}
