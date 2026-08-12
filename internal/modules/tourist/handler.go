@@ -150,6 +150,11 @@ type AIGenerateEventResponse struct {
 	SeoDescriptionEn string `json:"seo_description_en"`
 	SeoKeywords      string `json:"seo_keywords"`
 	SeoKeywordsEn    string `json:"seo_keywords_en"`
+
+	// FactDensityScore counts how many key factual fields are populated,
+	// mirroring the destination fact-density gate so the event response is
+	// scored before it reaches the admin frontend for review.
+	FactDensityScore int `json:"fact_density_score"`
 }
 
 type AIImageSearchRequest struct {
@@ -1085,7 +1090,7 @@ Return ONLY valid JSON matching this schema:
 }`, time.Now().Format("2006-01-02"))
 
 	// Ground generation with a web search. Fail-open: empty context is fine.
-	researchQuery := search.ResearchQuery(req.EventTitle, req.Location)
+	researchQuery := search.ResearchQueryForEvent(req.EventTitle, req.Location)
 	researchContext := search.GroundedContext(c.Request.Context(), h.SearchClient, researchQuery)
 
 	baseUserPrompt := fmt.Sprintf(
@@ -1136,6 +1141,10 @@ Return ONLY valid JSON matching this schema:
 	// Do NOT backfill missing coordinates/max_attendees from the offline template
 	// (root cause #3). Leave them empty so the quality gate can flag the item
 	// rather than silently publishing fabricated data.
+
+	// Compute fact-density score so the admin frontend can flag events that
+	// came back thin on grounded facts (mirrors destination content-gen scoring).
+	parsed.FactDensityScore = eventFactDensityScore(&parsed)
 
 	httpx.Success(c, 200, "Event content generated", parsed, nil)
 }
@@ -1203,7 +1212,7 @@ func parseEventPayload(text string, parsed *AIGenerateEventResponse) bool {
 }
 
 func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventResponse {
-	return &AIGenerateEventResponse{
+	resp := &AIGenerateEventResponse{
 		Title:            title,
 		TitleEn:          title,
 		Description:      fmt.Sprintf("Event '%s' akan diselenggarakan di Yogyakarta. Simak jadwal, lokasi, dan informasi tiket melalui kanal resmi panitia.", title),
@@ -1222,6 +1231,55 @@ func (h *Handler) offlineGenerateEventResponse(title string) *AIGenerateEventRes
 		SeoKeywords:      title + ", event jogja, wisata jogja",
 		SeoKeywordsEn:    title + ", jogja event, jogja tourism",
 	}
+	resp.FactDensityScore = eventFactDensityScore(resp)
+	return resp
+}
+
+// eventFactDensityScore counts how many key factual fields are populated in an
+// AI-generated event response. Mirrors destination.factDensityScore so the event
+// generation result carries the same quality signal as destinations.
+func eventFactDensityScore(e *AIGenerateEventResponse) int {
+	score := 0
+	if strings.TrimSpace(e.Title) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.TitleEn) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.Organizer) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.TicketPrice) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.StartDate) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.EndDate) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.MaxAttendees) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.Latitude) != "" && strings.TrimSpace(e.Longitude) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.Description) != "" && len(strings.TrimSpace(e.Description)) >= 200 {
+		score++
+	}
+	if strings.TrimSpace(e.DescriptionEn) != "" && len(strings.TrimSpace(e.DescriptionEn)) >= 200 {
+		score++
+	}
+	if strings.TrimSpace(e.SeoTitle) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.SeoDescription) != "" {
+		score++
+	}
+	if strings.TrimSpace(e.SeoKeywords) != "" {
+		score++
+	}
+	return score
 }
 
 func (h *Handler) offlineGenerateDestinationResponse(name, category, region string) *AIGenerateDestinationResponse {

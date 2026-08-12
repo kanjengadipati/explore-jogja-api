@@ -293,6 +293,23 @@ func ResearchQuery(name, location string) string {
 	return b.String()
 }
 
+// ResearchQueryForEvent builds a fact-oriented web-search query for grounding
+// content about an event. Unlike ResearchQuery (for places), it biases toward
+// event-specific concrete facts: dates, venue, ticket prices, organizer,
+// attendee capacity, and location coordinates.
+func ResearchQueryForEvent(title, location string) string {
+	var b strings.Builder
+	if n := strings.TrimSpace(title); n != "" {
+		b.WriteString(n)
+	}
+	if loc := strings.TrimSpace(location); loc != "" {
+		b.WriteString(" ")
+		b.WriteString(loc)
+	}
+	b.WriteString(" event jadwal tanggal tiket harga organizer kapasitas penonton venue Yogyakarta")
+	return b.String()
+}
+
 type tavilyError struct {
 	status int
 	body   string
