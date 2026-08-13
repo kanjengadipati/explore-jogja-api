@@ -1,9 +1,12 @@
 package event
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -64,4 +67,57 @@ type Event struct {
 	// completeness. Mirrors destination.ContentScore (see internal/modules/destination/quality.go).
 	ContentScore   int    `gorm:"default:0" json:"content_score"`
 	ContentVerdict string `gorm:"default:''" json:"content_verdict"` // EXCELLENT | GOOD | NEEDS WORK
+}
+
+// UnmarshalJSON accepts latitude/longitude as either a JSON number or a
+// JSON string. The admin dashboard submits coordinates as strings (e.g.
+// "-7.7928"), which encoding/json normally rejects for a float64 field —
+// that surfaced as a 500 on create. Both forms are coerced to float64.
+func (e *Event) UnmarshalJSON(data []byte) error {
+	type EventAlias Event
+	var aux struct {
+		EventAlias
+		Latitude  json.RawMessage `json:"latitude"`
+		Longitude json.RawMessage `json:"longitude"`
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*e = Event(aux.EventAlias)
+
+	var err error
+	if e.Latitude, err = parseFlexibleFloat(aux.Latitude, "latitude"); err != nil {
+		return err
+	}
+	if e.Longitude, err = parseFlexibleFloat(aux.Longitude, "longitude"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func parseFlexibleFloat(raw json.RawMessage, field string) (float64, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return 0, nil
+	}
+	if trimmed[0] == '"' {
+		var s string
+		if err := json.Unmarshal(trimmed, &s); err != nil {
+			return 0, fmt.Errorf("%s: %w", field, err)
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return 0, nil
+		}
+		v, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", field, err)
+		}
+		return v, nil
+	}
+	var v float64
+	if err := json.Unmarshal(trimmed, &v); err != nil {
+		return 0, fmt.Errorf("%s: %w", field, err)
+	}
+	return v, nil
 }

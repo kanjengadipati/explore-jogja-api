@@ -16,6 +16,10 @@ func SetupRoutes(api *gin.RouterGroup, handler *Handler, jwtService *services.JW
 	protected := events.Group("")
 	protected.Use(middleware.AuthMiddleware(jwtService), middleware.RequirePermission(permSvc, "event.manage"))
 	protected.POST("", handler.Create)
+	// Dashboard compatibility: the admin UI posts create payloads to
+	// PUT /events/create. Route it to the create handler (must be declared
+	// before the /:id update route).
+	protected.PUT("/create", handler.Create)
 	protected.PUT("/:id", handler.Update)
 	protected.DELETE("/:id", handler.Delete)
 }
