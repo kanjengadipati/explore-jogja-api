@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"pleco-api/internal/domain"
@@ -39,9 +40,13 @@ func isValidDate(s string) bool {
 }
 
 // parseCoord parses a nullable coordinate string, returning a 400 API error
-// when the value is present but not a valid float.
+// when the value is present but not a valid float. Empty and whitespace-only
+// strings are treated as "not set" (0) so the field stays optional.
 func parseCoord(value *string, field string) (float64, error) {
 	if value == nil {
+		return 0, nil
+	}
+	if strings.TrimSpace(*value) == "" {
 		return 0, nil
 	}
 	v, err := strconv.ParseFloat(*value, 64)

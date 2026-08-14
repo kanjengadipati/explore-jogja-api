@@ -5,6 +5,39 @@ import (
 	"testing"
 )
 
+func TestParseCoord(t *testing.T) {
+	str := func(s string) *string { return &s }
+	cases := []struct {
+		name    string
+		input   *string
+		want    float64
+		wantErr bool
+	}{
+		{name: "nil", input: nil, want: 0},
+		{name: "numeric", input: str("-7.7928"), want: -7.7928},
+		{name: "empty string", input: str(""), want: 0},
+		{name: "whitespace", input: str("   "), want: 0},
+		{name: "invalid", input: str("abc"), wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseCoord(tc.input, "latitude")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("parseCoord = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestEventUnmarshalJSONCoordinates(t *testing.T) {
 	cases := []struct {
 		name     string
