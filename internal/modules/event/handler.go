@@ -3,6 +3,7 @@ package event
 import (
 	"sort"
 	"strings"
+	"time"
 
 	"pleco-api/internal/cache"
 	"pleco-api/internal/httpx"
@@ -62,8 +63,10 @@ func (h *Handler) GetAll(c *gin.Context) {
 			allResponses[i] = e.ToResponse(locale, trendingIDs)
 		}
 
-		// Sort by badge priority: trending (0), populer (1), terbatas (2), akan_datang (3), others (4)
-		// Within the same badge, sort by StartDate DESC (newest events first), then ID ASC.
+		// Sort by event lifecycle relative to today: active (0) → upcoming (1) →
+		// completed (2) → unknown/no-date (3). Within each group events nearest
+		// to today get priority; badge priority is the final tiebreaker.
+		today := time.Now().In(time.FixedZone("WIB", 7*3600)).Format("2006-01-02")
 		badgeRank := func(badge string) int {
 			switch badge {
 			case "trending":
@@ -79,14 +82,40 @@ func (h *Handler) GetAll(c *gin.Context) {
 			}
 		}
 		sort.SliceStable(allResponses, func(i, j int) bool {
-			ri, rj := badgeRank(allResponses[i].Badge), badgeRank(allResponses[j].Badge)
+			a, b := allResponses[i], allResponses[j]
+			ra, rb := eventStatusRank(a.StartDate, a.EndDate, today), eventStatusRank(b.StartDate, b.EndDate, today)
+			if ra != rb {
+				return ra < rb
+			}
+			// Near-date priority within each lifecycle group.
+			switch ra {
+			case 0: // active: least time left first
+				if a.EndDate != b.EndDate {
+					return a.EndDate < b.EndDate
+				}
+				if a.StartDate != b.StartDate {
+					return a.StartDate > b.StartDate
+				}
+			case 1: // upcoming: nearest start first
+				if a.StartDate != b.StartDate {
+					return a.StartDate < b.StartDate
+				}
+				if a.EndDate != b.EndDate {
+					return a.EndDate < b.EndDate
+				}
+			case 2: // completed: most recently ended first
+				if a.EndDate != b.EndDate {
+					return a.EndDate > b.EndDate
+				}
+				if a.StartDate != b.StartDate {
+					return a.StartDate > b.StartDate
+				}
+			}
+			ri, rj := badgeRank(a.Badge), badgeRank(b.Badge)
 			if ri != rj {
 				return ri < rj
 			}
-			if allResponses[i].StartDate != allResponses[j].StartDate {
-				return allResponses[i].StartDate > allResponses[j].StartDate
-			}
-			return allResponses[i].ID < allResponses[j].ID
+			return a.ID < b.ID
 		})
 
 		_ = h.Cache.SetJSON(c.Request.Context(), cacheKey, allResponses, cache.TTLEvents)
@@ -237,4 +266,31 @@ func (h *Handler) Delete(c *gin.Context) {
 	_ = h.Cache.DeletePrefix(ctx, cache.KeyEventsIDAllPrefix)
 
 	httpx.Success(c, 200, "Event deleted", nil, nil)
+}
+
+// eventStatusRank classifies an event relative to today using its date window:
+//
+//	0 = active   (start <= today <= end)
+//	1 = upcoming (start > today)
+//	2 = completed (end < today)
+//	3 = unknown   (no usable start date)
+//
+// Dates are YYYY-MM-DD strings so plain string comparison works.
+func eventStatusRank(start, end, today string) int {
+	if strings.TrimSpace(start) == "" {
+		return 3
+	}
+	if strings.TrimSpace(end) == "" {
+		if start <= today {
+			return 0 // started and no end date → assume still ongoing
+		}
+		return 1 // not started yet → upcoming
+	}
+	if start <= today && end >= today {
+		return 0
+	}
+	if start > today {
+		return 1
+	}
+	return 2
 }

@@ -78,3 +78,28 @@ func TestEventUnmarshalJSONCoordinates(t *testing.T) {
 		})
 	}
 }
+
+func TestEventStatusRank(t *testing.T) {
+	cases := []struct {
+		name  string
+		start string
+		end   string
+		today string
+		want  int
+	}{
+		{"active mid-window", "2026-08-01", "2026-08-31", "2026-08-14", 0},
+		{"active starting today", "2026-08-14", "2026-08-16", "2026-08-14", 0},
+		{"active ongoing no end", "2026-08-01", "", "2026-08-14", 0},
+		{"upcoming tomorrow", "2026-08-15", "2026-08-16", "2026-08-14", 1},
+		{"upcoming far", "2027-07-02", "2027-07-04", "2026-08-14", 1},
+		{"completed yesterday", "2026-08-10", "2026-08-13", "2026-08-14", 2},
+		{"completed ends today is active", "2026-08-10", "2026-08-14", "2026-08-14", 0},
+		{"no start date", "", "2026-08-14", "2026-08-14", 3},
+		{"no start no end", "", "", "2026-08-14", 3},
+	}
+	for _, tc := range cases {
+		if got := eventStatusRank(tc.start, tc.end, tc.today); got != tc.want {
+			t.Errorf("%s: eventStatusRank(%q,%q,%q)=%d want %d", tc.name, tc.start, tc.end, tc.today, got, tc.want)
+		}
+	}
+}
