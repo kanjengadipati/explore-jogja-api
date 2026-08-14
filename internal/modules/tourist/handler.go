@@ -192,6 +192,9 @@ func (h *Handler) Trending(c *gin.Context) {
 	if h.Cache != nil {
 		var cached AITrendingResponse
 		if ok, err := h.Cache.GetJSON(ctx, cacheKey, &cached); err == nil && ok {
+			// Backfill the derived event-ID key when missing so freshly deployed
+			// badge logic doesn't have to wait out the 7-day response TTL.
+			backfillTrendingEventIDs(h.Cache, locale, cached)
 			httpx.Success(c, 200, "Trending picks loaded (cached)", cached, nil)
 			return
 		}
@@ -322,17 +325,40 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, langInst
 		// 1. Full response — used by this endpoint on subsequent calls
 		_ = h.Cache.SetJSON(ctx, cacheKey, parsed, cache.TTLAITrending)
 
-		// 2. Just the destination IDs — used by badge logic in destination handler
-		var trendingDestIDs []string
-		for _, item := range parsed.Items {
-			if item.Type == "destination" {
-				trendingDestIDs = append(trendingDestIDs, item.ID)
-			}
-		}
-		_ = h.Cache.SetJSON(ctx, cache.KeyAITrendingIDs(locale), trendingDestIDs, cache.TTLAITrending)
+		// 2. Derived destination + event ID sets — used by badge logic in the
+		//    destination and event handlers
+		persistTrendingIDs(h.Cache, locale, parsed)
 	}
 
 	httpx.Success(c, 200, "Trending picks loaded", parsed, nil)
+}
+
+// persistTrendingIDs writes the derived destination/event external-ID sets that
+// the destination and event badge logic read (weekly TTL), keeping them in sync
+// with the full trending response.
+func persistTrendingIDs(cacheStore cache.Store, locale string, parsed AITrendingResponse) {
+	var destIDs, eventIDs []string
+	for _, item := range parsed.Items {
+		if item.Type == "destination" {
+			destIDs = append(destIDs, item.ID)
+		} else if item.Type == "event" {
+			eventIDs = append(eventIDs, item.ID)
+		}
+	}
+	_ = cacheStore.SetJSON(context.Background(), cache.KeyAITrendingIDs(locale), destIDs, cache.TTLAITrending)
+	_ = cacheStore.SetJSON(context.Background(), cache.KeyAITrendingEventIDs(locale), eventIDs, cache.TTLAITrending)
+}
+
+// backfillTrendingEventIDs writes the event-ID set derived from a cached
+// trending response when the key is missing. Called on the cache-hit path so
+// the event badge key gets populated without regenerating the AI response.
+func backfillTrendingEventIDs(cacheStore cache.Store, locale string, cached AITrendingResponse) {
+	ctx := context.Background()
+	var existing []string
+	if ok, err := cacheStore.GetJSON(ctx, cache.KeyAITrendingEventIDs(locale), &existing); err == nil && ok && len(existing) > 0 {
+		return
+	}
+	persistTrendingIDs(cacheStore, locale, cached)
 }
 
 // resolveLocale reads Accept-Language header and returns "id" (default) or "en".

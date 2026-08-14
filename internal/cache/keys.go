@@ -12,9 +12,16 @@ func KeyAITrendingResponse(locale string) string {
 
 // KeyAITrendingIDs returns a locale-scoped cache key for the destination
 // external-IDs elected as trending. Written alongside KeyAITrendingResponse
-// and read by the destination/event badge logic.
+// and read by the destination badge logic.
 func KeyAITrendingIDs(locale string) string {
 	return "ai:trending:destination_ids:" + locale
+}
+
+// KeyAITrendingEventIDs returns a locale-scoped cache key for the event
+// external-IDs elected as trending by the AI. Written alongside
+// KeyAITrendingIDs and read by the event badge logic.
+func KeyAITrendingEventIDs(locale string) string {
+	return "ai:trending:event_ids:" + locale
 }
 
 const (
