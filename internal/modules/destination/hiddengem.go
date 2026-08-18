@@ -14,14 +14,21 @@ import (
 // for the hidden gem selection. Culinary and heritage are excluded — a well-known
 // restaurant or famous museum is not a "hidden" place to visit.
 var hiddenGemCategories = map[string]bool{
-	"nature":    true,
-	"beach":     true,
-	"adventure": true,
-	"family":    true,
-	"weekend":   true,
-	"camping":   true,
+	"nature":     true,
+	"beach":      true,
+	"adventure":  true,
+	"family":     true,
+	"weekend":    true,
+	"camping":    true,
 	"hidden-gem": true, // explicitly tagged by admin
 }
+
+// hiddenGemMinReviews is the minimum review count threshold for a destination
+// to be considered a hidden gem candidate. Set to 5 so fresh sites with seed
+// data can still populate the curated list, while filtering out single-review
+// places. For established sites with real traffic, this naturally ensures a
+// minimum review signal for reliable rating aggregation.
+const hiddenGemMinReviews = 3
 
 // SelectHiddenGems returns up to cache.HiddenGemCount external-IDs for this
 // week's curated Hidden Gem set. Rules:
@@ -32,7 +39,7 @@ var hiddenGemCategories = map[string]bool{
 //  3. Remaining slots are filled from natural candidates:
 //     - category must be in hiddenGemCategories (culinary/heritage excluded)
 //     - rating >= 4.5 (quality floor)
-//     - review_count >= 50 (enough reviews for a reliable rating signal)
+//     - review_count >= hiddenGemMinReviews (enough reviews for reliable signal)
 //     - review_count < 1000 (genuinely under the radar — not mainstream yet)
 //     Ranked rating DESC → review_count ASC, then lightly shuffled within a
 //     2× pool using a weekly ISO-week seed so the list feels fresh week to week.
@@ -58,7 +65,7 @@ func SelectHiddenGems(all []Destination) []string {
 			cat := strings.ToLower(strings.TrimSpace(d.Category))
 			if hiddenGemCategories[cat] &&
 				d.Rating >= 4.5 &&
-				d.ReviewCount >= 50 &&
+				d.ReviewCount >= hiddenGemMinReviews &&
 				d.ReviewCount < 1000 {
 				candidates = append(candidates, d)
 			}
