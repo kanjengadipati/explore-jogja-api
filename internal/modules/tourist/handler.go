@@ -227,7 +227,7 @@ func (h *Handler) Trending(c *gin.Context) {
 	}
 
 	systemInstruction := fmt.Sprintf(`You are an AI tourism curator for Yogyakarta, Indonesia.
-Your task is to select exactly 5 trending picks for tourists TODAY. The picks can be a mix of destinations and upcoming events.
+Your task is to select exactly 10 trending picks for tourists TODAY. The picks can be a mix of destinations and upcoming events.
 Prioritize variety: mix adventure, culture, nature, and events. Make the selection feel fresh and curated.
 %s
 
@@ -262,11 +262,11 @@ badgeType rules:
 - "popular" for all-time favorites
 - "new" for newly opened/launched
 - "photographers_pick" for most photogenic
-Return exactly 5 items. Mix at least 1 event if events are available.`, langInstruction, destContext, eventContext)
+Return exactly 10 items. Mix at least 1 event if events are available.`, langInstruction, destContext, eventContext)
 
 	result, err := h.AIService.Generate(ctx, ai.GenerateInput{
 		SystemPrompt: systemInstruction,
-		UserPrompt:   "Pilihkan 5 trending picks terbaik untuk wisatawan di Yogyakarta hari ini.",
+		UserPrompt:   "Pilihkan 10 trending picks terbaik untuk wisatawan di Yogyakarta hari ini.",
 		Temperature:  0.65,
 		MaxTokens:    1200,
 	})
@@ -319,6 +319,29 @@ Return exactly 5 items. Mix at least 1 event if events are available.`, langInst
 		return
 	}
 	parsed.Items = validated
+
+	// Enforce the trending limit: cap at 10, and top up with curated offline
+	// picks (deduplicated) when the model returns fewer than 10.
+	if len(parsed.Items) > 10 {
+		parsed.Items = parsed.Items[:10]
+	}
+	if len(parsed.Items) < 10 {
+		offline := h.offlineTrendingResponse(dests, events, isID)
+		seen := make(map[string]bool, len(parsed.Items))
+		for _, it := range parsed.Items {
+			seen[it.ID] = true
+		}
+		for _, it := range offline.Items {
+			if len(parsed.Items) == 10 {
+				break
+			}
+			if seen[it.ID] {
+				continue
+			}
+			seen[it.ID] = true
+			parsed.Items = append(parsed.Items, it)
+		}
+	}
 
 	// ── Save to Redis cache (weekly TTL) ─────────────────────────────────────
 	if h.Cache != nil {
@@ -393,7 +416,7 @@ func destImageURL(d destination.Destination) string {
 
 // offlineTrendingResponse builds a curated fallback from the real DB — no AI required.
 // It prefers well-known destinations by external_id, then fills remaining slots from
-// whatever is in the DB so callers always receive up to 5 items.
+// whatever is in the DB so callers always receive up to 10 items.
 func (h *Handler) offlineTrendingResponse(dests []destination.Destination, events []event.Event, isID bool) *AITrendingResponse {
 	// Preferred picks with curated badges/headlines — matched by external_id.
 	type preferredPick struct {
@@ -412,6 +435,11 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 		{"goajomblang", "Hidden Gem", "Hidden Gem", "hidden_gem", "Celestial Beam Cave", "Celestial Beam Cave", "Fenomena cahaya surgawi yang langka", "Rare heavenly light phenomenon"},
 		{"tamansari", "Warisan Budaya", "Heritage", "popular", "Taman Sari", "Taman Sari", "Istana air penuh misteri sultan", "Royal water castle full of mystery"},
 		{"parangtritis", "Populer", "Popular", "popular", "Pantai Parangtritis", "Parangtritis Beach", "Sunset spektakuler di tepi samudra", "Spectacular ocean sunset"},
+		{"ratuboko", "Spot Foto", "Photo Spot", "photographers_pick", "Ratu Boko Sunset", "Ratu Boko Sunset", "Panorama matahari terbenam dari istana di atas bukit", "Sunset panorama from a hilltop palace"},
+		{"kalibiru", "Fotogenik", "Photogenic", "photographers_pick", "Kalibiru Sunset", "Kalibiru Sunset", "Spot foto ikonik di atas Danau Sermo", "Iconic photo spot above Sermo Lake"},
+		{"timang", "Petualangan", "Adventure", "trending", "Pantai Timang", "Timang Beach", "Gondola laut paling menantang di Yogyakarta", "The most challenging sea gondola in Yogyakarta"},
+		{"keraton", "Warisan Budaya", "Heritage", "popular", "Keraton Yogyakarta", "Yogyakarta Palace", "Pusat budaya dan sejarah Kesultanan Ngayogyakarta", "Cultural and historical center of the Yogyakarta Sultanate"},
+		{"pasar-beringharjo", "Belanja Ikonik", "Iconic Market", "popular", "Pasar Beringharjo", "Beringharjo Market", "Pasar batik dan oleh-oleh paling legendaris di Malioboro", "The most legendary batik and souvenir market at Malioboro"},
 	}
 
 	destMap := make(map[string]destination.Destination, len(dests))
@@ -420,7 +448,7 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 		destMap[d.ExternalID] = d
 	}
 
-	items := make([]AITrendingItem, 0, 5)
+	items := make([]AITrendingItem, 0, 10)
 
 	// Phase 1: add preferred picks that exist in the DB.
 	for _, p := range preferred {
@@ -444,13 +472,13 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 			Location:  d.SubRegion,
 		})
 		usedIDs[p.id] = true
-		if len(items) == 5 {
+		if len(items) == 10 {
 			break
 		}
 	}
 
 	// Phase 2: fill remaining slots from DB destinations (highest-rated first).
-	if len(items) < 5 {
+	if len(items) < 10 {
 		badgesID := []string{"Trending", "Populer", "Alam Terbaik", "Warisan Budaya", "Ikon Dunia"}
 		badgesEN := []string{"Trending", "Popular", "Best Nature", "Heritage", "World Icon"}
 		badgeTypes := []string{"trending", "popular", "hidden_gem", "popular", "trending"}
@@ -460,7 +488,7 @@ func (h *Handler) offlineTrendingResponse(dests []destination.Destination, event
 		}
 		bi := 0
 		for _, d := range dests {
-			if len(items) == 5 {
+			if len(items) == 10 {
 				break
 			}
 			if usedIDs[d.ExternalID] {

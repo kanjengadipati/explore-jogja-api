@@ -71,7 +71,7 @@ const (
 	TTLHiddenGem = 7 * 24 * time.Hour
 
 	// HiddenGemCount is the maximum number of destinations in the curated list.
-	HiddenGemCount = 15
+	HiddenGemCount = 50
 )
 
 // KeyEventsIDAllPrefix is the prefix for every locale variant of the single

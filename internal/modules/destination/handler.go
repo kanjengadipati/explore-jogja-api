@@ -316,7 +316,7 @@ func (h *Handler) GetUserDestinations(c *gin.Context) {
 	httpx.Success(c, 200, "User destinations fetched", uds, nil)
 }
 
-// GetHiddenGem returns this week's curated Hidden Gem selection (max 15).
+// GetHiddenGem returns this week's curated Hidden Gem selection (max 50).
 // The list is loaded from cache (TTL 7 days) and computed lazily on first
 // access after expiry — no cron job required.
 // Results are ordered: pinned destinations first (by pin timestamp), then
